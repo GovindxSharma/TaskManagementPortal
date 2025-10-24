@@ -6,12 +6,15 @@ import Clients from "./pages/Dashboard/Admin/Clients";
 import Employees from "./pages/Dashboard/Admin/Employees";
 import Ticket from "./pages/Dashboard/Admin/Tickets";
 import Payments from "./pages/Dashboard/Admin/Payments";
+import CustomerCompliance from "./pages/Dashboard/Admin/CustomerCompliance/CustomerCompliance.jsx";
+
 
 import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboard";
 import AccountantClients from "./pages/Dashboard/Accountant/AccountantClients";
 import AccountantTickets from "./pages/Dashboard/Accountant/AccountantTickets";
 import EmployeeDashboard from "./pages/Dashboard/Employee/EmployeeDashboard";
 import EmployeeTickets from "./pages/Dashboard/Employee/EmployeeTickets";
+import CustomerDetails from "./pages/Dashboard/Admin/CustomerCompliance/ClientDetail.jsx"
 
 function App() {
   return (
@@ -28,6 +31,11 @@ function App() {
           <Route path="/admin/tickets" element={<Ticket />} />
           <Route path="/admin/payments" element={<Payments />} />
           <Route
+            path="/admin/customer-compliance"
+            element={<CustomerCompliance />}
+          />
+          <Route path="/admin/customer/:id" element={<CustomerDetails />} />
+          <Route
             path="/accountant/dashboard"
             element={<AccountantDashboard />}
           />
@@ -35,7 +43,6 @@ function App() {
           <Route path="/accountant/tickets" element={<AccountantTickets />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/employee/tickets" element={<EmployeeTickets />} />
-
         </Routes>
       </div>
     </Router>

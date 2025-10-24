@@ -20,6 +20,12 @@ export default function AdminDashboard() {
       link: "/admin/clients",
     },
     {
+      title: "Customer Compliance",
+      value: 12,
+      icon: <Users className="text-purple-500" />,
+      link: "/admin/customer-compliance",
+    },
+    {
       title: "Employees",
       value: 15,
       icon: <Users className="text-green-500" />,
@@ -40,15 +46,45 @@ export default function AdminDashboard() {
   ];
 
   const recentClients = [
-    { name: "Acme Corp", email: "billing@acme.com", status: "Active", assigned: "Amit Verma" },
-    { name: "GreenLeaf Pvt Ltd", email: "contact@greenleaf.in", status: "Pending", assigned: "Riya Sharma" },
-    { name: "ZenTax Advisors", email: "info@zentax.com", status: "Active", assigned: "Arjun Mehta" },
+    {
+      name: "Acme Corp",
+      email: "billing@acme.com",
+      status: "Active",
+      assigned: "Amit Verma",
+    },
+    {
+      name: "GreenLeaf Pvt Ltd",
+      email: "contact@greenleaf.in",
+      status: "Pending",
+      assigned: "Riya Sharma",
+    },
+    {
+      name: "ZenTax Advisors",
+      email: "info@zentax.com",
+      status: "Active",
+      assigned: "Arjun Mehta",
+    },
   ];
 
   const recentTickets = [
-    { id: "#TCK1021", subject: "GST filing delay", assigned: "Riya Sharma", status: "Open" },
-    { id: "#TCK1022", subject: "Invoice correction", assigned: "Arjun Mehta", status: "In Progress" },
-    { id: "#TCK1023", subject: "Client onboarding", assigned: "Amit Verma", status: "Completed" },
+    {
+      id: "#TCK1021",
+      subject: "GST filing delay",
+      assigned: "Riya Sharma",
+      status: "Open",
+    },
+    {
+      id: "#TCK1022",
+      subject: "Invoice correction",
+      assigned: "Arjun Mehta",
+      status: "In Progress",
+    },
+    {
+      id: "#TCK1023",
+      subject: "Client onboarding",
+      assigned: "Amit Verma",
+      status: "Completed",
+    },
   ];
 
   const notifications = [
@@ -73,7 +109,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
         {stats.map((s, i) => (
           <div
             key={i}
