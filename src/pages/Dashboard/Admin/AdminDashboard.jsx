@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -7,10 +7,12 @@ import {
   CreditCard,
   Bell,
   ArrowRight,
+  X,
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const stats = [
     {
@@ -20,7 +22,7 @@ export default function AdminDashboard() {
       link: "/admin/clients",
     },
     {
-      title: "Customer Compliance",
+      title: "Compliance Tracker",
       value: 12,
       icon: <Users className="text-purple-500" />,
       link: "/admin/customer-compliance",
@@ -102,7 +104,10 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
           Admin Dashboard
         </h1>
-        <button className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition">
+        <button
+          className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+          onClick={() => setShowNotifications(true)}
+        >
           <Bell className="text-gray-600" />
           <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
         </button>
@@ -215,23 +220,33 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Notifications */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mt-10 hover:shadow-lg transition">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">
-          Recent Notifications
-        </h2>
-        <ul className="space-y-3">
-          {notifications.map((note, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-3 bg-gray-50 hover:bg-gray-100 rounded-lg p-3 transition"
+      {/* Notifications Modal */}
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-start pt-6 z-50">
+          <div className="bg-white rounded-xl shadow-lg w-[1200px] max-w-[95%] h-[160vh] max-h-[95vh] overflow-y-auto p-10 relative">
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
+              onClick={() => setShowNotifications(false)}
             >
-              <CreditCard size={18} className="text-blue-500 mt-0.5" />
-              <span className="text-gray-700">{note}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+              <X />
+            </button>
+            <h2 className="text-3xl font-semibold mb-6 text-gray-800">
+              Notifications
+            </h2>
+            <ul className="space-y-5">
+              {notifications.map((note, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-4 bg-gray-50 hover:bg-gray-100 rounded-lg p-5 transition"
+                >
+                  <CreditCard size={24} className="text-blue-500 mt-0.5" />
+                  <span className="text-gray-700 text-lg">{note}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
