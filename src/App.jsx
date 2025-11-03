@@ -7,6 +7,8 @@ import Employees from "./pages/Dashboard/Admin/Employees";
 import Ticket from "./pages/Dashboard/Admin/Tickets";
 import Payments from "./pages/Dashboard/Admin/Payments";
 import CustomerCompliance from "./pages/Dashboard/Admin/CustomerCompliance/CustomerCompliance.jsx";
+import PasswordsSection from "./pages/Dashboard/Admin/PasswordsSection.jsx";
+import LicenseTrackerSection from "./pages/Dashboard/Admin/LicenseTrackerSection.jsx";
 
 
 import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboard";
@@ -35,6 +37,11 @@ function App() {
             element={<CustomerCompliance />}
           />
           <Route path="/admin/customer/:id" element={<CustomerDetails />} />
+          <Route path="/admin/passwords" element={<PasswordsSection />} />
+          <Route
+            path="/admin/license-tracker"
+            element={<LicenseTrackerSection />}
+          />
           <Route
             path="/accountant/dashboard"
             element={<AccountantDashboard />}
