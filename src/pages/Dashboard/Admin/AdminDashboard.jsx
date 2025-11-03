@@ -12,6 +12,19 @@ import {
   Award,
 } from "lucide-react";
 
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -111,6 +124,25 @@ export default function AdminDashboard() {
     "Ticket #TCK1023 marked completed by Amit Verma",
   ];
 
+  // 📊 Chart Data
+  const clientStats = [
+    { month: "Jan", new: 10, inactive: 2 },
+    { month: "Feb", new: 14, inactive: 4 },
+    { month: "Mar", new: 8, inactive: 3 },
+    { month: "Apr", new: 18, inactive: 6 },
+    { month: "May", new: 22, inactive: 5 },
+    { month: "Jun", new: 15, inactive: 2 },
+  ];
+
+  const revenueData = [
+    { month: "Jan", revenue: 85000 },
+    { month: "Feb", revenue: 90000 },
+    { month: "Mar", revenue: 75000 },
+    { month: "Apr", revenue: 120000 },
+    { month: "May", revenue: 135000 },
+    { month: "Jun", revenue: 110000 },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
       {/* Header */}
@@ -118,6 +150,7 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
           Admin Dashboard
         </h1>
+
         <button
           className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
           onClick={() => setShowNotifications(true)}
@@ -127,7 +160,7 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-6 mb-10">
         {stats.map((s, i) => (
           <div
@@ -144,12 +177,12 @@ export default function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <ArrowRight className="text-gray-400 group-hover:text-blue-500 transition" />
+            <ArrowRight className="text-gray-400 transition" />
           </div>
         ))}
       </div>
 
-      {/* Clients & Tickets */}
+      {/* Recent Clients + Tickets */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Recent Clients */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
@@ -231,6 +264,56 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* 📊 Charts */}
+      <div className="grid md:grid-cols-2 gap-6 mt-10">
+        {/* Client Growth */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Client Growth Trend
+          </h2>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={clientStats}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="new"
+                stroke="#4F46E5"
+                strokeWidth={3}
+                name="New Clients"
+              />
+              <Line
+                type="monotone"
+                dataKey="inactive"
+                stroke="#EF4444"
+                strokeWidth={3}
+                name="Inactive Clients"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Revenue Chart */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Monthly Revenue
+          </h2>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="revenue" fill="#10B981" name="Revenue (₹)" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
