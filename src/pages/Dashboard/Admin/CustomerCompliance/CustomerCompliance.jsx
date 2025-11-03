@@ -20,7 +20,6 @@ export default function CustomerCompliance() {
     ...new Set(dummyClients.map((c) => c.assignedTo).filter(Boolean)),
   ];
 
-  // Reset Filters
   const resetFilters = () => {
     setSearchQuery("");
     setEmployeeFilter("");
@@ -30,12 +29,13 @@ export default function CustomerCompliance() {
     setMonthFilter("");
   };
 
-  // Filter Logic
+  // Filter logic with bill only if data completed
   const filteredClients = clients.filter((client) => {
     const months = Object.keys(client.dataStatus);
     const lastMonth = months[months.length - 1];
     const dataStatus = client.dataStatus[lastMonth];
-    const billStatus = client.billStatus[lastMonth];
+    const billStatus =
+      dataStatus === "Completed" ? client.billStatus[lastMonth] : "-";
 
     const matchesSearch =
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -72,7 +72,6 @@ export default function CustomerCompliance() {
     const lastMonth = months[months.length - 1];
     const dataStatus = client.dataStatus[lastMonth];
 
-    // Return separate styled spans for "Data Status" + "Month"
     return (
       <div className="flex items-center gap-2 flex-wrap">
         <span
@@ -96,9 +95,11 @@ export default function CustomerCompliance() {
   };
 
   const getBillUpdate = (client) => {
-    const months = Object.keys(client.billStatus);
+    const months = Object.keys(client.dataStatus);
     const lastMonth = months[months.length - 1];
-    const billStatus = client.billStatus[lastMonth];
+    const dataStatus = client.dataStatus[lastMonth];
+    const billStatus =
+      dataStatus === "Completed" ? client.billStatus[lastMonth] : "-";
 
     return (
       <div className="flex items-center gap-2 flex-wrap">
@@ -108,10 +109,12 @@ export default function CustomerCompliance() {
               ? "bg-green-100 text-green-700"
               : billStatus === "Overdue"
               ? "bg-red-100 text-red-700"
+              : billStatus === "Pending"
+              ? "bg-yellow-100 text-yellow-700"
               : "bg-gray-100 text-gray-700"
           }`}
         >
-          Bill {billStatus}
+          {billStatus !== "-" ? `Bill ${billStatus}` : "-"}
         </span>
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
           {lastMonth}
@@ -141,7 +144,7 @@ export default function CustomerCompliance() {
 
       {/* Title */}
       <h1 className="text-2xl font-semibold mb-6 text-gray-800">
-        Customer Compliance
+        Compliance Tracker
       </h1>
 
       {/* Filters */}
@@ -149,7 +152,10 @@ export default function CustomerCompliance() {
         <div className="flex flex-wrap gap-4 items-center">
           {/* Search Bar */}
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <Search
+              className="absolute left-3 top-2.5 text-gray-400"
+              size={18}
+            />
             <input
               type="text"
               placeholder="Search by client, status, or month..."

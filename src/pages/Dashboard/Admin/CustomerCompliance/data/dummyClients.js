@@ -5,11 +5,24 @@ export const clients = [
     site: "Mumbai",
     assignedTo: "Riya Sharma",
     category: "21-50",
-    dataStatus: { June: "Received", July: "In Progress", August: "Completed" },
-    billStatus: { June: "Generated", July: "Generated", August: "Overdue" },
+    dataStatus: {
+      June: "Received",
+      July: "In Progress",
+      August: "Completed",
+    },
+    billStatus: {
+      June: "Generated",
+      July: "Generated",
+      August: "Pending",
+    },
     clientStatus: "Active",
     suspensionReason: {
       August: "Payment delayed, client suspended until clearance by accountant",
+    },
+    monthData: {
+      June: { noOfWorkers: 25, expectedAmount: 50000, finalAmount: 48000 },
+      July: { noOfWorkers: 28, expectedAmount: 52000, finalAmount: 51000 },
+      August: { noOfWorkers: 30, expectedAmount: 55000, finalAmount: 0 }, // pending final amount
     },
   },
   {
@@ -30,6 +43,11 @@ export const clients = [
       July: "Multiple overdue bills, temporarily suspended",
       August: "Multiple overdue bills, temporarily suspended",
     },
+    monthData: {
+      June: { noOfWorkers: 60, expectedAmount: 120000, finalAmount: 0 },
+      July: { noOfWorkers: 62, expectedAmount: 125000, finalAmount: 0 },
+      August: { noOfWorkers: 65, expectedAmount: 130000, finalAmount: 0 },
+    },
   },
   {
     id: 3,
@@ -40,6 +58,10 @@ export const clients = [
     dataStatus: { June: "Received", July: "In Progress" },
     billStatus: { June: "Generated", July: "Generated" },
     clientStatus: "Active",
+    monthData: {
+      June: { noOfWorkers: 12, expectedAmount: 20000, finalAmount: 19000 },
+      July: { noOfWorkers: 15, expectedAmount: 22000, finalAmount: 21500 },
+    },
   },
   {
     id: 4,
@@ -50,6 +72,11 @@ export const clients = [
     dataStatus: { May: "Completed", June: "Completed", July: "In Progress" },
     billStatus: { May: "Generated", June: "Generated", July: "Pending" },
     clientStatus: "Active",
+    monthData: {
+      May: { noOfWorkers: 22, expectedAmount: 45000, finalAmount: 45000 },
+      June: { noOfWorkers: 24, expectedAmount: 47000, finalAmount: 47000 },
+      July: { noOfWorkers: 26, expectedAmount: 49000, finalAmount: 0 },
+    },
   },
   {
     id: 5,
@@ -60,5 +87,9 @@ export const clients = [
     dataStatus: { July: "Received", August: "Completed" },
     billStatus: { July: "Generated", August: "Generated" },
     clientStatus: "Active",
+    monthData: {
+      July: { noOfWorkers: 10, expectedAmount: 15000, finalAmount: 15000 },
+      August: { noOfWorkers: 12, expectedAmount: 18000, finalAmount: 18000 },
+    },
   },
 ];

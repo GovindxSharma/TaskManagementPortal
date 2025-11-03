@@ -83,23 +83,9 @@ export default function CustomerDetails() {
 
       {/* Month Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {displayedMonths.map((month) => {
-          const dataStatus = client.dataStatus[month];
-          const billStatus = client.billStatus[month];
-          const suspensionNote =
-            billStatus === "Overdue" ? client.suspensionReason?.[month] : null;
-
-          return (
-            <MonthCard
-              key={month}
-              month={month}
-              assignedTo={client.assignedTo}
-              dataStatus={dataStatus}
-              billStatus={billStatus}
-              suspensionNote={suspensionNote}
-            />
-          );
-        })}
+        {displayedMonths.map((month) => (
+          <MonthCard key={month} client={client} month={month} />
+        ))}
       </div>
     </div>
   );
