@@ -8,6 +8,8 @@ import {
   Bell,
   ArrowRight,
   X,
+  Key,
+  Award,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -40,10 +42,22 @@ export default function AdminDashboard() {
       link: "/admin/tickets",
     },
     {
-      title: "Overdue Payments",
+      title: "Overdue Clients",
       value: 5,
       icon: <AlertCircle className="text-red-500" />,
       link: "/admin/payments",
+    },
+    {
+      title: "Passwords",
+      value: 28,
+      icon: <Key className="text-indigo-500" />,
+      link: "/admin/passwords",
+    },
+    {
+      title: "License Tracker",
+      value: 18,
+      icon: <Award className="text-teal-500" />,
+      link: "/admin/license-tracker",
     },
   ];
 
@@ -114,7 +128,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-6 mb-10">
         {stats.map((s, i) => (
           <div
             key={i}

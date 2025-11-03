@@ -93,3 +93,87 @@ export const clients = [
     },
   },
 ];
+
+export const passwords = [
+  {
+    id: 1,
+    client: "Aarav Enterprises",
+    category: "Email",
+    username: "admin@aarav.com",
+    password: "password123",
+  },
+  {
+    id: 2,
+    client: "VisionTech",
+    category: "ERP",
+    username: "vision_admin",
+    password: "v!sion2025",
+  },
+  {
+    id: 3,
+    client: "BlueSky Corp",
+    category: "Finance",
+    username: "bluesky_fin",
+    password: "bluesky@2025",
+  },
+];
+
+export const licenses = [
+  {
+    id: 1,
+    client: "Acme Corp",
+    policies: [
+      { name: "WC Policy", start: "2025-01-01", end: "2025-12-31" },
+      { name: "LL Policy", start: "2025-03-01", end: "2025-09-30" },
+      { name: "PO", start: "2025-02-15", end: "2025-08-15" },
+    ],
+  },
+  {
+    id: 2,
+    client: "GreenLeaf Pvt Ltd",
+    policies: [
+      { name: "WC Policy", start: "2024-12-01", end: "2025-11-30" },
+      { name: "BOCW", start: "2025-04-01", end: "2025-10-01" },
+    ],
+  },
+  {
+    id: 3,
+    client: "ZenTax Advisors",
+    policies: [
+      { name: "LL Policy", start: "2025-05-01", end: "2025-12-31" },
+      { name: "PO", start: "2025-06-01", end: "2025-11-30" },
+      { name: "WC Policy", start: "2025-01-15", end: "2025-07-15" },
+    ],
+  },
+  {
+    id: 4,
+    client: "BlueWave Solutions",
+    policies: [
+      { name: "WC Policy", start: "2025-02-01", end: "2025-08-31" },
+      { name: "LL Policy", start: "2025-01-10", end: "2025-06-30" },
+      { name: "PO", start: "2025-03-01", end: "2025-09-15" },
+      { name: "BOCW", start: "2025-04-01", end: "2025-10-01" },
+    ],
+  },
+  {
+    id: 5,
+    client: "NextGen Enterprises",
+    policies: [
+      { name: "WC Policy", start: "2025-01-01", end: "2025-12-31" },
+      { name: "LL Policy", start: "2025-05-01", end: "2025-12-31" },
+      { name: "PO", start: "2025-03-01", end: "2025-09-30" },
+      { name: "BOCW", start: "2025-02-15", end: "2025-08-15" },
+    ],
+  },
+  {
+    id: 6,
+    client: "GlobalTech Ltd",
+    policies: [
+      { name: "WC Policy", start: "2025-01-01", end: "2025-07-31" },
+      { name: "LL Policy", start: "2025-04-01", end: "2025-10-31" },
+      { name: "PO", start: "2025-06-01", end: "2025-12-31" },
+    ],
+  },
+];
+
+
