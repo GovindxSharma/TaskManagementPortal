@@ -10,12 +10,9 @@ import CustomerCompliance from "./components/ComplianceTracker/CustomerComplianc
 import PasswordsSection from "./components/Passwords/PasswordsSection.jsx";
 import LicenseTrackerSection from "./components/LicenseTracker/LicenseTrackerSection.jsx";
 
-
 import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboard";
-import AccountantClients from "./pages/Dashboard/Accountant/AccountantClients";
-import AccountantTickets from "./pages/Dashboard/Accountant/AccountantTickets";
+
 import EmployeeDashboard from "./pages/Dashboard/Employee/EmployeeDashboard";
-import EmployeeTickets from "./pages/Dashboard/Employee/EmployeeTickets";
 import CustomerDetails from "./components/ComplianceTracker/ClientDetail.jsx"
 
 function App() {
@@ -46,10 +43,10 @@ function App() {
             path="/accountant/dashboard"
             element={<AccountantDashboard />}
           />
-          <Route path="/accountant/clients" element={<AccountantClients />} />
-          <Route path="/accountant/tickets" element={<AccountantTickets />} />
+          <Route path="/accountant/clients" element={<Clients />} />
+          <Route path="/accountant/tickets" element={<Ticket />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-          <Route path="/employee/tickets" element={<EmployeeTickets />} />
+          <Route path="/employee/tickets" element={<Ticket />} />
         </Routes>
       </div>
     </Router>
