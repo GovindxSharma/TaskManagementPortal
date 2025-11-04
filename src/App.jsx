@@ -4,19 +4,16 @@ import Login from "./pages/auth/Login";
 import Dashboard from "./pages/Dashboard/Admin/AdminDashboard";
 import Clients from "./pages/Dashboard/Admin/Clients";
 import Employees from "./pages/Dashboard/Admin/Employees";
-import Ticket from "./pages/Dashboard/Admin/Tickets";
-import Payments from "./pages/Dashboard/Admin/Payments";
-import CustomerCompliance from "./pages/Dashboard/Admin/CustomerCompliance/CustomerCompliance.jsx";
-import PasswordsSection from "./pages/Dashboard/Admin/PasswordsSection.jsx";
-import LicenseTrackerSection from "./pages/Dashboard/Admin/LicenseTrackerSection.jsx";
-
+import Ticket from "./components/Tickets/Tickets.jsx";
+import OverdueClients from "./components/OverdueClients/OverdueClients.jsx";
+import CustomerCompliance from "./components/ComplianceTracker/CustomerCompliance.jsx";
+import PasswordsSection from "./components/Passwords/PasswordsSection.jsx";
+import LicenseTrackerSection from "./components/LicenseTracker/LicenseTrackerSection.jsx";
 
 import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboard";
-import AccountantClients from "./pages/Dashboard/Accountant/AccountantClients";
-import AccountantTickets from "./pages/Dashboard/Accountant/AccountantTickets";
+
 import EmployeeDashboard from "./pages/Dashboard/Employee/EmployeeDashboard";
-import EmployeeTickets from "./pages/Dashboard/Employee/EmployeeTickets";
-import CustomerDetails from "./pages/Dashboard/Admin/CustomerCompliance/ClientDetail.jsx"
+import CustomerDetails from "./components/ComplianceTracker/ClientDetail.jsx"
 
 function App() {
   return (
@@ -31,7 +28,7 @@ function App() {
           <Route path="/admin/clients" element={<Clients />} />
           <Route path="/admin/employees" element={<Employees />} />
           <Route path="/admin/tickets" element={<Ticket />} />
-          <Route path="/admin/payments" element={<Payments />} />
+          <Route path="/admin/payments" element={<OverdueClients />} />
           <Route
             path="/admin/customer-compliance"
             element={<CustomerCompliance />}
@@ -46,10 +43,10 @@ function App() {
             path="/accountant/dashboard"
             element={<AccountantDashboard />}
           />
-          <Route path="/accountant/clients" element={<AccountantClients />} />
-          <Route path="/accountant/tickets" element={<AccountantTickets />} />
+          <Route path="/accountant/clients" element={<Clients />} />
+          <Route path="/accountant/tickets" element={<Ticket />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-          <Route path="/employee/tickets" element={<EmployeeTickets />} />
+          <Route path="/employee/tickets" element={<Ticket />} />
         </Routes>
       </div>
     </Router>

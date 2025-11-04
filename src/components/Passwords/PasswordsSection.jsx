@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, Edit, Plus, Search } from "lucide-react";
-import { passwords as dummyPasswords } from "./CustomerCompliance/data/dummyClients";
+import { passwords as dummyPasswords } from "../../data/dummyClients";
 
 // Dummy client list for dropdown
 const clientsList = [
