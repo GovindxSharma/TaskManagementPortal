@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, ChevronDown, X } from "lucide-react";
-import { clients as dummyClients } from "./data/dummyClients";
+import { clients as dummyClients } from "../../data/dummyClients"
 
 export default function CustomerCompliance() {
   const navigate = useNavigate();

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { licenses as dummyLicenses } from "./CustomerCompliance/data/dummyClients";
+import { licenses as dummyLicenses } from "../../data/dummyClients";
 import { X, Edit, Plus } from "lucide-react";
 
 const getAllCategories = (licenses) => {

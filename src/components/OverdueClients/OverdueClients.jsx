@@ -7,9 +7,9 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { clients as dummyClients } from "./CustomerCompliance/data/dummyClients";
+import { clients as dummyClients } from "../../data/dummyClients";
 
-const Payments = () => {
+const OverdueClients = () => {
   const [payments, setPayments] = useState([
     // {
     //   id: 1,
@@ -245,4 +245,4 @@ const Payments = () => {
   );
 };
 
-export default Payments;
+export default OverdueClients;

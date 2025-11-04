@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { clients as dummyClients } from "./data/dummyClients";
+import { clients as dummyClients } from "../../data/dummyClients.js";
 import MonthCard from "./components/MonthCard.jsx";
 import { ChevronLeft } from "lucide-react";
 
