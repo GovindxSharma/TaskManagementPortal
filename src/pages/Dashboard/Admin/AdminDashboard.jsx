@@ -28,7 +28,7 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [showNotifications, setShowNotifications] = useState(false);
+  // const [showNotifications, setShowNotifications] = useState(false);
 
   const [categories, setCategories] = useState([
     { label: "1 - 20 Clients", price: 3000 },
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
           {/* Notifications */}
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
-            onClick={() => setShowNotifications(true)}
+            onClick={() => navigate("/admin/notifications")}
           >
             <Bell className="text-gray-600" />
             <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
@@ -336,7 +336,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Notifications Modal */}
+      {/* Notifications Modal
       {showNotifications && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-start pt-6 z-50">
           <div className="bg-white rounded-xl shadow-lg w-[1200px] max-w-[95%] h-[160vh] max-h-[95vh] overflow-y-auto p-10 relative">
@@ -362,7 +362,7 @@ export default function AdminDashboard() {
             </ul>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
