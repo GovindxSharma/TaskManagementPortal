@@ -10,6 +10,7 @@ import {
   X,
   Key,
   Award,
+  Settings,
 } from "lucide-react";
 
 import {
@@ -28,6 +29,18 @@ import {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const [categories, setCategories] = useState([
+    { label: "1 - 20 Clients", price: 3000 },
+    { label: "21 - 50 Clients", price: 7000 },
+    { label: "51 - 150 Clients", price: 15000 },
+  ]);
+
+  const handlePriceChange = (index, value) => {
+    const updated = [...categories];
+    updated[index].price = value;
+    setCategories(updated);
+  };
 
   const stats = [
     {
@@ -124,7 +137,6 @@ export default function AdminDashboard() {
     "Ticket #TCK1023 marked completed by Amit Verma",
   ];
 
-  // 📊 Chart Data
   const clientStats = [
     { month: "Jan", new: 10, inactive: 2 },
     { month: "Feb", new: 14, inactive: 4 },
@@ -151,13 +163,24 @@ export default function AdminDashboard() {
           Admin Dashboard
         </h1>
 
-        <button
-          className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
-          onClick={() => setShowNotifications(true)}
-        >
-          <Bell className="text-gray-600" />
-          <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
-        </button>
+        <div className="flex items-center">
+          {/* Notifications */}
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            onClick={() => setShowNotifications(true)}
+          >
+            <Bell className="text-gray-600" />
+            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+          </button>
+
+          {/* Settings - Navigate to settings page */}
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            onClick={() => navigate("/admin/settings")}
+          >
+            <Settings className="text-gray-600" />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -184,7 +207,6 @@ export default function AdminDashboard() {
 
       {/* Recent Clients + Tickets */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Recent Clients */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Clients
@@ -224,7 +246,6 @@ export default function AdminDashboard() {
           </table>
         </div>
 
-        {/* Recent Tickets */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Tickets
@@ -267,9 +288,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 📊 Charts */}
+      {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
-        {/* Client Growth */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Client Growth Trend
@@ -299,7 +319,6 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Revenue Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Monthly Revenue
@@ -311,7 +330,7 @@ export default function AdminDashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="revenue" fill="#10B981" name="Revenue (₹)" />
+              <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
             </BarChart>
           </ResponsiveContainer>
         </div>
