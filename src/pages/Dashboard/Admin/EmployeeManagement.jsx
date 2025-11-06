@@ -93,41 +93,44 @@ const Employees = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 relative">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg transition font-medium"
-          >
-            <ArrowLeft size={18} />
-            Back
-          </button>
-          <h2 className="text-2xl font-semibold text-gray-800">
-            Employee Management
-          </h2>
-        </div>
+<div className="mb-6">
+{/* First line: Back button left, Title right */}
+<div className="flex justify-between items-center mb-4">
+  <button
+    onClick={() => navigate(-1)}
+    className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
+  >
+    <ArrowLeft size={18} />
+    <span className="hidden sm:block">Back</span>
+  </button>
 
-        {/* Search + Add */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
-          <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-3 py-2 w-full sm:w-72">
-            <Search size={18} className="text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search employees..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="ml-2 flex-1 outline-none text-gray-700 bg-transparent"
-            />
-          </div>
-          <button
-            onClick={openAddModal}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition"
-          >
-            <UserPlus size={18} />
-            Add Employee
-          </button>
-        </div>
-      </div>
+  <h2 className="text-2xl font-semibold text-gray-800">
+    Employee Management
+  </h2>
+</div>
+
+{/* Second line: Search + Add Employee */}
+<div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+  <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-3 py-2 w-full sm:w-72">
+    <Search size={18} className="text-gray-500" />
+    <input
+      type="text"
+      placeholder="Search employees..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      className="ml-2 flex-1 outline-none text-gray-700 bg-transparent"
+    />
+  </div>
+  <button
+    onClick={openAddModal}
+    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition w-full sm:w-auto"
+  >
+    <UserPlus size={18} />
+    Add Employee
+  </button>
+</div>
+</div>
+
 
       {/* Employee Table */}
       <div className="bg-white shadow rounded-xl overflow-hidden">

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { X, Edit, Plus, Search } from "lucide-react";
+import { X, Edit, Plus, Search, ArrowLeft } from "lucide-react";
 import { passwords as dummyPasswords } from "../../data/dummyClients";
+import { useNavigate } from "react-router-dom";
 
 // Dummy client list for dropdown
 const clientsList = [
@@ -12,6 +13,8 @@ const clientsList = [
 ];
 
 export default function PasswordsSection() {
+
+    const navigate = useNavigate();
   const [passwords, setPasswords] = useState(dummyPasswords);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -72,29 +75,39 @@ export default function PasswordsSection() {
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+      {/* Back button + heading */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
+      <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-1 text-gray-600 hover:text-gray-800 font-medium px-3 py-2 bg-white rounded-lg shadow-sm"
+    >
+      ← Back
+    </button>
+
         <h2 className="text-2xl font-semibold text-gray-800">Passwords</h2>
-        <div className="flex gap-2 items-center">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="pl-10 pr-4 py-2 border rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-400 outline-none text-base w-64"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-          >
-            <Plus size={18} /> Add
-          </button>
+      </div>
+
+      {/* Search + Add Button */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+        <div className="relative">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            size={20}
+          />
+          <input
+            type="text"
+            placeholder="Search..."
+            className="pl-10 pr-4 py-2 border rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-400 outline-none text-base w-64"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
+        <button
+          onClick={() => setModalOpen(true)}
+          className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+        >
+          <Plus size={18} /> Add
+        </button>
       </div>
 
       {/* Table */}
