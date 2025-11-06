@@ -10,6 +10,7 @@ import {
   X,
   Key,
   Award,
+  Settings,
 } from "lucide-react";
 import {
   LineChart,
@@ -26,7 +27,19 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [showNotifications, setShowNotifications] = useState(false);
+  // const [showNotifications, setShowNotifications] = useState(false);
+
+  const [categories, setCategories] = useState([
+    { label: "1 - 20 Clients", price: 3000 },
+    { label: "21 - 50 Clients", price: 7000 },
+    { label: "51 - 150 Clients", price: 15000 },
+  ]);
+
+  const handlePriceChange = (index, value) => {
+    const updated = [...categories];
+    updated[index].price = value;
+    setCategories(updated);
+  };
 
   const stats = [
     { title: "Total Clients", value: 42, icon: <Users className="text-blue-500" />, link: "/admin/clients" },
@@ -80,14 +93,28 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-10">
       {/* Header */}
       <div className="flex justify-between items-center mb-10">
-        <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-        <button
-          onClick={() => setShowNotifications(true)}
-          className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
-        >
-          <Bell className="text-gray-600" />
-          <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full" />
-        </button>
+        <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+          Admin Dashboard
+        </h1>
+
+        <div className="flex items-center">
+          {/* Notifications */}
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            onClick={() => navigate("/admin/notifications")}
+          >
+            <Bell className="text-gray-600" />
+            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+          </button>
+
+          {/* Settings - Navigate to settings page */}
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            onClick={() => navigate("/admin/settings")}
+          >
+            <Settings className="text-gray-600" />
+          </button>
+        </div>
       </div>
 
       {/* Stats Section */}
@@ -114,9 +141,10 @@ export default function AdminDashboard() {
 
       {/* Tables Section */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Recent Clients */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Clients</h2>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Recent Clients
+          </h2>
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
@@ -149,9 +177,10 @@ export default function AdminDashboard() {
           </table>
         </div>
 
-        {/* Recent Tickets */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Tickets</h2>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Recent Tickets
+          </h2>
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
@@ -189,8 +218,10 @@ export default function AdminDashboard() {
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Client Growth Trend</h2>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Client Growth Trend
+          </h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={clientStats}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -204,8 +235,10 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Monthly Revenue</h2>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Monthly Revenue
+          </h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={revenueData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -213,13 +246,13 @@ export default function AdminDashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="revenue" fill="#10B981" name="Revenue (₹)" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Notifications Modal */}
+      {/* Notifications Modal
       {showNotifications && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-6 relative">
@@ -240,7 +273,7 @@ export default function AdminDashboard() {
             </ul>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

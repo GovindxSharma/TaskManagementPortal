@@ -14,6 +14,8 @@ import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboar
 
 import EmployeeDashboard from "./pages/Dashboard/Employee/EmployeeDashboard";
 import CustomerDetails from "./components/ComplianceTracker/ClientDetail.jsx"
+import SettingsPage from "./components/Settings/SettingsPage.jsx";
+import NotificationsPage from "./components/Notifications/NotificationPage.jsx";
 
 function App() {
   return (
@@ -47,6 +49,8 @@ function App() {
           <Route path="/accountant/tickets" element={<Ticket />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/employee/tickets" element={<Ticket />} />
+          <Route path="/admin/notifications" element={<NotificationsPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
         </Routes>
       </div>
     </Router>
