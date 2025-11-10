@@ -6,39 +6,30 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
-  // Dummy users list
-  const dummyUsers = [
-    { email: "admin@taskflow.com", password: "admin123", role: "admin" },
-    { email: "account@taskflow.com", password: "account123", role: "accountant" },
-    { email: "employee@taskflow.com", password: "employee123", role: "employee" },
-  ];
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    // MOCK LOGIN - static roles
     setTimeout(() => {
-      const user = dummyUsers.find(
-        (u) => u.email === formData.email && u.password === formData.password
-      );
-
-      if (!user) {
-        alert("Invalid email or password");
-        setLoading(false);
-        return;
-      }
-
-      // Simulate login success and redirect
-      if (user.role === "admin") window.location.href = "/admin/dashboard";
-      else if (user.role === "accountant") window.location.href = "/accountant/dashboard";
-      else window.location.href = "/employee/dashboard";
-
       setLoading(false);
-    }, 1000); // simulate small delay
+
+      // Simple role logic based on email
+      let role = "employee"; // default
+      if (formData.email.includes("admin")) role = "admin";
+      else if (formData.email.includes("accountant")) role = "accountant";
+
+      alert(`Logged in as ${role.toUpperCase()}`);
+
+      if (role === "admin") window.location.href = "/admin/dashboard";
+      else if (role === "accountant")
+        window.location.href = "/accountant/dashboard";
+      else window.location.href = "/employee/dashboard";
+    }, 800);
   };
 
   return (
@@ -49,19 +40,21 @@ export default function Login() {
         transition={{ duration: 0.6 }}
         className="bg-white shadow-2xl rounded-2xl w-full max-w-md p-8"
       >
-        {/* Header / Logo */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
             <LogIn className="text-[#016DB6]" size={40} />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-800">Task Management Portal</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">
+            Task Management Portal
+          </h1>
           <p className="text-gray-500 text-sm mt-1">Login to your account</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Email</label>
+            <label className="block text-gray-600 mb-1 text-sm font-medium">
+              Email
+            </label>
             <input
               type="email"
               name="email"
@@ -73,7 +66,9 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Password</label>
+            <label className="block text-gray-600 mb-1 text-sm font-medium">
+              Password
+            </label>
             <input
               type="password"
               name="password"
@@ -92,16 +87,6 @@ export default function Login() {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-
-        {/* Dummy Info */}
-        <div className="mt-6 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-          <p className="font-semibold mb-1 text-gray-600">💡 Demo Accounts:</p>
-          <ul className="space-y-1">
-            <li>👑 Admin → admin@taskflow.com / admin123</li>
-            <li>💼 Accountant → account@taskflow.com / account123</li>
-            <li>👷 Employee → employee@taskflow.com / employee123</li>
-          </ul>
-        </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">
           © {new Date().getFullYear()} TaskFlow Internal Suite

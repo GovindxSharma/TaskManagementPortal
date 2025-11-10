@@ -1,152 +1,197 @@
 import React, { useState } from "react";
-import { ClipboardList, CheckCircle, Hourglass, Ticket } from "lucide-react";
-import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import {
+  Bell,
+  ArrowRight,
+  Settings,
+} from "lucide-react";
+import { dashboardStats } from "../../../data/dashboardStats";
 
-const EmployeeDashboard = () => {
-  const [tasks, setTasks] = useState([
-    {
-      client: "Aarav Enterprises",
-      description: "Prepare invoice and reconcile payment details",
-      deadline: "2025-10-25",
-      status: "In Progress",
-    },
-    {
-      client: "BlueSky Corp",
-      description: "Verify completed services and submit billing data",
-      deadline: "2025-10-22",
-      status: "Pending",
-    },
-    {
-      client: "VisionTech",
-      description: "Finalize and upload work summary report",
-      deadline: "2025-10-18",
-      status: "Completed",
-    },
-  ]);
+export default function EmployeeDashboard() {
+  const navigate = useNavigate();
 
-  const stats = [
-    {
-      icon: <ClipboardList size={28} />,
-      label: "Total Tasks",
-      value: tasks.length,
-      color: "from-blue-500 to-indigo-600",
-    },
-    {
-      icon: <Hourglass size={28} />,
-      label: "In Progress",
-      value: tasks.filter((t) => t.status === "In Progress").length,
-      color: "from-amber-500 to-orange-600",
-    },
-    {
-      icon: <CheckCircle size={28} />,
-      label: "Completed",
-      value: tasks.filter((t) => t.status === "Completed").length,
-      color: "from-green-500 to-emerald-600",
-    },
+  // ✅ centralized stats (dummy for now)
+  const stats = dashboardStats.employee;
+
+  const assignedTasks = [
+    { task: "GST Filing for Acme Corp", dueDate: "Nov 12, 2025", status: "In Progress" },
+    { task: "License Renewal for GreenLeaf Pvt Ltd", dueDate: "Nov 15, 2025", status: "Pending" },
+    { task: "Password Rotation for ZenTax Advisors", dueDate: "Nov 5, 2025", status: "Completed" },
   ];
 
-  const updateStatus = (index, newStatus) => {
-    const updated = [...tasks];
-    updated[index].status = newStatus;
-    setTasks(updated);
-  };
+  const recentNotifications = [
+    { message: "New task assigned: Income Tax filing for Zenith Corp", time: "2 hours ago" },
+    { message: "Client GreenLeaf Pvt Ltd overdue by 3 days", time: "1 day ago" },
+    { message: "Reminder: License renewal due tomorrow for Acme Corp", time: "3 days ago" },
+  ];
+
+  const complianceList = [
+    { client: "Acme Corp", progress: "80%", status: "In Progress" },
+    { client: "GreenLeaf Pvt Ltd", progress: "100%", status: "Completed" },
+    { client: "ZenTax Advisors", progress: "60%", status: "Pending" },
+  ];
+
+  const overdueClients = [
+    { client: "GreenLeaf Pvt Ltd", days: "3 days overdue", amount: "₹12,000" },
+    { client: "FutureTax Pvt Ltd", days: "7 days overdue", amount: "₹18,500" },
+  ];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-gray-800">Employee Dashboard</h1>
-        <p className="text-gray-500 mt-1">
-          Manage your assigned tasks, update progress, and raise tickets
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+          Employee Dashboard
+        </h1>
+
+        <div className="flex items-center">
+          {/* Notifications */}
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            onClick={() => navigate("/employee/notifications")}
+          >
+            <Bell className="text-gray-600" />
+            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+          </button>
+
+          {/* Settings */}
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            onClick={() => navigate("/employee/settings")}
+          >
+            <Settings className="text-gray-600" />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        {stats.map((item, i) => (
-          <motion.div
+      <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-6 mb-10">
+        {stats.map((s, i) => (
+          <div
             key={i}
-            whileHover={{ scale: 1.03 }}
-            className={`bg-gradient-to-r ${item.color} text-white shadow-lg rounded-xl p-5 flex items-center justify-between`}
+            onClick={() => navigate(s.link)}
+            className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer p-6 flex items-center justify-between border border-gray-100 hover:-translate-y-1"
           >
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-3 rounded-lg">{item.icon}</div>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gray-100 rounded-lg">{s.icon}</div>
               <div>
-                <h3 className="text-sm opacity-90">{item.label}</h3>
-                <p className="text-2xl font-semibold">{item.value}</p>
+                <p className="text-gray-500 text-sm">{s.title}</p>
+                <p className="text-3xl font-semibold text-gray-800">{s.value}</p>
               </div>
             </div>
-          </motion.div>
+            <ArrowRight className="text-gray-400 transition" />
+          </div>
         ))}
       </div>
 
-      {/* Quick Action */}
-      <div className="mb-8">
-        <Link to="/employee/tickets">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white border border-blue-100 shadow-sm hover:shadow-md rounded-xl p-6 flex items-center gap-4 transition"
-          >
-            <div className="bg-blue-100 p-3 rounded-lg text-blue-600">
-              <Ticket size={28} />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Raise a Ticket</h3>
-              <p className="text-sm text-gray-500">
-                Report issues or communicate with the admin
-              </p>
-            </div>
-          </motion.div>
-        </Link>
-      </div>
-
-      {/* Assigned Tasks */}
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Assigned Tasks</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border-collapse">
-            <thead>
-              <tr className="text-gray-600 border-b">
-                <th className="py-3 px-4">Client</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4">Deadline</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-center">Action</th>
+      {/* 4 Easy Access Panels */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Assigned Tasks */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Assigned Tasks</h2>
+          <table className="w-full text-sm text-gray-700">
+            <thead className="border-b text-gray-600">
+              <tr>
+                <th className="pb-2 text-left">Task</th>
+                <th className="pb-2 text-left">Status</th>
+                <th className="pb-2 text-left">Due Date</th>
               </tr>
             </thead>
             <tbody>
-              {tasks.map((t, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-none hover:bg-blue-50/40 transition"
-                >
-                  <td className="py-3 px-4 font-medium">{t.client}</td>
-                  <td className="py-3 px-4">{t.description}</td>
-                  <td className="py-3 px-4 text-gray-500">{t.deadline}</td>
-                  <td className="py-3 px-4">
+              {assignedTasks.map((t, i) => (
+                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                  <td className="py-2 font-medium">{t.task}</td>
+                  <td>
                     <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
                         t.status === "Completed"
                           ? "bg-green-100 text-green-700"
                           : t.status === "In Progress"
                           ? "bg-yellow-100 text-yellow-700"
-                          : "bg-gray-100 text-gray-700"
+                          : "bg-red-100 text-red-700"
                       }`}
                     >
                       {t.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-center">
-                    <select
-                      value={t.status}
-                      onChange={(e) => updateStatus(i, e.target.value)}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                  <td>{t.dueDate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Recent Notifications */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Notifications</h2>
+          <ul className="divide-y text-gray-700 text-sm">
+            {recentNotifications.map((n, i) => (
+              <li key={i} className="py-3 flex justify-between items-start">
+                <p className="font-medium">{n.message}</p>
+                <span className="text-gray-500 text-xs">{n.time}</span>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => navigate("/employee/notifications")}
+            className="text-indigo-600 text-sm font-medium mt-3 hover:underline"
+          >
+            View all notifications →
+          </button>
+        </div>
+
+        {/* Compliance Tracker */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Compliance Tracker</h2>
+          <table className="w-full text-sm text-gray-700">
+            <thead className="border-b text-gray-600">
+              <tr>
+                <th className="pb-2 text-left">Client</th>
+                <th className="pb-2 text-left">Progress</th>
+                <th className="pb-2 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {complianceList.map((c, i) => (
+                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                  <td className="py-2 font-medium">{c.client}</td>
+                  <td>{c.progress}</td>
+                  <td>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        c.status === "Completed"
+                          ? "bg-green-100 text-green-700"
+                          : c.status === "In Progress"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
                     >
-                      <option>Pending</option>
-                      <option>In Progress</option>
-                      <option>Completed</option>
-                    </select>
+                      {c.status}
+                    </span>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Overdue Clients */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Overdue Clients</h2>
+          <table className="w-full text-sm text-gray-700">
+            <thead className="border-b text-gray-600">
+              <tr>
+                <th className="pb-2 text-left">Client</th>
+                <th className="pb-2 text-left">Overdue By</th>
+                <th className="pb-2 text-left">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overdueClients.map((o, i) => (
+                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                  <td className="py-2 font-medium">{o.client}</td>
+                  <td>{o.days}</td>
+                  <td className="font-semibold text-red-600">{o.amount}</td>
                 </tr>
               ))}
             </tbody>
@@ -155,6 +200,4 @@ const EmployeeDashboard = () => {
       </div>
     </div>
   );
-};
-
-export default EmployeeDashboard;
+}
