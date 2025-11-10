@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Search, Filter, ChevronDown, CircleDollarSign, Plus, X, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Dropdown from "../layout/DropDown";
+import Dropdown from "../layout/Dropdown";
 import { clients as dummyClients } from "../../data/dummyClients";
 
 const OverdueClients = () => {
