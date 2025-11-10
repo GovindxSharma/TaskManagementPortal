@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Search, UserCheck, ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Dropdown from "../layout/DropDown";
+import Dropdown from "../layout/Dropdown";
 
 const Tickets = () => {
 const navigate = useNavigate();
