@@ -118,45 +118,49 @@ const Clients = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
-          >
-            <ArrowLeft size={18} />
-            <span className="hidden sm:block">Back</span>
-          </button>
-          <h2 className="text-2xl font-semibold text-gray-800">
-            Client Management
-          </h2>
-        </div>
+ {/* Header */}
+<div className="mb-6">
+{/* First line: Back button left, Title right */}
+<div className="flex justify-between items-center mb-4">
+  <button
+    onClick={() => navigate(-1)}
+    className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
+  >
+    <ArrowLeft size={18} />
+    <span className="hidden sm:block">Back</span>
+  </button>
 
-        <div className="flex gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none">
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search clients..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={() => {
-              resetForm();
-              setEditingId(null);
-              setShowModal(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
-          >
-            <UserPlus size={18} />
-            <span className="hidden sm:block">Add Client</span>
-          </button>
-        </div>
-      </div>
+  <h2 className="text-2xl font-semibold text-gray-800">
+    Client Management
+  </h2>
+</div>
+
+{/* Second line: Search input + Add Client button */}
+<div className="flex flex-col md:flex-row gap-3">
+  <div className="relative flex-1 md:flex-none">
+    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+    <input
+      type="text"
+      placeholder="Search clients..."
+      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  </div>
+  <button
+    onClick={() => {
+      resetForm();
+      setEditingId(null);
+      setShowModal(true);
+    }}
+    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+  >
+    <UserPlus size={18} />
+    <span className="hidden sm:block">Add Client</span>
+  </button>
+</div>
+</div>
+
 
       {/* Client Table */}
       <div className="bg-white shadow rounded-xl overflow-hidden">

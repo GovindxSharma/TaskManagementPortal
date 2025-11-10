@@ -36,45 +36,15 @@ export default function AdminDashboard() {
 
   // Dummy Data
   const recentClients = [
-    {
-      name: "Acme Corp",
-      email: "billing@acme.com",
-      status: "Active",
-      assigned: "Amit Verma",
-    },
-    {
-      name: "GreenLeaf Pvt Ltd",
-      email: "contact@greenleaf.in",
-      status: "Pending",
-      assigned: "Riya Sharma",
-    },
-    {
-      name: "ZenTax Advisors",
-      email: "info@zentax.com",
-      status: "Active",
-      assigned: "Arjun Mehta",
-    },
+    { name: "Acme Corp", email: "billing@acme.com", status: "Active", assigned: "Amit Verma" },
+    { name: "GreenLeaf Pvt Ltd", email: "contact@greenleaf.in", status: "Pending", assigned: "Riya Sharma" },
+    { name: "ZenTax Advisors", email: "info@zentax.com", status: "Active", assigned: "Arjun Mehta" },
   ];
 
   const recentTickets = [
-    {
-      id: "#TCK1021",
-      subject: "GST filing delay",
-      assigned: "Riya Sharma",
-      status: "Open",
-    },
-    {
-      id: "#TCK1022",
-      subject: "Invoice correction",
-      assigned: "Arjun Mehta",
-      status: "In Progress",
-    },
-    {
-      id: "#TCK1023",
-      subject: "Client onboarding",
-      assigned: "Amit Verma",
-      status: "Completed",
-    },
+    { id: "#TCK1021", subject: "GST filing delay", assigned: "Riya Sharma", status: "Open" },
+    { id: "#TCK1022", subject: "Invoice correction", assigned: "Arjun Mehta", status: "In Progress" },
+    { id: "#TCK1023", subject: "Client onboarding", assigned: "Amit Verma", status: "Completed" },
   ];
 
   const clientStats = [
@@ -96,7 +66,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-10">
       {/* Header */}
       <div className="flex justify-between items-center mb-10">
         <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
@@ -123,29 +93,29 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-6 mb-10">
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {stats.map((s, i) => (
           <div
             key={i}
             onClick={() => navigate(s.link)}
-            className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer p-6 flex items-center justify-between border border-gray-100 hover:-translate-y-1"
+            className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer p-6 flex items-center justify-between"
           >
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gray-100 rounded-lg">{s.icon}</div>
+              <div className="p-4 bg-gray-50 rounded-xl group-hover:bg-gray-100 transition">
+                {s.icon}
+              </div>
               <div>
                 <p className="text-gray-500 text-sm">{s.title}</p>
-                <p className="text-3xl font-semibold text-gray-800">
-                  {s.value}
-                </p>
+                <p className="text-3xl font-semibold text-gray-800">{s.value}</p>
               </div>
             </div>
-            <ArrowRight className="text-gray-400 transition" />
+            <ArrowRight className="text-gray-300 group-hover:text-gray-500 transition" />
           </div>
         ))}
       </div>
 
-      {/* Recent Clients + Tickets */}
+      {/* Tables Section */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Clients Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
@@ -163,10 +133,7 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {recentClients.map((c, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
+                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
                   <td className="py-2 font-medium">{c.name}</td>
                   <td>{c.email}</td>
                   <td>
@@ -203,10 +170,7 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {recentTickets.map((t, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
+                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
                   <td className="py-2">{t.id}</td>
                   <td>{t.subject}</td>
                   <td>{t.assigned}</td>
@@ -244,20 +208,8 @@ export default function AdminDashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line
-                type="monotone"
-                dataKey="new"
-                stroke="#4F46E5"
-                strokeWidth={3}
-                name="New Clients"
-              />
-              <Line
-                type="monotone"
-                dataKey="inactive"
-                stroke="#EF4444"
-                strokeWidth={3}
-                name="Inactive Clients"
-              />
+              <Line type="monotone" dataKey="new" stroke="#4F46E5" strokeWidth={3} name="New Clients" />
+              <Line type="monotone" dataKey="inactive" stroke="#EF4444" strokeWidth={3} name="Inactive Clients" />
             </LineChart>
           </ResponsiveContainer>
         </div>
