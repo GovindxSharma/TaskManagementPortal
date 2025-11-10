@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
-import Dropdown from "../layout/DropDown";
+import Dropdown from "../layout/Dropdown";
 import { clients as dummyClients } from "../../data/dummyClients";
 
 export default function CustomerCompliance() {
