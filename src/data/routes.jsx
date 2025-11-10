@@ -1,6 +1,6 @@
 // src/data/routes.js
-import Clients from "../pages/Dashboard/Admin/Clients.jsx";
-import Employees from "../pages/Dashboard/Admin/Employees.jsx";
+import Clients from "../pages/Dashboard/Admin/ClientManagement.jsx";
+import Employees from "../pages/Dashboard/Admin/EmployeeManagement.jsx";
 import Ticket from "../components/Tickets/Tickets.jsx";
 import OverdueClients from "../components/OverdueClients/OverdueClients.jsx";
 import CustomerCompliance from "../components/ComplianceTracker/CustomerCompliance.jsx";
