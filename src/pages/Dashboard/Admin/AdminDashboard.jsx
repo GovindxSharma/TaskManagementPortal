@@ -1,17 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Users,
-  FileText,
-  AlertCircle,
-  CreditCard,
-  Bell,
-  ArrowRight,
-  X,
-  Key,
-  Award,
-  Settings,
-} from "lucide-react";
+import { Bell, ArrowRight, Settings } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -24,11 +13,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { dashboardStats } from "../../../data/dashboardStats.jsx";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  // const [showNotifications, setShowNotifications] = useState(false);
 
+  // ✅ Centralized stats import
+  const stats = dashboardStats.admin;
+
+  // Dummy category pricing just for UI
   const [categories, setCategories] = useState([
     { label: "1 - 20 Clients", price: 3000 },
     { label: "21 - 50 Clients", price: 7000 },
@@ -41,16 +34,7 @@ export default function AdminDashboard() {
     setCategories(updated);
   };
 
-  const stats = [
-    { title: "Total Clients", value: 42, icon: <Users className="text-blue-500" />, link: "/admin/clients" },
-    { title: "Compliance Tracker", value: 12, icon: <FileText className="text-purple-500" />, link: "/admin/customer-compliance" },
-    { title: "Employees", value: 15, icon: <Users className="text-green-500" />, link: "/admin/employees" },
-    { title: "Open Tickets", value: 8, icon: <AlertCircle className="text-orange-500" />, link: "/admin/tickets" },
-    { title: "Overdue Clients", value: 5, icon: <AlertCircle className="text-red-500" />, link: "/admin/payments" },
-    { title: "Passwords", value: 28, icon: <Key className="text-indigo-500" />, link: "/admin/passwords" },
-    { title: "License Tracker", value: 18, icon: <Award className="text-teal-500" />, link: "/admin/license-tracker" },
-  ];
-
+  // Dummy Data
   const recentClients = [
     { name: "Acme Corp", email: "billing@acme.com", status: "Active", assigned: "Amit Verma" },
     { name: "GreenLeaf Pvt Ltd", email: "contact@greenleaf.in", status: "Pending", assigned: "Riya Sharma" },
@@ -61,14 +45,6 @@ export default function AdminDashboard() {
     { id: "#TCK1021", subject: "GST filing delay", assigned: "Riya Sharma", status: "Open" },
     { id: "#TCK1022", subject: "Invoice correction", assigned: "Arjun Mehta", status: "In Progress" },
     { id: "#TCK1023", subject: "Client onboarding", assigned: "Amit Verma", status: "Completed" },
-  ];
-
-  const notifications = [
-    "Bill generated for Acme Corp — ₹12,000",
-    "Overdue payment: GreenLeaf Pvt Ltd (3 days)",
-    "New task assigned to Riya Sharma",
-    "Reminder email sent to ZenTax Advisors (inactive 2+ months)",
-    "Ticket #TCK1023 marked completed by Amit Verma",
   ];
 
   const clientStats = [
@@ -107,7 +83,7 @@ export default function AdminDashboard() {
             <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
           </button>
 
-          {/* Settings - Navigate to settings page */}
+          {/* Settings */}
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
             onClick={() => navigate("/admin/settings")}
@@ -141,6 +117,7 @@ export default function AdminDashboard() {
 
       {/* Tables Section */}
       <div className="grid md:grid-cols-2 gap-6">
+        {/* Clients Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Clients
@@ -177,6 +154,7 @@ export default function AdminDashboard() {
           </table>
         </div>
 
+        {/* Tickets Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Tickets
@@ -218,6 +196,7 @@ export default function AdminDashboard() {
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
+        {/* Client Growth */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Client Growth Trend
@@ -235,6 +214,7 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
+        {/* Revenue */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Monthly Revenue
@@ -251,29 +231,6 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Notifications Modal
-      {showNotifications && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-6 relative">
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
-              onClick={() => setShowNotifications(false)}
-            >
-              <X size={22} />
-            </button>
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Notifications</h2>
-            <ul className="space-y-3">
-              {notifications.map((note, i) => (
-                <li key={i} className="flex items-start gap-3 bg-gray-50 hover:bg-gray-100 rounded-lg p-3 transition">
-                  <CreditCard size={20} className="text-blue-500 mt-0.5" />
-                  <span className="text-gray-700 text-sm">{note}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }
