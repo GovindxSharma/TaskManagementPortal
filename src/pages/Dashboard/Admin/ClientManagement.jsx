@@ -1,233 +1,255 @@
-import React, { useState } from "react";
-import { Pencil, Trash2, UserPlus, Search, ArrowLeft, X } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Pencil,
+  Trash2,
+  UserPlus,
+  Search,
+  ArrowLeft,
+  X,
+  Paperclip,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../../api/axiosInstance";
+import { clientWelcomeEmail } from "../../../commons/emailContent";
+
+const InputField = ({ label, value, onChange, type = "text", placeholder }) => (
+  <div className="flex flex-col">
+    <label className="text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <input
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+    />
+  </div>
+);
 
 const Clients = () => {
   const navigate = useNavigate();
 
-  const [clients, setClients] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      company: "TechCorp",
-      email: "john@tech.com",
-      phone: "9876543210",
-      gst: "22AAAAA0000A1Z5",
-      address: "123 Business Street, Mumbai",
-      city: "Mumbai",
-      state: "Maharashtra",
-      country: "India",
-      pincode: "400001",
-      contactPerson: "Amit Verma",
-      industry: "IT Services",
-      pan: "ABCDE1234F",
-      website: "www.techcorp.com",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      company: "HealthPlus",
-      email: "jane@health.com",
-      phone: "9988776655",
-      gst: "29BBBBB0000B1Z9",
-      address: "55 Green Road, Pune",
-      city: "Pune",
-      state: "Maharashtra",
-      country: "India",
-      pincode: "411001",
-      contactPerson: "Riya Sharma",
-      industry: "Healthcare",
-      pan: "FGHIJ6789K",
-      website: "www.healthplus.in",
-      status: "Pending",
-    },
-  ]);
-
+  const [clients, setClients] = useState([]);
   const [form, setForm] = useState({
     name: "",
-    company: "",
-    email: "",
-    phone: "",
-    gst: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "",
-    pincode: "",
     contactPerson: "",
-    industry: "",
-    pan: "",
-    website: "",
+    contactNumber: "",
+    email: "",
+    gstNumber: "",
+    address: "",
+    businessUnit: "",
+    site: "",
     status: "Active",
   });
-
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [attachments, setAttachments] = useState([]);
 
-  const resetForm = () =>
+  const fetchClients = useCallback(async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const { data } = await axiosInstance.get(
+        `/client?company_id=${user.company_id}`
+      );
+      setClients(data.clients);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch clients");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  const resetForm = () => {
     setForm({
       name: "",
-      company: "",
-      email: "",
-      phone: "",
-      gst: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      pincode: "",
       contactPerson: "",
-      industry: "",
-      pan: "",
-      website: "",
+      contactNumber: "",
+      email: "",
+      gstNumber: "",
+      address: "",
+      businessUnit: "",
+      site: "",
       status: "Active",
     });
+    setAttachments([]);
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      setClients((prev) =>
-        prev.map((c) => (c.id === editingId ? { ...c, ...form } : c))
-      );
-    } else {
-      setClients([...clients, { ...form, id: Date.now() }]);
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const payload = { ...form, company_id: user.company_id };
+
+      let clientData;
+      if (editingId) {
+        const { data } = await axiosInstance.put(
+          `/client/${editingId}`,
+          payload
+        );
+        clientData = data.client;
+        setClients((prev) =>
+          prev.map((c) => (c._id === editingId ? clientData : c))
+        );
+        alert("Client updated successfully!");
+      } else {
+        const { data } = await axiosInstance.post("/client", payload);
+        clientData = data.client;
+        setClients((prev) => [...prev, clientData]);
+
+        // Send welcome email automatically
+        const formData = new FormData();
+        formData.append("contactPerson", clientData.contactPerson);
+        formData.append("companyName", clientData.name);
+        formData.append("email", clientData.email);
+        formData.append(
+          "html",
+          clientWelcomeEmail(clientData.contactPerson, clientData.name)
+        );
+        attachments.forEach((file) => formData.append("attachments", file));
+
+        await axiosInstance.post("/email/send-welcome", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        alert("Client added and welcome email sent!");
+      }
+
+      resetForm();
+      setEditingId(null);
+      setShowModal(false);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Something went wrong!");
     }
-    setEditingId(null);
-    resetForm();
-    setShowModal(false);
   };
 
   const handleEdit = (client) => {
     setForm(client);
-    setEditingId(client.id);
+    setEditingId(client._id);
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    setClients(clients.filter((c) => c.id !== id));
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this client?")) return;
+    try {
+      await axiosInstance.delete(`/client/${id}`);
+      setClients((prev) => prev.filter((c) => c._id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete client");
+    }
   };
 
-  const filteredClients = clients.filter((c) =>
-    Object.values(c)
-      .join(" ")
-      .toLowerCase()
-      .includes(search.toLowerCase())
+  const handleFileChange = (e) => {
+    if (e.target.files) setAttachments(Array.from(e.target.files));
+  };
+
+  const filteredClients = useMemo(
+    () =>
+      clients.filter((c) =>
+        Object.values(c).join(" ").toLowerCase().includes(search.toLowerCase())
+      ),
+    [clients, search]
   );
 
+  const fields = [
+    { label: "Company Name", key: "name" },
+    { label: "Contact Person", key: "contactPerson" },
+    { label: "Contact Number", key: "contactNumber" },
+    { label: "Email", key: "email", type: "email" },
+    { label: "GST Number", key: "gstNumber" },
+    { label: "Address", key: "address" },
+    { label: "Business Unit", key: "businessUnit" },
+    { label: "Site", key: "site" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
- {/* Header */}
-<div className="mb-6">
-{/* First line: Back button left, Title right */}
-<div className="flex justify-between items-center mb-4">
-  <button
-    onClick={() => navigate(-1)}
-    className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
-  >
-    <ArrowLeft size={18} />
-    <span className="hidden sm:block">Back</span>
-  </button>
-
-  <h2 className="text-2xl font-semibold text-gray-800">
-    Client Management
-  </h2>
-</div>
-
-{/* Second line: Search input + Add Client button */}
-<div className="flex flex-col md:flex-row gap-3">
-  <div className="relative flex-1 md:flex-none">
-    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-    <input
-      type="text"
-      placeholder="Search clients..."
-      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-  </div>
-  <button
-    onClick={() => {
-      resetForm();
-      setEditingId(null);
-      setShowModal(true);
-    }}
-    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
-  >
-    <UserPlus size={18} />
-    <span className="hidden sm:block">Add Client</span>
-  </button>
-</div>
-</div>
-
+    <div className="min-h-screen bg-gray-50 p-6 md:p-10">
+      {/* Header */}
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 bg-white shadow px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700 transition"
+        >
+          <ArrowLeft size={18} /> Back
+        </button>
+        <h2 className="text-2xl font-bold text-gray-800">Client Management</h2>
+        <div className="flex gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-64">
+            <Search
+              className="absolute left-3 top-2.5 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Search clients..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition"
+            />
+          </div>
+          <button
+            onClick={() => {
+              resetForm();
+              setEditingId(null);
+              setShowModal(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+          >
+            <UserPlus size={18} /> Add Client
+          </button>
+        </div>
+      </div>
 
       {/* Client Table */}
       <div className="bg-white shadow rounded-xl overflow-hidden">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 border-b">
             <tr className="text-gray-700">
-              <th className="p-3 text-left">Name</th>
-              <th className="p-3 text-left hidden md:table-cell">Company</th>
-              <th className="p-3 text-left">Email</th>
-              <th className="p-3 text-left hidden md:table-cell">Phone</th>
-              <th className="p-3 text-left hidden lg:table-cell">City</th>
-              <th className="p-3 text-left hidden lg:table-cell">Status</th>
+              {["Name", "Contact Person", "Email", "Phone", "Status"].map(
+                (th) => (
+                  <th key={th} className="p-3 text-left">
+                    {th}
+                  </th>
+                )
+              )}
               <th className="p-3 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredClients.map((c) => (
-              <tr
-                key={c.id}
-                className="border-b last:border-0 hover:bg-gray-50 transition"
-              >
-                <td className="p-3 font-medium text-gray-800">{c.name}</td>
-                <td className="p-3 text-gray-700 hidden md:table-cell">
-                  {c.company}
-                </td>
-                <td className="p-3 text-gray-600">{c.email}</td>
-                <td className="p-3 text-gray-600 hidden md:table-cell">
-                  {c.phone}
-                </td>
-                <td className="p-3 text-gray-600 hidden lg:table-cell">
-                  {c.city}
-                </td>
-                <td className="p-3 hidden lg:table-cell">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      c.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : c.status === "Pending"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {c.status}
-                  </span>
-                </td>
-                <td className="p-3 flex justify-center gap-3">
-                  <button
-                    onClick={() => handleEdit(c)}
-                    className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
-                    title="Edit"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(c.id)}
-                    className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
-                    title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredClients.length === 0 && (
+            {filteredClients.length > 0 ? (
+              filteredClients.map((c) => (
+                <tr
+                  key={c._id}
+                  className="border-b last:border-0 hover:bg-gray-50 transition"
+                >
+                  <td className="p-3 font-medium text-gray-800">{c.name}</td>
+                  <td className="p-3 text-gray-700">{c.contactPerson}</td>
+                  <td className="p-3 text-gray-600">{c.email}</td>
+                  <td className="p-3 text-gray-600">{c.contactNumber}</td>
+                  <td className="p-3 text-gray-600">{c.status}</td>
+                  <td className="p-3 flex justify-center gap-2">
+                    <button
+                      onClick={() => handleEdit(c)}
+                      className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(c._id)}
+                      className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
               <tr>
                 <td
-                  colSpan="7"
+                  colSpan={6}
                   className="text-center py-6 text-gray-400 italic"
                 >
                   No clients found.
@@ -238,70 +260,70 @@ const Clients = () => {
         </table>
       </div>
 
-      {/* Modal for Add/Edit Client */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl mx-4 p-6 relative">
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
-            >
-              <X size={20} />
-            </button>
-            <h3 className="text-lg font-semibold mb-4">
-              {editingId ? "Edit Client" : "Add Client"}
-            </h3>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">
+                {editingId ? "Edit Client" : "Add Client"}
+              </h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-500 hover:text-red-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4"
-            >
-              {[
-                { label: "Name", key: "name" },
-                { label: "Company", key: "company" },
-                { label: "Email", key: "email", type: "email" },
-                { label: "Phone", key: "phone" },
-                { label: "GST", key: "gst" },
-                { label: "PAN", key: "pan" },
-                { label: "Industry", key: "industry" },
-                { label: "Contact Person", key: "contactPerson" },
-                { label: "Website", key: "website" },
-                { label: "Address", key: "address" },
-                { label: "City", key: "city" },
-                { label: "State", key: "state" },
-                { label: "Country", key: "country" },
-                { label: "Pincode", key: "pincode" },
-              ].map((f, i) => (
-                <div key={i}>
-                  <label className="text-sm text-gray-600">{f.label}</label>
-                  <input
-                    type={f.type || "text"}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-                    placeholder={`Enter ${f.label.toLowerCase()}`}
+            {/* Body */}
+            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {fields.map((f) => (
+                  <InputField
+                    key={f.key}
+                    label={f.label}
                     value={form[f.key]}
+                    type={f.type}
+                    placeholder={`Enter ${f.label.toLowerCase()}`}
                     onChange={(e) =>
                       setForm({ ...form, [f.key]: e.target.value })
                     }
                   />
+                ))}
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm({ ...form, status: e.target.value })
+                    }
+                  >
+                    <option>Active</option>
+                    <option>Pending</option>
+                    <option>Inactive</option>
+                  </select>
                 </div>
-              ))}
 
-              <div>
-                <label className="text-sm text-gray-600">Status</label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-                  value={form.status}
-                  onChange={(e) =>
-                    setForm({ ...form, status: e.target.value })
-                  }
-                >
-                  <option>Active</option>
-                  <option>Pending</option>
-                  <option>Inactive</option>
-                </select>
+                <div className="flex items-center gap-2 mt-2">
+                  <label className="text-sm text-gray-600 flex items-center gap-1">
+                    <Paperclip /> Attach Files
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
 
-              <div className="md:col-span-3 flex justify-end mt-4">
+              {/* Footer */}
+              <div className="flex justify-end border-t pt-4">
                 <button
                   type="submit"
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition"

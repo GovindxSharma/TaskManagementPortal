@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { LogIn } from "lucide-react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -13,23 +16,27 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    try {
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
+const { data } = await axios.post(`${baseUrl}/auth/login`, formData);
 
-    // MOCK LOGIN - static roles
-    setTimeout(() => {
+      alert(data.message || "Login successful");
+
+      // Store token if needed
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Role-based navigation
+      const role = data.user.role.toLowerCase();
+      if (role === "admin") navigate("/admin/dashboard");
+      else if (role === "accountant") navigate("/accountant/dashboard");
+      else navigate("/employee/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Login failed");
+    } finally {
       setLoading(false);
-
-      // Simple role logic based on email
-      let role = "employee"; // default
-      if (formData.email.includes("admin")) role = "admin";
-      else if (formData.email.includes("accountant")) role = "accountant";
-
-      alert(`Logged in as ${role.toUpperCase()}`);
-
-      if (role === "admin") window.location.href = "/admin/dashboard";
-      else if (role === "accountant")
-        window.location.href = "/accountant/dashboard";
-      else window.location.href = "/employee/dashboard";
-    }, 800);
+    }
   };
 
   return (
@@ -57,7 +64,7 @@ export default function Login() {
             </label>
             <input
               type="email"
-              name="email"
+              name="identifier"
               onChange={handleChange}
               required
               className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#016DB6]"
