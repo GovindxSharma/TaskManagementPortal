@@ -1,16 +1,24 @@
-import React, { useState } from "react";
+// src/pages/Dashboard/Employee/EmployeeDashboard.jsx
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Bell,
-  ArrowRight,
-  Settings,
-} from "lucide-react";
+import { Bell, ArrowRight, Settings } from "lucide-react";
 import { dashboardStats } from "../../../data/dashboardStats";
+import Loader from "../../../components/layout/Loader";
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true); // ✅ Loader state
 
-  // ✅ centralized stats (dummy for now)
+  useEffect(() => {
+    // Simulate data fetching delay (replace with real API if needed)
+    const timer = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ✅ Show loader until data is loaded
+  if (loading) return <Loader fullscreen={true} size={250} />;
+
+  // ✅ Centralized stats (dummy for now)
   const stats = dashboardStats.employee;
 
   const assignedTasks = [
@@ -84,7 +92,7 @@ export default function EmployeeDashboard() {
         ))}
       </div>
 
-      {/* 4 Easy Access Panels */}
+      {/* Panels */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Assigned Tasks */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">

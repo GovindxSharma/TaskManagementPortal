@@ -1,9 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Pencil, Trash2, UserPlus, ArrowLeft, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Loader from "../../../components/layout/Loader";
 
 const Employees = () => {
   const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading (1.2s delay)
+    const timer = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [employees, setEmployees] = useState([
     {
@@ -90,47 +99,48 @@ const Employees = () => {
     setIsModalOpen(true);
   };
 
+  if (loading) return <Loader />;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 relative">
       {/* Header */}
-<div className="mb-6">
-{/* First line: Back button left, Title right */}
-<div className="flex justify-between items-center mb-4">
-  <button
-    onClick={() => navigate(-1)}
-    className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
-  >
-    <ArrowLeft size={18} />
-    <span className="hidden sm:block">Back</span>
-  </button>
+      <div className="mb-6">
+        {/* Back + Title */}
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
+          >
+            <ArrowLeft size={18} />
+            <span className="hidden sm:block">Back</span>
+          </button>
 
-  <h2 className="text-2xl font-semibold text-gray-800">
-    Employee Management
-  </h2>
-</div>
+          <h2 className="text-2xl font-semibold text-gray-800">
+            Employee Management
+          </h2>
+        </div>
 
-{/* Second line: Search + Add Employee */}
-<div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-  <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-3 py-2 w-full sm:w-72">
-    <Search size={18} className="text-gray-500" />
-    <input
-      type="text"
-      placeholder="Search employees..."
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-      className="ml-2 flex-1 outline-none text-gray-700 bg-transparent"
-    />
-  </div>
-  <button
-    onClick={openAddModal}
-    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition w-full sm:w-auto"
-  >
-    <UserPlus size={18} />
-    Add Employee
-  </button>
-</div>
-</div>
-
+        {/* Search + Add Employee */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-3 py-2 w-full sm:w-72">
+            <Search size={18} className="text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search employees..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="ml-2 flex-1 outline-none text-gray-700 bg-transparent"
+            />
+          </div>
+          <button
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition w-full sm:w-auto"
+          >
+            <UserPlus size={18} />
+            Add Employee
+          </button>
+        </div>
+      </div>
 
       {/* Employee Table */}
       <div className="bg-white shadow rounded-xl overflow-hidden">

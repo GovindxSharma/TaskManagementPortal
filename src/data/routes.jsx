@@ -9,6 +9,9 @@ import PasswordsSection from "../components/Passwords/PasswordsSection.jsx";
 import LicenseTrackerSection from "../components/LicenseTracker/LicenseTrackerSection.jsx";
 import SettingsPage from "../components/Settings/SettingsPage.jsx";
 import NotificationsPage from "../components/Notifications/NotificationPage.jsx";
+import PendingBills from "../components/Pendingbills/PendingBills.jsx";
+import DataReceived from "../components/DataReceived/DataReceived.jsx";
+import InProgress from "../components/InProgress/InProgress.jsx";
 
 export const dashboardRoutes = {
   admin: [
@@ -33,6 +36,8 @@ export const dashboardRoutes = {
     { path: "/employee/license-tracker", element: <LicenseTrackerSection /> },
     { path: "/employee/notifications", element: <NotificationsPage /> },
     { path: "/employee/settings", element: <SettingsPage /> },
+    { path: "/employee/data-received", element: <DataReceived /> },
+    { path: "/employee/in-progress", element: <InProgress /> },
   ],
 
   accountant: [
@@ -44,5 +49,7 @@ export const dashboardRoutes = {
     { path: "/accountant/license-tracker", element: <LicenseTrackerSection /> },
     { path: "/accountant/notifications", element: <NotificationsPage /> },
     { path: "/accountant/settings", element: <SettingsPage /> },
+    { path: "/accountant/bill-pending", element: <PendingBills /> },
+    
   ],
 };

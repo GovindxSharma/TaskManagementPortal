@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Loader from "./components/layout/Loader";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/Dashboard/Admin/AdminDashboard";
 import EmployeeDashboard from "./pages/Dashboard/Employee/EmployeeDashboard";
@@ -7,10 +8,23 @@ import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboar
 import { dashboardRoutes } from "./data/routes";
 
 function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate a short loading delay (you can replace with API/auth check)
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <Loader fullscreen={true} size={250} />;
+  }
+
   return (
     <Router>
       <div className="App">
         <Routes>
+          {/* Login */}
           <Route path="/" element={<Login />} />
 
           {/* Admin Dashboard */}
