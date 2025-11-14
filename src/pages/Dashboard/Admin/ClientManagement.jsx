@@ -20,7 +20,7 @@ const InputField = ({ label, value, onChange, type = "text", placeholder }) => (
       value={value}
       placeholder={placeholder}
       onChange={onChange}
-      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
     />
   </div>
 );
@@ -29,6 +29,7 @@ const Clients = () => {
   const navigate = useNavigate();
 
   const [clients, setClients] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
     name: "",
     contactPerson: "",
@@ -38,7 +39,10 @@ const Clients = () => {
     address: "",
     businessUnit: "",
     site: "",
-    status: "Active",
+    startMonth: "", // 0-11 internally
+    startYear: "",
+    assignedTo: "", // ID
+    assignedToName: "", // UI
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
@@ -58,9 +62,20 @@ const Clients = () => {
     }
   }, []);
 
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get(`/user/employees`);
+      setEmployees(data.employees);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch employees");
+    }
+  }, []);
+
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+    fetchEmployees();
+  }, [fetchClients, fetchEmployees]);
 
   const resetForm = () => {
     setForm({
@@ -72,7 +87,10 @@ const Clients = () => {
       address: "",
       businessUnit: "",
       site: "",
-      status: "Active",
+      startMonth: "",
+      startYear: "",
+      assignedTo: "",
+      assignedToName: "",
     });
     setAttachments([]);
   };
@@ -81,7 +99,22 @@ const Clients = () => {
     e.preventDefault();
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const payload = { ...form, company_id: user.company_id };
+
+      const payload = {
+        name: form.name,
+        contactPerson: form.contactPerson,
+        contactNumber: form.contactNumber,
+        email: form.email,
+        gstNumber: form.gstNumber,
+        address: form.address,
+        businessUnit: form.businessUnit,
+        site: form.site,
+        startMonth: (Number(form.startMonth) + 1).toString(), // 0-11 → 1-12
+        startYear: form.startYear.toString(),
+        company_id: user.company_id,
+        assignedTo: form.assignedTo,
+        status: "Active",
+      };
 
       let clientData;
       if (editingId) {
@@ -99,7 +132,6 @@ const Clients = () => {
         clientData = data.client;
         setClients((prev) => [...prev, clientData]);
 
-        // Send welcome email automatically
         const formData = new FormData();
         formData.append("contactPerson", clientData.contactPerson);
         formData.append("companyName", clientData.name);
@@ -126,7 +158,12 @@ const Clients = () => {
   };
 
   const handleEdit = (client) => {
-    setForm(client);
+    const assignedEmp = employees.find((e) => e._id === client.assignedTo);
+    setForm({
+      ...client,
+      startMonth: Number(client.startMonth) - 1,
+      assignedToName: assignedEmp?.name || "",
+    });
     setEditingId(client._id);
     setShowModal(true);
   };
@@ -153,6 +190,23 @@ const Clients = () => {
       ),
     [clients, search]
   );
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
 
   const fields = [
     { label: "Company Name", key: "name" },
@@ -208,48 +262,63 @@ const Clients = () => {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 border-b">
             <tr className="text-gray-700">
-              {["Name", "Contact Person", "Email", "Phone", "Status"].map(
-                (th) => (
-                  <th key={th} className="p-3 text-left">
-                    {th}
-                  </th>
-                )
-              )}
+              {[
+                "Name",
+                "Contact Person",
+                "Email",
+                "Phone",
+                "Assigned To",
+                "Start Period",
+              ].map((th) => (
+                <th key={th} className="p-3 text-left">
+                  {th}
+                </th>
+              ))}
               <th className="p-3 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredClients.length > 0 ? (
-              filteredClients.map((c) => (
-                <tr
-                  key={c._id}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
-                  <td className="p-3 font-medium text-gray-800">{c.name}</td>
-                  <td className="p-3 text-gray-700">{c.contactPerson}</td>
-                  <td className="p-3 text-gray-600">{c.email}</td>
-                  <td className="p-3 text-gray-600">{c.contactNumber}</td>
-                  <td className="p-3 text-gray-600">{c.status}</td>
-                  <td className="p-3 flex justify-center gap-2">
-                    <button
-                      onClick={() => handleEdit(c)}
-                      className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(c._id)}
-                      className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filteredClients.map((c) => {
+                const assignedEmp = employees.find(
+                  (e) => e._id === c.assignedTo
+                );
+                return (
+                  <tr
+                    key={c._id}
+                    className="border-b last:border-0 hover:bg-gray-50 transition"
+                  >
+                    <td className="p-3 font-medium text-gray-800">{c.name}</td>
+                    <td className="p-3 text-gray-700">{c.contactPerson}</td>
+                    <td className="p-3 text-gray-600">{c.email}</td>
+                    <td className="p-3 text-gray-600">{c.contactNumber}</td>
+                    <td className="p-3 text-gray-600">
+                      {assignedEmp?.name || "-"}
+                    </td>
+                    <td className="p-3 text-gray-600">
+                      {months[Number(c.startMonth) - 1]} {c.startYear}
+                    </td>
+                    <td className="p-3 flex justify-center gap-2">
+                      <button
+                        onClick={() => handleEdit(c)}
+                        className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c._id)}
+                        className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center py-6 text-gray-400 italic"
                 >
                   No clients found.
@@ -264,7 +333,6 @@ const Clients = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
-            {/* Header */}
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-semibold">
                 {editingId ? "Edit Client" : "Add Client"}
@@ -277,7 +345,6 @@ const Clients = () => {
               </button>
             </div>
 
-            {/* Body */}
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {fields.map((f) => (
@@ -292,23 +359,71 @@ const Clients = () => {
                     }
                   />
                 ))}
-                <div className="flex flex-col">
+
+                {/* Assign To */}
+                <div className="flex flex-col relative">
                   <label className="text-sm font-medium text-gray-700 mb-1">
-                    Status
+                    Assign To
                   </label>
                   <select
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
-                    value={form.status}
+                    value={form.assignedTo}
                     onChange={(e) =>
-                      setForm({ ...form, status: e.target.value })
+                      setForm({ ...form, assignedTo: e.target.value })
                     }
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
                   >
-                    <option>Active</option>
-                    <option>Pending</option>
-                    <option>Inactive</option>
+                    <option value="">Select Employee</option>
+                    {employees.map((emp) => (
+                      <option key={emp._id} value={emp._id}>
+                        {emp.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
+                {/* Start Month */}
+                <div className="flex flex-col relative">
+                  <label className="text-sm font-medium text-gray-700 mb-1">
+                    Start Month
+                  </label>
+                  <select
+                    value={form.startMonth}
+                    onChange={(e) =>
+                      setForm({ ...form, startMonth: e.target.value })
+                    }
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
+                  >
+                    <option value="">Select Month</option>
+                    {months.map((m, i) => (
+                      <option key={i} value={i}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Start Year */}
+                <div className="flex flex-col relative">
+                  <label className="text-sm font-medium text-gray-700 mb-1">
+                    Start Year
+                  </label>
+                  <input
+                    type="number"
+                    min={years[0]}
+                    max={years[1]}
+                    value={form.startYear}
+                    onChange={(e) =>
+                      setForm({ ...form, startYear: e.target.value })
+                    }
+                    placeholder={`Enter year (e.g., ${years[0]} or ${years[1]})`}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
+                  />
+                  <small className="text-gray-400 text-xs mt-1">
+                    Can type custom numeric year
+                  </small>
+                </div>
+
+                {/* Attachments */}
                 <div className="flex items-center gap-2 mt-2">
                   <label className="text-sm text-gray-600 flex items-center gap-1">
                     <Paperclip /> Attach Files
@@ -322,7 +437,6 @@ const Clients = () => {
                 </div>
               </div>
 
-              {/* Footer */}
               <div className="flex justify-end border-t pt-4">
                 <button
                   type="submit"
