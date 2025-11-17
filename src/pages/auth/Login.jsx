@@ -20,7 +20,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+      const baseUrl =
+        import.meta.env.VITE_API_BASE_URL?.trim() ||
+        "https://customercompliance.onrender.com";
 
       console.log("Using API base URL:", baseUrl);
 
