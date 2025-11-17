@@ -4,10 +4,12 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Loader from "./components/layout/Loader";
 import Login from "./pages/auth/Login";
 
+// Dashboards
 import Dashboard from "./pages/Dashboard/Admin/AdminDashboard";
 import EmployeeDashboard from "./pages/Dashboard/Employee/EmployeeDashboard";
 import AccountantDashboard from "./pages/Dashboard/Accountant/AccountantDashboard";
 
+// Route config
 import { dashboardRoutes } from "./data/routes";
 
 // Auth
@@ -18,24 +20,22 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initial loading splash (optional)
-    const timer = setTimeout(() => setLoading(false), 800);
+    // Optional splash/loading
+    const timer = setTimeout(() => setLoading(false), 700);
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) {
-    return <Loader fullscreen={true} size={250} />;
-  }
+  if (loading) return <Loader fullscreen size={250} />;
 
   return (
     <Router>
       <AuthProvider>
         <div className="App">
           <Routes>
-            {/* Public Route */}
+            {/* PUBLIC ROUTE */}
             <Route path="/" element={<Login />} />
 
-            {/* ================= ADMIN ROUTES ================= */}
+            {/* ========================== ADMIN ROUTES ========================== */}
             <Route
               path="/admin/dashboard"
               element={
@@ -45,17 +45,15 @@ function App() {
               }
             />
 
-            {dashboardRoutes.admin.map((r) => (
+            {dashboardRoutes.admin.map((route) => (
               <Route
-                key={r.path}
-                path={r.path}
-                element={
-                  <ProtectedRoute role="admin">{r.element}</ProtectedRoute>
-                }
+                key={route.path}
+                path={route.path}
+                element={<ProtectedRoute role="admin">{route.element}</ProtectedRoute>}
               />
             ))}
 
-            {/* ================= EMPLOYEE ROUTES ================= */}
+            {/* ========================== EMPLOYEE ROUTES ======================= */}
             <Route
               path="/employee/dashboard"
               element={
@@ -65,17 +63,15 @@ function App() {
               }
             />
 
-            {dashboardRoutes.employee.map((r) => (
+            {dashboardRoutes.employee.map((route) => (
               <Route
-                key={r.path}
-                path={r.path}
-                element={
-                  <ProtectedRoute role="employee">{r.element}</ProtectedRoute>
-                }
+                key={route.path}
+                path={route.path}
+                element={<ProtectedRoute role="employee">{route.element}</ProtectedRoute>}
               />
             ))}
 
-            {/* ================= ACCOUNTANT ROUTES ================= */}
+            {/* ========================== ACCOUNTANT ROUTES ====================== */}
             <Route
               path="/accountant/dashboard"
               element={
@@ -85,12 +81,14 @@ function App() {
               }
             />
 
-            {dashboardRoutes.accountant.map((r) => (
+            {dashboardRoutes.accountant.map((route) => (
               <Route
-                key={r.path}
-                path={r.path}
+                key={route.path}
+                path={route.path}
                 element={
-                  <ProtectedRoute role="accountant">{r.element}</ProtectedRoute>
+                  <ProtectedRoute role="accountant">
+                    {route.element}
+                  </ProtectedRoute>
                 }
               />
             ))}

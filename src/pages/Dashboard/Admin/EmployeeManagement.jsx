@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Pencil, Trash2, UserPlus, ArrowLeft, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../../../components/layout/Loader";
-import axios from "axios";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000/user";
+import axiosInstance from "../../../api/axiosInstance";
 
 const Employees = () => {
   const navigate = useNavigate();
@@ -15,25 +13,33 @@ const Employees = () => {
 
   const [form, setForm] = useState({
     name: "",
-    role: "",
     email: "",
-    phone: "",
-    department: "",
-    joiningDate: "",
+    password: "",
+    company_id: "",
+    role: "Employee",
+    user_id: "",
   });
 
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // -----------------------------------------
-  // 📌 FETCH EMPLOYEES
-  // -----------------------------------------
+  // -------------------------------------------------
+  // FETCH EMPLOYEES
+  // -------------------------------------------------
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get(`${API}/employees`, { withCredentials: true });
-      setEmployees(res.data.data || []);
+      const res = await axiosInstance.get("/user/employees");
+
+      const employeesList =
+        res.data.employees ||
+        res.data.data?.employees ||
+        res.data.data ||
+        res.data.users ||
+        [];
+
+      setEmployees(employeesList);
     } catch (err) {
-      console.error("Failed to fetch employees:", err);
+      console.error("❌ Failed to fetch employees:", err);
     } finally {
       setLoading(false);
     }
@@ -43,59 +49,77 @@ const Employees = () => {
     fetchEmployees();
   }, []);
 
-  // -----------------------------------------
-  // 📌 ADD or UPDATE EMPLOYEE
-  // -----------------------------------------
+  // -------------------------------------------------
+  // ADD / UPDATE EMPLOYEE
+  // -------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      const payload = { ...form, role: "Employee" };
+
       if (editingId) {
-        await axios.put(
-          `${API}/employees/${editingId}`,
-          form,
-          { withCredentials: true }
-        );
+        delete payload.password;
+        await axiosInstance.put(`/user/${editingId}`, payload);
       } else {
-        await axios.post(`${API}/employees`, form, { withCredentials: true });
+        if (!payload.password) return alert("Password is required");
+        await axiosInstance.post(`/user`, payload);
       }
 
       fetchEmployees();
       closeModal();
     } catch (err) {
-      console.error("Error saving employee:", err);
+      console.error("❌ Error saving employee:", err);
+      alert(err.response?.data?.message || "Failed to save employee");
     }
   };
 
-  // -----------------------------------------
-  // 📌 DELETE EMPLOYEE
-  // -----------------------------------------
+  // -------------------------------------------------
+  // DELETE USER
+  // -------------------------------------------------
   const handleDelete = async (id) => {
     if (!confirm("Delete this employee?")) return;
 
     try {
-      await axios.delete(`${API}/employees/${id}`, { withCredentials: true });
+      await axiosInstance.delete(`/user/${id}`);
       fetchEmployees();
     } catch (err) {
-      console.error("Error deleting employee:", err);
+      console.error("❌ Error deleting employee:", err);
     }
   };
 
+  // -------------------------------------------------
+  // OPEN ADD MODAL
+  // -------------------------------------------------
   const openAddModal = () => {
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+
     setForm({
       name: "",
-      role: "",
       email: "",
-      phone: "",
-      department: "",
-      joiningDate: "",
+      password: "",
+      company_id: userData?.company_id || "",
+      user_id: "",
+      role: "Employee",
     });
+
     setEditingId(null);
     setIsModalOpen(true);
   };
 
+  // -------------------------------------------------
+  // OPEN EDIT MODAL
+  // -------------------------------------------------
   const handleEdit = (emp) => {
-    setForm(emp);
+    setForm({
+      name: emp.name,
+      email: emp.email,
+      password: "",
+      company_id: emp.company_id,
+      user_id: emp.user_id,
+      role: "Employee",
+    });
+
     setEditingId(emp._id);
     setIsModalOpen(true);
   };
@@ -103,23 +127,19 @@ const Employees = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
-    setForm({
-      name: "",
-      role: "",
-      email: "",
-      phone: "",
-      department: "",
-      joiningDate: "",
-    });
   };
 
-  const filteredEmployees = employees.filter(
-    (emp) =>
-      emp.name.toLowerCase().includes(search.toLowerCase()) ||
-      emp.role.toLowerCase().includes(search.toLowerCase()) ||
-      emp.email.toLowerCase().includes(search.toLowerCase()) ||
-      emp.department.toLowerCase().includes(search.toLowerCase())
-  );
+  // -------------------------------------------------
+  // SEARCH with user_id support
+  // -------------------------------------------------
+  const filteredEmployees = employees.filter((emp) => {
+    const s = search.toLowerCase();
+    return (
+      emp.name?.toLowerCase().includes(s) ||
+      emp.email?.toLowerCase().includes(s) ||
+      emp.user_id?.toLowerCase().includes(s)
+    );
+  });
 
   if (loading) return <Loader />;
 
@@ -135,6 +155,7 @@ const Employees = () => {
             <ArrowLeft size={18} />
             <span className="hidden sm:block">Back</span>
           </button>
+
           <h2 className="text-2xl font-semibold text-gray-800">
             Employee Management
           </h2>
@@ -152,6 +173,7 @@ const Employees = () => {
               className="ml-2 flex-1 outline-none text-gray-700 bg-transparent"
             />
           </div>
+
           <button
             onClick={openAddModal}
             className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition w-full sm:w-auto"
@@ -167,14 +189,10 @@ const Employees = () => {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 border-b">
             <tr className="text-gray-700">
+              <th className="p-3 text-left">User ID</th>
               <th className="p-3 text-left">Name</th>
+              <th className="p-3 text-left">Email</th>
               <th className="p-3 text-left">Role</th>
-              <th className="p-3 text-left hidden md:table-cell">Department</th>
-              <th className="p-3 text-left hidden md:table-cell">Email</th>
-              <th className="p-3 text-left hidden md:table-cell">Phone</th>
-              <th className="p-3 text-left hidden lg:table-cell">
-                Joining Date
-              </th>
               <th className="p-3 text-center">Actions</th>
             </tr>
           </thead>
@@ -185,20 +203,13 @@ const Employees = () => {
                 key={emp._id}
                 className="border-b last:border-0 hover:bg-gray-50 transition"
               >
+                <td className="p-3 font-medium text-gray-800">
+                  {emp.user_id || "—"}
+                </td>
                 <td className="p-3 font-medium text-gray-800">{emp.name}</td>
+                <td className="p-3 text-gray-700">{emp.email}</td>
                 <td className="p-3 text-gray-700">{emp.role}</td>
-                <td className="p-3 text-gray-700 hidden md:table-cell">
-                  {emp.department}
-                </td>
-                <td className="p-3 text-gray-600 hidden md:table-cell">
-                  {emp.email}
-                </td>
-                <td className="p-3 text-gray-600 hidden md:table-cell">
-                  {emp.phone}
-                </td>
-                <td className="p-3 text-gray-600 hidden lg:table-cell">
-                  {emp.joiningDate?.slice(0, 10)}
-                </td>
+
                 <td className="p-3 flex justify-center gap-3">
                   <button
                     onClick={() => handleEdit(emp)}
@@ -231,10 +242,10 @@ const Employees = () => {
         </table>
       </div>
 
-      {/* Modal */}
+      {/* MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative">
             <button
               onClick={closeModal}
               className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
@@ -246,36 +257,70 @@ const Employees = () => {
               {editingId ? "Edit Employee" : "Add New Employee"}
             </h3>
 
-            <form
-              onSubmit={handleSubmit}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-            >
-              {/* Inputs */}
-              {["name", "role", "department", "email", "phone", "joiningDate"].map(
-                (key) => (
-                  <div key={key}>
-                    <label className="text-sm text-gray-600">
-                      {key === "name"
-                        ? "Full Name"
-                        : key === "joiningDate"
-                        ? "Joining Date"
-                        : key.charAt(0).toUpperCase() + key.slice(1)}
-                    </label>
-
-                    <input
-                      type={key === "joiningDate" ? "date" : "text"}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                      value={form[key]}
-                      onChange={(e) =>
-                        setForm({ ...form, [key]: e.target.value })
-                      }
-                      required={key === "name" || key === "email" || key === "role"}
-                    />
-                  </div>
-                )
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+              
+              {/* USER ID (READ ONLY) */}
+              {editingId && (
+                <div>
+                  <label className="text-sm text-gray-600">User ID</label>
+                  <input
+                    type="text"
+                    value={form.user_id}
+                    disabled
+                    className="w-full p-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600"
+                  />
+                </div>
               )}
 
-              <div className="sm:col-span-2 flex justify-end">
+              {/* NAME */}
+              <div>
+                <label className="text-sm text-gray-600">Full Name</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm({ ...form, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              {/* EMAIL */}
+              <div>
+                <label className="text-sm text-gray-600">Email</label>
+                <input
+                  type="email"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({ ...form, email: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              {/* PASSWORD — ONLY IN ADD MODE */}
+              {!editingId && (
+                <div>
+                  <label className="text-sm text-gray-600">Password</label>
+                  <input
+                    type="password"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              )}
+
+              {/* HIDDEN company_id */}
+              <input type="hidden" value={form.company_id} />
+
+              {/* SUBMIT */}
+              <div className="flex justify-end">
                 <button
                   type="submit"
                   className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition"
