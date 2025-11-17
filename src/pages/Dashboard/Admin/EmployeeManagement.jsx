@@ -2,40 +2,17 @@ import React, { useState, useEffect } from "react";
 import { Pencil, Trash2, UserPlus, ArrowLeft, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../../../components/layout/Loader";
+import axios from "axios";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/user";
 
 const Employees = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate data loading (1.2s delay)
-    const timer = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const [employees, setEmployees] = useState([
-    {
-      id: 1,
-      name: "Amit Kumar",
-      role: "Accountant",
-      email: "amit@company.com",
-      phone: "9876543210",
-      department: "Finance",
-      joiningDate: "2024-02-10",
-    },
-    {
-      id: 2,
-      name: "Riya Sharma",
-      role: "Support Staff",
-      email: "riya@company.com",
-      phone: "9123456789",
-      department: "Support",
-      joiningDate: "2023-11-01",
-    },
-  ]);
-
+  const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     role: "",
@@ -44,47 +21,65 @@ const Employees = () => {
     department: "",
     joiningDate: "",
   });
+
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingId) {
-      setEmployees((prev) =>
-        prev.map((emp) => (emp.id === editingId ? { ...emp, ...form } : emp))
-      );
-    } else {
-      setEmployees((prev) => [...prev, { ...form, id: Date.now() }]);
+  // -----------------------------------------
+  // 📌 FETCH EMPLOYEES
+  // -----------------------------------------
+  const fetchEmployees = async () => {
+    try {
+      const res = await axios.get(`${API}/employees`, { withCredentials: true });
+      setEmployees(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch employees:", err);
+    } finally {
+      setLoading(false);
     }
-    setForm({
-      name: "",
-      role: "",
-      email: "",
-      phone: "",
-      department: "",
-      joiningDate: "",
-    });
-    setEditingId(null);
-    setIsModalOpen(false);
   };
 
-  const handleEdit = (emp) => {
-    setForm(emp);
-    setEditingId(emp.id);
-    setIsModalOpen(true);
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  // -----------------------------------------
+  // 📌 ADD or UPDATE EMPLOYEE
+  // -----------------------------------------
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (editingId) {
+        await axios.put(
+          `${API}/employees/${editingId}`,
+          form,
+          { withCredentials: true }
+        );
+      } else {
+        await axios.post(`${API}/employees`, form, { withCredentials: true });
+      }
+
+      fetchEmployees();
+      closeModal();
+    } catch (err) {
+      console.error("Error saving employee:", err);
+    }
   };
 
-  const handleDelete = (id) => {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== id));
-  };
+  // -----------------------------------------
+  // 📌 DELETE EMPLOYEE
+  // -----------------------------------------
+  const handleDelete = async (id) => {
+    if (!confirm("Delete this employee?")) return;
 
-  const filteredEmployees = employees.filter(
-    (emp) =>
-      emp.name.toLowerCase().includes(search.toLowerCase()) ||
-      emp.role.toLowerCase().includes(search.toLowerCase()) ||
-      emp.email.toLowerCase().includes(search.toLowerCase()) ||
-      emp.department.toLowerCase().includes(search.toLowerCase())
-  );
+    try {
+      await axios.delete(`${API}/employees/${id}`, { withCredentials: true });
+      fetchEmployees();
+    } catch (err) {
+      console.error("Error deleting employee:", err);
+    }
+  };
 
   const openAddModal = () => {
     setForm({
@@ -99,13 +94,39 @@ const Employees = () => {
     setIsModalOpen(true);
   };
 
+  const handleEdit = (emp) => {
+    setForm(emp);
+    setEditingId(emp._id);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setForm({
+      name: "",
+      role: "",
+      email: "",
+      phone: "",
+      department: "",
+      joiningDate: "",
+    });
+  };
+
+  const filteredEmployees = employees.filter(
+    (emp) =>
+      emp.name.toLowerCase().includes(search.toLowerCase()) ||
+      emp.role.toLowerCase().includes(search.toLowerCase()) ||
+      emp.email.toLowerCase().includes(search.toLowerCase()) ||
+      emp.department.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (loading) return <Loader />;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 relative">
       {/* Header */}
       <div className="mb-6">
-        {/* Back + Title */}
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={() => navigate(-1)}
@@ -114,13 +135,12 @@ const Employees = () => {
             <ArrowLeft size={18} />
             <span className="hidden sm:block">Back</span>
           </button>
-
           <h2 className="text-2xl font-semibold text-gray-800">
             Employee Management
           </h2>
         </div>
 
-        {/* Search + Add Employee */}
+        {/* Search + Add */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-3 py-2 w-full sm:w-72">
             <Search size={18} className="text-gray-500" />
@@ -142,7 +162,7 @@ const Employees = () => {
         </div>
       </div>
 
-      {/* Employee Table */}
+      {/* Table */}
       <div className="bg-white shadow rounded-xl overflow-hidden">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 border-b">
@@ -158,10 +178,11 @@ const Employees = () => {
               <th className="p-3 text-center">Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {filteredEmployees.map((emp) => (
               <tr
-                key={emp.id}
+                key={emp._id}
                 className="border-b last:border-0 hover:bg-gray-50 transition"
               >
                 <td className="p-3 font-medium text-gray-800">{emp.name}</td>
@@ -176,26 +197,26 @@ const Employees = () => {
                   {emp.phone}
                 </td>
                 <td className="p-3 text-gray-600 hidden lg:table-cell">
-                  {emp.joiningDate}
+                  {emp.joiningDate?.slice(0, 10)}
                 </td>
                 <td className="p-3 flex justify-center gap-3">
                   <button
                     onClick={() => handleEdit(emp)}
                     className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
-                    title="Edit"
                   >
                     <Pencil size={16} />
                   </button>
+
                   <button
-                    onClick={() => handleDelete(emp.id)}
+                    onClick={() => handleDelete(emp._id)}
                     className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
-                    title="Delete"
                   >
                     <Trash2 size={16} />
                   </button>
                 </td>
               </tr>
             ))}
+
             {filteredEmployees.length === 0 && (
               <tr>
                 <td
@@ -215,7 +236,7 @@ const Employees = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative">
             <button
-              onClick={() => setIsModalOpen(false)}
+              onClick={closeModal}
               className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
             >
               <X size={20} />
@@ -229,72 +250,30 @@ const Employees = () => {
               onSubmit={handleSubmit}
               className="grid grid-cols-1 sm:grid-cols-2 gap-4"
             >
-              <div>
-                <label className="text-sm text-gray-600">Full Name</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
-              </div>
+              {/* Inputs */}
+              {["name", "role", "department", "email", "phone", "joiningDate"].map(
+                (key) => (
+                  <div key={key}>
+                    <label className="text-sm text-gray-600">
+                      {key === "name"
+                        ? "Full Name"
+                        : key === "joiningDate"
+                        ? "Joining Date"
+                        : key.charAt(0).toUpperCase() + key.slice(1)}
+                    </label>
 
-              <div>
-                <label className="text-sm text-gray-600">Role</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Department</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                  value={form.department}
-                  onChange={(e) =>
-                    setForm({ ...form, department: e.target.value })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Email</label>
-                <input
-                  type="email"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Phone</label>
-                <input
-                  type="tel"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Joining Date</label>
-                <input
-                  type="date"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
-                  value={form.joiningDate}
-                  onChange={(e) =>
-                    setForm({ ...form, joiningDate: e.target.value })
-                  }
-                />
-              </div>
+                    <input
+                      type={key === "joiningDate" ? "date" : "text"}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
+                      value={form[key]}
+                      onChange={(e) =>
+                        setForm({ ...form, [key]: e.target.value })
+                      }
+                      required={key === "name" || key === "email" || key === "role"}
+                    />
+                  </div>
+                )
+              )}
 
               <div className="sm:col-span-2 flex justify-end">
                 <button

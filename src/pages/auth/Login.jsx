@@ -3,8 +3,10 @@ import { motion } from "framer-motion";
 import { LogIn } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function Login() {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -16,25 +18,26 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try {
-const baseUrl =
-  import.meta.env.VITE_API_BASE_URL?.trim() ||
-  "https://customercompliance.onrender.com";
 
-console.log("Using API base URL:", baseUrl);
-const { data } = await axios.post(`${baseUrl}/auth/login`, formData);
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+
+      console.log("Using API base URL:", baseUrl);
+
+      const { data } = await axios.post(`${baseUrl}/auth/login`, formData);
 
       alert(data.message || "Login successful");
 
-      // Store token if needed
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // Use global auth context
+      login(data.user, data.token);
 
       // Role-based navigation
       const role = data.user.role.toLowerCase();
+
       if (role === "admin") navigate("/admin/dashboard");
       else if (role === "accountant") navigate("/accountant/dashboard");
       else navigate("/employee/dashboard");
+
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Login failed");
