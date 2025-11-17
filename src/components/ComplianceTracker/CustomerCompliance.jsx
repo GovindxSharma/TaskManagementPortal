@@ -17,8 +17,18 @@ export default function CustomerCompliance() {
   const [monthFilter, setMonthFilter] = useState("");
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const formatMonth = (str) => {
@@ -91,7 +101,9 @@ export default function CustomerCompliance() {
     const matchesBillStatus =
       !billStatusFilter || billStatusRaw === billStatusFilter;
     const matchesMonth =
-      !monthFilter || dataMonthRaw === monthFilter || billMonthRaw === monthFilter;
+      !monthFilter ||
+      dataMonthRaw === monthFilter ||
+      billMonthRaw === monthFilter;
 
     return (
       matchesSearch &&
@@ -108,18 +120,19 @@ export default function CustomerCompliance() {
     const statusText = parseStatus(client.lastDataStatus);
     const monthText = formatMonth(client.lastDataStatus);
 
-    const bgClass =
-      statusText.toLowerCase().includes("received")
-        ? "bg-green-100 text-green-700"
-        : statusText.toLowerCase().includes("in progress")
-        ? "bg-yellow-100 text-yellow-700"
-        : statusText.toLowerCase().includes("complete")
-        ? "bg-blue-100 text-blue-700"
-        : "bg-gray-100 text-gray-700";
+    const bgClass = statusText.toLowerCase().includes("received")
+      ? "bg-green-100 text-green-700"
+      : statusText.toLowerCase().includes("in progress")
+      ? "bg-yellow-100 text-yellow-700"
+      : statusText.toLowerCase().includes("complete")
+      ? "bg-blue-100 text-blue-700"
+      : "bg-gray-100 text-gray-700";
 
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass}`}>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass}`}
+        >
           {statusText}
         </span>
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
@@ -136,18 +149,19 @@ export default function CustomerCompliance() {
     const billStatusText = parseStatus(billRaw); // "Bill Pending" or "Bill Generated"
     const billMonth = formatMonth(billRaw); // e.g. "November 2025"
 
-    const bgClass =
-      billStatusText.toLowerCase().includes("generated")
-        ? "bg-green-100 text-green-700"
-        : billStatusText.toLowerCase().includes("pending")
-        ? "bg-yellow-100 text-yellow-700"
-        : billStatusText.toLowerCase().includes("overdue")
-        ? "bg-red-100 text-red-700"
-        : "bg-gray-100 text-gray-700";
+    const bgClass = billStatusText.toLowerCase().includes("generated")
+      ? "bg-green-100 text-green-700"
+      : billStatusText.toLowerCase().includes("pending")
+      ? "bg-yellow-100 text-yellow-700"
+      : billStatusText.toLowerCase().includes("overdue")
+      ? "bg-red-100 text-red-700"
+      : "bg-gray-100 text-gray-700";
 
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass}`}>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass}`}
+        >
           {billStatusText}
         </span>
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
@@ -178,7 +192,10 @@ export default function CustomerCompliance() {
         {/* Filters */}
         <div className="bg-white p-5 rounded-xl shadow-sm flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <Search
+              className="absolute left-3 top-2.5 text-gray-400"
+              size={18}
+            />
             <input
               type="text"
               placeholder="Search by client, status, or month..."
@@ -215,7 +232,14 @@ export default function CustomerCompliance() {
           <Dropdown
             label="Month"
             options={[
-              ...new Set(clients.flatMap((c) => [formatMonth(c.lastDataStatus), formatMonth(c.lastBillStatus)]).filter(Boolean))
+              ...new Set(
+                clients
+                  .flatMap((c) => [
+                    formatMonth(c.lastDataStatus),
+                    formatMonth(c.lastBillStatus),
+                  ])
+                  .filter(Boolean)
+              ),
             ]}
             value={monthFilter}
             onChange={setMonthFilter}

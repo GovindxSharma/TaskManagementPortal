@@ -1,51 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Trash2, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "../../api/axiosInstance"; // your configured axios
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      text: "Bill generated for Acme Corp — ₹12,000",
-      type: "client",
-      read: false,
-    },
-    {
-      id: 2,
-      text: "Overdue payment: GreenLeaf Pvt Ltd (3 days)",
-      type: "client",
-      read: false,
-    },
-    {
-      id: 3,
-      text: "New task assigned to Riya Sharma",
-      type: "employee",
-      read: true,
-    },
-    {
-      id: 4,
-      text: "Reminder email sent to ZenTax Advisors (inactive 2+ months)",
-      type: "accountant",
-      read: false,
-    },
-    {
-      id: 5,
-      text: "Ticket #TCK1023 marked completed by Amit Verma",
-      type: "employee",
-      read: true,
-    },
-  ]);
-
+  const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
 
+  // get logged-in user id from JWT
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUserId = user._id;
+
+  // fetch notifications on mount
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    axios
+      .get(`/notification/recipient/${currentUserId}`)
+      .then((res) => setNotifications(res.data.data))
+      .catch((err) => console.error(err));
+  }, [currentUserId]);
+
   const filteredNotifications = notifications.filter(
     (n) =>
       (filter === "all" || n.type === filter) &&
-      n.text.toLowerCase().includes(search.toLowerCase())
+      n.message.toLowerCase().includes(search.toLowerCase())
   );
 
   const toggleSelect = (id) => {
@@ -54,15 +36,25 @@ export default function NotificationsPage() {
     );
   };
 
-  const markAsRead = () => {
-    setNotifications((prev) =>
-      prev.map((n) => (selected.includes(n.id) ? { ...n, read: true } : n))
-    );
-    setSelected([]);
+  // MARK selected as read
+  const markAsRead = async () => {
+    try {
+      await Promise.all(
+        selected.map((id) => axios.put(`/notification/read/${id}`))
+      );
+
+      setNotifications((prev) =>
+        prev.map((n) => (selected.includes(n._id) ? { ...n, isRead: true } : n))
+      );
+      setSelected([]);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
+  // DELETE selected notifications (optional: frontend only)
   const deleteNotifications = () => {
-    setNotifications((prev) => prev.filter((n) => !selected.includes(n.id)));
+    setNotifications((prev) => prev.filter((n) => !selected.includes(n._id)));
     setSelected([]);
   };
 
@@ -80,7 +72,7 @@ export default function NotificationsPage() {
         </button>
       </div>
 
-      {/* Filters + Actions */}
+      {/* Filters + Search */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div className="flex gap-3 items-center">
           <label className="text-gray-700 font-medium">Filter:</label>
@@ -140,22 +132,22 @@ export default function NotificationsPage() {
         )}
         {filteredNotifications.map((n) => (
           <div
-            key={n.id}
+            key={n._id}
             className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition ${
-              !n.read ? "bg-blue-50" : ""
+              !n.isRead ? "bg-blue-50" : ""
             }`}
           >
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
-                checked={selected.includes(n.id)}
-                onChange={() => toggleSelect(n.id)}
+                checked={selected.includes(n._id)}
+                onChange={() => toggleSelect(n._id)}
                 className="w-4 h-4"
               />
               <span
-                className={`${!n.read ? "font-semibold" : ""} text-gray-800`}
+                className={`${!n.isRead ? "font-semibold" : ""} text-gray-800`}
               >
-                {n.text}
+                {n.message}
               </span>
             </div>
             <span className="text-sm text-gray-500 capitalize">{n.type}</span>
