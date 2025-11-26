@@ -2,26 +2,32 @@ import React, { useState, useEffect } from "react";
 import { X, Trash2, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance"; // your configured axios
+import { useToast } from "../layout/ToastProvider.jsx"; // ⬅️ central toast
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
+  const toast = useToast(); // ⬅️ init toast
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
 
-  // get logged-in user id from JWT
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserId = user._id;
 
-  // fetch notifications on mount
   useEffect(() => {
     if (!currentUserId) return;
 
     axios
       .get(`/notification/recipient/${currentUserId}`)
-      .then((res) => setNotifications(res.data.data))
-      .catch((err) => console.error(err));
+      .then((res) => {
+        setNotifications(res.data.data);
+        // toast.success("Notifications loaded successfully"); // ✅ toast on fetch
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error("Failed to load notifications"); // ✅ toast on error
+      });
   }, [currentUserId]);
 
   const filteredNotifications = notifications.filter(
@@ -47,16 +53,25 @@ export default function NotificationsPage() {
         prev.map((n) => (selected.includes(n._id) ? { ...n, isRead: true } : n))
       );
       setSelected([]);
+      toast.success("Selected notifications marked as read"); // ✅ toast
     } catch (err) {
       console.error(err);
+      toast.error("Failed to mark notifications as read"); // ✅ toast
     }
   };
 
-  // DELETE selected notifications (optional: frontend only)
-  const deleteNotifications = () => {
-    setNotifications((prev) => prev.filter((n) => !selected.includes(n._id)));
-    setSelected([]);
-  };
+  // DELETE selected notifications
+const deleteNotifications = () => {
+  if (selected.length === 0) return;
+
+  toast.confirmDelete({
+    message: `Are you sure you want to delete ${selected.length} notification(s)?`,
+    onConfirm: () => {
+      setNotifications((prev) => prev.filter((n) => !selected.includes(n._id)));
+      setSelected([]);
+    },
+  });
+};
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">

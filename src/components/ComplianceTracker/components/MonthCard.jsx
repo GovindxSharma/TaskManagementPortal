@@ -3,6 +3,7 @@ import axios from "../../../api/axiosInstance";
 import StatusBadge from "./StatusBadge";
 import Loader from "../../layout/Loader";
 import { Pencil, Check, X } from "lucide-react";
+import { useToast } from "../../layout/ToastProvider.jsx"; // ⬅️ import toast
 
 const monthNames = [
   "January",
@@ -26,19 +27,18 @@ const dataOptions = [
   "Inactive",
   "Data Pending",
 ];
-
 const workOptions = [
   "Not Started",
   "Payment Overdue",
   "Completed",
   "In Progress",
 ];
-
 const billOptions = ["Pending", "Generated"];
 
 const MonthCard = ({ clientId }) => {
+  const toast = useToast(); // ⬅️ initialize toast
   const [monthlyData, setMonthlyData] = useState([]);
-  const [monthStates, setMonthStates] = useState({}); // per-month editing state
+  const [monthStates, setMonthStates] = useState({});
   const [editingMonthId, setEditingMonthId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,7 +51,6 @@ const MonthCard = ({ clientId }) => {
       );
       setMonthlyData(data);
 
-      // initialize states
       const initialStates = {};
       data.forEach((m) => {
         initialStates[m._id] = {
@@ -63,9 +62,11 @@ const MonthCard = ({ clientId }) => {
         };
       });
       setMonthStates(initialStates);
+
+      // toast.success("Monthly compliance data loaded"); // ✅ toast on fetch success
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch monthly compliance data");
+      toast.error("Failed to fetch monthly compliance data"); // ✅ toast on fetch error
     } finally {
       setLoading(false);
     }
@@ -90,16 +91,17 @@ const MonthCard = ({ clientId }) => {
         `/monthly-compliance/${monthRecord._id}`,
         payload
       );
-      // update local state
+
       setMonthlyData(
         monthlyData.map((m) =>
           m._id === monthRecord._id ? { ...m, ...data.record } : m
         )
       );
       setEditingMonthId(null);
+      toast.success("Month data saved successfully"); // ✅ success toast
     } catch (err) {
       console.error(err);
-      alert("Failed to save changes");
+      toast.error("Failed to save changes"); // ✅ error toast
     } finally {
       setSaving(false);
     }
@@ -121,7 +123,6 @@ const MonthCard = ({ clientId }) => {
             key={monthRecord._id}
             className="border rounded-xl p-5 bg-white shadow hover:shadow-md transition flex flex-col gap-4 relative"
           >
-            {/* Edit / Save / Cancel */}
             {!isEditing ? (
               <button
                 className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition"
@@ -154,7 +155,6 @@ const MonthCard = ({ clientId }) => {
               {monthTitle}
             </h4>
 
-            {/* No. of Workers */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">No. of Workers:</span>
               <span className="text-gray-800 font-semibold">
@@ -162,7 +162,6 @@ const MonthCard = ({ clientId }) => {
               </span>
             </div>
 
-            {/* Data Status */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">Data Status:</span>
               {isEditing ? (
@@ -190,7 +189,6 @@ const MonthCard = ({ clientId }) => {
               )}
             </div>
 
-            {/* Work Progress */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">Work Progress:</span>
               {isEditing ? (
@@ -218,7 +216,6 @@ const MonthCard = ({ clientId }) => {
               )}
             </div>
 
-            {/* Expected Amount */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">
                 Expected Amount:
@@ -228,7 +225,6 @@ const MonthCard = ({ clientId }) => {
               </span>
             </div>
 
-            {/* Final Amount */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">Final Amount:</span>
               <span className="text-gray-800 font-semibold">
@@ -236,7 +232,6 @@ const MonthCard = ({ clientId }) => {
               </span>
             </div>
 
-            {/* Bill Status */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">Bill Status:</span>
               {isEditing ? (
