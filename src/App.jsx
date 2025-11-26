@@ -16,11 +16,13 @@ import { dashboardRoutes } from "./data/routes";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
+// ✅ Import Toast
+import { ToastProvider } from "./components/layout/ToastProvider.jsx";
+
 function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Optional splash/loading
     const timer = setTimeout(() => setLoading(false), 700);
     return () => clearTimeout(timer);
   }, []);
@@ -30,70 +32,81 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="App">
-          <Routes>
-            {/* PUBLIC ROUTE */}
-            <Route path="/" element={<Login />} />
+        {/* ✅ Wrap entire app so every route can trigger toast */}
+        <ToastProvider>
+          <div className="App">
+            <Routes>
+              {/* PUBLIC ROUTE */}
+              <Route path="/" element={<Login />} />
 
-            {/* ========================== ADMIN ROUTES ========================== */}
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute role="admin">
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            {dashboardRoutes.admin.map((route) => (
+              {/* ========================== ADMIN ROUTES ========================== */}
               <Route
-                key={route.path}
-                path={route.path}
-                element={<ProtectedRoute role="admin">{route.element}</ProtectedRoute>}
-              />
-            ))}
-
-            {/* ========================== EMPLOYEE ROUTES ======================= */}
-            <Route
-              path="/employee/dashboard"
-              element={
-                <ProtectedRoute role="employee">
-                  <EmployeeDashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            {dashboardRoutes.employee.map((route) => (
-              <Route
-                key={route.path}
-                path={route.path}
-                element={<ProtectedRoute role="employee">{route.element}</ProtectedRoute>}
-              />
-            ))}
-
-            {/* ========================== ACCOUNTANT ROUTES ====================== */}
-            <Route
-              path="/accountant/dashboard"
-              element={
-                <ProtectedRoute role="accountant">
-                  <AccountantDashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            {dashboardRoutes.accountant.map((route) => (
-              <Route
-                key={route.path}
-                path={route.path}
+                path="/admin/dashboard"
                 element={
-                  <ProtectedRoute role="accountant">
-                    {route.element}
+                  <ProtectedRoute role="admin">
+                    <Dashboard />
                   </ProtectedRoute>
                 }
               />
-            ))}
-          </Routes>
-        </div>
+
+              {dashboardRoutes.admin.map((route) => (
+                <Route
+                  key={route.path}
+                  path={route.path}
+                  element={
+                    <ProtectedRoute role="admin">
+                      {route.element}
+                    </ProtectedRoute>
+                  }
+                />
+              ))}
+
+              {/* ========================== EMPLOYEE ROUTES ======================= */}
+              <Route
+                path="/employee/dashboard"
+                element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {dashboardRoutes.employee.map((route) => (
+                <Route
+                  key={route.path}
+                  path={route.path}
+                  element={
+                    <ProtectedRoute role="employee">
+                      {route.element}
+                    </ProtectedRoute>
+                  }
+                />
+              ))}
+
+              {/* ========================== ACCOUNTANT ROUTES ====================== */}
+              <Route
+                path="/accountant/dashboard"
+                element={
+                  <ProtectedRoute role="accountant">
+                    <AccountantDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {dashboardRoutes.accountant.map((route) => (
+                <Route
+                  key={route.path}
+                  path={route.path}
+                  element={
+                    <ProtectedRoute role="accountant">
+                      {route.element}
+                    </ProtectedRoute>
+                  }
+                />
+              ))}
+            </Routes>
+          </div>
+        </ToastProvider>
       </AuthProvider>
     </Router>
   );

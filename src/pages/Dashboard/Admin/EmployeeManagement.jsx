@@ -3,9 +3,11 @@ import { Pencil, Trash2, UserPlus, ArrowLeft, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../../../components/layout/Loader";
 import axiosInstance from "../../../api/axiosInstance";
+import { useToast } from "../../../components/layout/ToastProvider.jsx";
 
 const Employees = () => {
   const navigate = useNavigate();
+  const { success, error, confirmDelete } = useToast(); // ✅ Toast hook
 
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
@@ -23,9 +25,7 @@ const Employees = () => {
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // -------------------------------------------------
   // FETCH EMPLOYEES
-  // -------------------------------------------------
   const fetchEmployees = async () => {
     try {
       const res = await axiosInstance.get("/user/employees");
@@ -39,6 +39,7 @@ const Employees = () => {
 
       setEmployees(employeesList);
     } catch (err) {
+      error("Failed to fetch employees");
       console.error("❌ Failed to fetch employees:", err);
     } finally {
       setLoading(false);
@@ -49,9 +50,7 @@ const Employees = () => {
     fetchEmployees();
   }, []);
 
-  // -------------------------------------------------
   // ADD / UPDATE EMPLOYEE
-  // -------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -61,36 +60,38 @@ const Employees = () => {
       if (editingId) {
         delete payload.password;
         await axiosInstance.put(`/user/${editingId}`, payload);
+        success("Employee updated");
       } else {
-        if (!payload.password) return alert("Password is required");
+        if (!payload.password) return error("Password is required");
         await axiosInstance.post(`/user`, payload);
+        success("Employee added");
       }
 
       fetchEmployees();
       closeModal();
     } catch (err) {
       console.error("❌ Error saving employee:", err);
-      alert(err.response?.data?.message || "Failed to save employee");
+      error(err.response?.data?.message || "Failed to save employee");
     }
   };
 
-  // -------------------------------------------------
-  // DELETE USER
-  // -------------------------------------------------
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this employee?")) return;
-
-    try {
-      await axiosInstance.delete(`/user/${id}`);
-      fetchEmployees();
-    } catch (err) {
-      console.error("❌ Error deleting employee:", err);
-    }
+  // DELETE — using central delete confirmation
+  const handleDelete = (id) => {
+    confirmDelete({
+      message: "Are you sure you want to delete this employee?",
+      onConfirm: async () => {
+        try {
+          await axiosInstance.delete(`/user/${id}`);
+          fetchEmployees();
+        } catch (err) {
+          console.error("❌ Error deleting employee:", err);
+          error("Failed to delete employee");
+        }
+      },
+    });
   };
 
-  // -------------------------------------------------
   // OPEN ADD MODAL
-  // -------------------------------------------------
   const openAddModal = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -107,9 +108,7 @@ const Employees = () => {
     setIsModalOpen(true);
   };
 
-  // -------------------------------------------------
   // OPEN EDIT MODAL
-  // -------------------------------------------------
   const handleEdit = (emp) => {
     setForm({
       name: emp.name,
@@ -129,9 +128,7 @@ const Employees = () => {
     setEditingId(null);
   };
 
-  // -------------------------------------------------
   // SEARCH with user_id support
-  // -------------------------------------------------
   const filteredEmployees = employees.filter((emp) => {
     const s = search.toLowerCase();
     return (
@@ -258,8 +255,6 @@ const Employees = () => {
             </h3>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
-              
-              {/* USER ID (READ ONLY) */}
               {editingId && (
                 <div>
                   <label className="text-sm text-gray-600">User ID</label>
@@ -272,35 +267,28 @@ const Employees = () => {
                 </div>
               )}
 
-              {/* NAME */}
               <div>
                 <label className="text-sm text-gray-600">Full Name</label>
                 <input
                   type="text"
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
                   value={form.name}
-                  onChange={(e) =>
-                    setForm({ ...form, name: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                 />
               </div>
 
-              {/* EMAIL */}
               <div>
                 <label className="text-sm text-gray-600">Email</label>
                 <input
                   type="email"
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
                   value={form.email}
-                  onChange={(e) =>
-                    setForm({ ...form, email: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
                 />
               </div>
 
-              {/* PASSWORD — ONLY IN ADD MODE */}
               {!editingId && (
                 <div>
                   <label className="text-sm text-gray-600">Password</label>
@@ -316,10 +304,8 @@ const Employees = () => {
                 </div>
               )}
 
-              {/* HIDDEN company_id */}
               <input type="hidden" value={form.company_id} />
 
-              {/* SUBMIT */}
               <div className="flex justify-end">
                 <button
                   type="submit"
