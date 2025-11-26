@@ -107,7 +107,14 @@ export default function CustomerCompliance() {
     );
   });
 
-  const handleClientClick = (id) => navigate(`/admin/customer/${id}`);
+  // const handleClientClick = (id) => navigate(`/admin/customer/${id}`);
+const handleClientClick = (id) => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  if (user.role === "Admin") navigate(`/admin/customer/${id}`);
+  else if (user.role === "Employee") navigate(`/employee/customer/${id}`);
+  else if (user.role === "Accountant") navigate(`/accountant/customer/${id}`);
+};
+
 
   const getLastUpdate = (client) => {
     const statusText = parseStatus(client.lastDataStatus);
