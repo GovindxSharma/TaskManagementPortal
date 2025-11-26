@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import MonthCard from "./components/MonthCard.jsx";
 import { ChevronLeft } from "lucide-react";
 import axios from "../../api/axiosInstance";
+import Loader from "../layout/Loader"; // ✅ import loader
 
 export default function CustomerDetails() {
   const { id } = useParams(); // client _id
@@ -14,7 +15,7 @@ export default function CustomerDetails() {
     const fetchClient = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get(`/client/${id}`); // fetch client info
+        const { data } = await axios.get(`/client/${id}`);
         setClient(data.client);
       } catch (err) {
         console.error(err);
@@ -27,9 +28,20 @@ export default function CustomerDetails() {
     fetchClient();
   }, [id]);
 
+  // ----------------- Loader -----------------
   if (loading)
-    return <div className="p-6 text-gray-600">Loading client...</div>;
-  if (!client) return <p className="text-gray-500">Client not found</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader />
+      </div>
+    );
+
+  if (!client)
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <p className="text-gray-500 text-lg">Client not found</p>
+      </div>
+    );
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
