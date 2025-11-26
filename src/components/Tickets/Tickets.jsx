@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
+import Loader from "../layout/Loader"; // 🔥 import loader
 
 const Tickets = () => {
   const navigate = useNavigate();
 
-  // Logged-in user
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserId = user._id;
   const companyId = user.company_id;
@@ -22,6 +22,8 @@ const Tickets = () => {
   const [tickets, setTickets] = useState([]);
   const [clients, setClients] = useState([]);
   const [employees, setEmployees] = useState([]);
+
+  const [loading, setLoading] = useState(true); // 🔥 loader state
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
     status: "",
@@ -29,7 +31,6 @@ const Tickets = () => {
     priority: "",
   });
 
-  // Modals
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -37,7 +38,6 @@ const Tickets = () => {
   const [selectedEmp, setSelectedEmp] = useState({ _id: null, name: "" });
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Add ticket state
   const [newTicket, setNewTicket] = useState({
     clientId: "",
     category: "",
@@ -55,40 +55,27 @@ const Tickets = () => {
     Resolved: "bg-green-100 text-green-700",
   };
 
-  // Fetch tickets
-  const fetchTickets = async () => {
+  const fetchAll = async () => {
     try {
-      const res = await axios.get("/ticket");
-      setTickets(res.data.tickets);
-    } catch (err) {
-      console.error("Failed to fetch tickets:", err);
-    }
-  };
+      setLoading(true);
+      const tReq = axios.get("/ticket");
+      const cReq = axios.get(`/client?company_id=${companyId}`);
+      const eReq = isAdmin ? axios.get("/user/employees") : null;
 
-  // Fetch clients for dropdown
-  const fetchClients = async () => {
-    try {
-      const res = await axios.get(`/client?company_id=${companyId}`);
-      setClients(res.data.clients || []);
-    } catch (err) {
-      console.error("Failed to fetch clients:", err);
-    }
-  };
+      const [tRes, cRes, eRes] = await Promise.all([tReq, cReq, eReq]);
 
-  // Fetch employees for assign dropdown
-  const fetchEmployees = async () => {
-    try {
-      const res = await axios.get("/user/employees");
-      setEmployees(res.data.employees || []);
+      setTickets(tRes.data.tickets || []);
+      setClients(cRes.data.clients || []);
+      if (isAdmin) setEmployees(eRes?.data?.employees || []);
     } catch (err) {
-      console.error("Failed to fetch employees:", err);
+      console.error("Failed to load ticket data:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTickets();
-    fetchClients();
-    if (isAdmin) fetchEmployees();
+    fetchAll();
   }, []);
 
   const filteredTickets = tickets.filter((t) => {
@@ -104,53 +91,70 @@ const Tickets = () => {
     return matchSearch && matchStatus && matchEmp && matchPriority;
   });
 
-  // Assign ticket
-  const handleAssign = async () => {
-    if (!selectedTicket || !selectedEmp._id) return;
-    try {
-      await axios.put(`/ticket/${selectedTicket._id}`, {
-        assignedTo: selectedEmp._id,
-      });
-      fetchTickets();
-      setShowAssignModal(false);
-    } catch (err) {
-      console.error("Failed to assign ticket:", err);
-    }
-  };
-
+  // Delete
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this ticket?")) return;
     try {
+      setLoading(true);
       await axios.delete(`/ticket/${id}`);
-      fetchTickets();
+      await fetchAll();
     } catch (err) {
       console.error("Failed to delete ticket:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Update status
   const handleStatusChange = async (ticket, newStatus) => {
     try {
+      setLoading(true);
       await axios.put(`/ticket/${ticket._id}`, { status: newStatus });
-      fetchTickets();
+      await fetchAll();
     } catch (err) {
       console.error("Failed to update status:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Add ticket
+  // Assign
+  const handleAssign = async () => {
+    if (!selectedTicket || !selectedEmp._id) return;
+
+    try {
+      setLoading(true);
+      await axios.put(`/ticket/${selectedTicket._id}`, {
+        assignedTo: selectedEmp._id,
+      });
+
+      setShowAssignModal(false);
+      await fetchAll();
+    } catch (err) {
+      console.error("Failed to assign ticket:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add
   const handleAddTicket = async () => {
     if (!newTicket.clientId || !newTicket.title) return;
+
     try {
+      setLoading(true);
+
       const payload = {
         ...newTicket,
         raisedBy: currentUserId,
       };
+
       if (!isAdmin) delete payload.assignedTo;
       else if (selectedEmp._id) payload.assignedTo = selectedEmp._id;
 
       await axios.post("/ticket", payload);
-      fetchTickets();
       setShowAddModal(false);
+
       setNewTicket({
         clientId: "",
         category: "",
@@ -160,11 +164,23 @@ const Tickets = () => {
         dueDate: "",
         assignedTo: "",
       });
+
       setSelectedEmp({ _id: null, name: "" });
+      await fetchAll();
     } catch (err) {
       console.error("Failed to add ticket:", err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  // 🔥 Global Loader
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader />
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">

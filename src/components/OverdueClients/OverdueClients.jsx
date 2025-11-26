@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Search, Plus, X, ArrowLeft, CircleDollarSign } from "lucide-react";
+import { Search, Plus, X, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import Dropdown from "../layout/Dropdown";
+import Loader from "../layout/Loader"; // ⭐ CENTRAL LOADER
 
 const OverdueClients = () => {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ const OverdueClients = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ status: "All", sort: "Newest" });
   const [addOverdueOpen, setAddOverdueOpen] = useState(false);
+  const [loading, setLoading] = useState(true); // ⭐ LOADING STATE
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const companyId = user?.company_id;
@@ -41,8 +43,12 @@ const OverdueClients = () => {
   };
 
   useEffect(() => {
-    fetchClients();
-    fetchOverdueClients();
+    const loadAll = async () => {
+      setLoading(true);
+      await Promise.all([fetchClients(), fetchOverdueClients()]);
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
   const addOverdueClient = async (clientId) => {
@@ -89,6 +95,15 @@ const OverdueClients = () => {
       return 0;
     });
 
+  // ⭐ LOADER UI
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">
       {/* HEADER */}
@@ -102,7 +117,6 @@ const OverdueClients = () => {
         </button>
 
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          {/* <CircleDollarSign className="text-indigo-600" /> */}
           Overdue Clients
         </h2>
       </div>

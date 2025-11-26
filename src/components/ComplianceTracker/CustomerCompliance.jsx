@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import { Search, X } from "lucide-react";
 import Dropdown from "../layout/Dropdown";
+import Loader from "../layout/Loader"; // ⬅️ CENTRAL LOADER IMPORTED
 
 export default function CustomerCompliance() {
   const navigate = useNavigate();
@@ -34,19 +35,18 @@ export default function CustomerCompliance() {
   const formatMonth = (str) => {
     if (!str || str === "-") return "-";
     const parts = str.split(" ");
-    const monthYear = parts.pop(); // last element = month-year
+    const monthYear = parts.pop();
     const [m, y] = monthYear?.split("-") || [];
     if (!m || !y) return "-";
     const monthIndex = parseInt(m, 10) - 1;
-    if (isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return "-";
-    return `${monthNames[monthIndex]} ${y}`;
+    return monthNames[monthIndex] + " " + y;
   };
 
   const parseStatus = (str) => {
     if (!str || str === "-") return "-";
     const parts = str.split(" ");
     if (parts.length <= 1) return str;
-    parts.pop(); // remove month
+    parts.pop();
     return parts.join(" ");
   };
 
@@ -54,9 +54,11 @@ export default function CustomerCompliance() {
     try {
       setLoading(true);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
+
       const { data } = await axios.get(
         `/client/clients-with-compliance?company_id=${user.company_id}`
       );
+
       setClients(data.clients || []);
     } catch (err) {
       console.error(err);
@@ -82,7 +84,7 @@ export default function CustomerCompliance() {
     ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
   ];
 
-  // ---------------------- Filter Logic ----------------------
+  // Filter Logic
   const filteredClients = clients.filter((client) => {
     const dataStatusRaw = parseStatus(client.lastDataStatus);
     const billStatusRaw = parseStatus(client.lastBillStatus);
@@ -94,23 +96,14 @@ export default function CustomerCompliance() {
       dataStatusRaw.toLowerCase().includes(searchQuery.toLowerCase()) ||
       billStatusRaw.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesEmployee =
-      !employeeFilter || client.assignedTo === employeeFilter;
-    const matchesDataStatus =
-      !dataStatusFilter || dataStatusRaw === dataStatusFilter;
-    const matchesBillStatus =
-      !billStatusFilter || billStatusRaw === billStatusFilter;
-    const matchesMonth =
-      !monthFilter ||
-      dataMonthRaw === monthFilter ||
-      billMonthRaw === monthFilter;
-
     return (
       matchesSearch &&
-      matchesEmployee &&
-      matchesDataStatus &&
-      matchesBillStatus &&
-      matchesMonth
+      (!employeeFilter || client.assignedTo === employeeFilter) &&
+      (!dataStatusFilter || dataStatusRaw === dataStatusFilter) &&
+      (!billStatusFilter || billStatusRaw === billStatusFilter) &&
+      (!monthFilter ||
+        dataMonthRaw === monthFilter ||
+        billMonthRaw === monthFilter)
     );
   });
 
@@ -146,8 +139,8 @@ export default function CustomerCompliance() {
     const billRaw = client.lastBillStatus || "-";
     if (billRaw === "-") return "-";
 
-    const billStatusText = parseStatus(billRaw); // "Bill Pending" or "Bill Generated"
-    const billMonth = formatMonth(billRaw); // e.g. "November 2025"
+    const billStatusText = parseStatus(billRaw);
+    const billMonth = formatMonth(billRaw);
 
     const bgClass = billStatusText.toLowerCase().includes("generated")
       ? "bg-green-100 text-green-700"
@@ -171,7 +164,13 @@ export default function CustomerCompliance() {
     );
   };
 
-  if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
+  // 🌀 SHOW REAL LOADER COMPONENT
+  if (loading)
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader />
+      </div>
+    );
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
