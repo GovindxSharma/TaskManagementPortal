@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../../api/axiosInstance";
 import { clientWelcomeEmail } from "../../../commons/emailContent";
+import { useToast } from "../../../components/layout/ToastProvider.jsx"; // ⭐ CENTRAL TOAST
 
 const InputField = ({ label, value, onChange, type = "text", placeholder }) => (
   <div className="flex flex-col">
@@ -27,6 +28,7 @@ const InputField = ({ label, value, onChange, type = "text", placeholder }) => (
 
 const Clients = () => {
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [clients, setClients] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -39,10 +41,10 @@ const Clients = () => {
     address: "",
     businessUnit: "",
     site: "",
-    startMonth: "", // 0-11 internally
+    startMonth: "",
     startYear: "",
-    assignedTo: "", // ID
-    assignedToName: "", // UI
+    assignedTo: "",
+    assignedToName: "",
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
@@ -58,9 +60,9 @@ const Clients = () => {
       setClients(data.clients);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch clients");
+      toast.error("Failed to fetch clients");
     }
-  }, []);
+  }, [toast]);
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -68,9 +70,9 @@ const Clients = () => {
       setEmployees(data.employees);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch employees");
+      toast.error("Failed to fetch employees");
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchClients();
@@ -109,7 +111,7 @@ const Clients = () => {
         address: form.address,
         businessUnit: form.businessUnit,
         site: form.site,
-        startMonth: (Number(form.startMonth) + 1).toString(), // 0-11 → 1-12
+        startMonth: (Number(form.startMonth) + 1).toString(),
         startYear: form.startYear.toString(),
         company_id: user.company_id,
         assignedTo: form.assignedTo,
@@ -126,7 +128,7 @@ const Clients = () => {
         setClients((prev) =>
           prev.map((c) => (c._id === editingId ? clientData : c))
         );
-        alert("Client updated successfully!");
+        toast.success("Client updated successfully!");
       } else {
         const { data } = await axiosInstance.post("/client", payload);
         clientData = data.client;
@@ -145,7 +147,7 @@ const Clients = () => {
         await axiosInstance.post("/email/send-welcome", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        alert("Client added and welcome email sent!");
+        toast.success("Client added and welcome email sent!");
       }
 
       resetForm();
@@ -153,7 +155,7 @@ const Clients = () => {
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Something went wrong!");
+      toast.error(err.response?.data?.message || "Something went wrong!");
     }
   };
 
@@ -168,15 +170,19 @@ const Clients = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this client?")) return;
-    try {
-      await axiosInstance.delete(`/client/${id}`);
-      setClients((prev) => prev.filter((c) => c._id !== id));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete client");
-    }
+  const handleDelete = (id) => {
+    toast.confirmDelete({
+      message: "Are you sure you want to delete this client?",
+      onConfirm: async () => {
+        try {
+          await axiosInstance.delete(`/client/${id}`);
+          setClients((prev) => prev.filter((c) => c._id !== id));
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to delete client");
+        }
+      },
+    });
   };
 
   const handleFileChange = (e) => {

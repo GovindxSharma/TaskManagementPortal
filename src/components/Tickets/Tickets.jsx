@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
-import Loader from "../layout/Loader"; // 🔥 import loader
+import Loader from "../layout/Loader"; 
+import { useToast } from "../layout/ToastProvider.jsx"; // ⭐ central toast
 
 const Tickets = () => {
   const navigate = useNavigate();
+  const toast = useToast();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserId = user._id;
@@ -23,7 +25,7 @@ const Tickets = () => {
   const [clients, setClients] = useState([]);
   const [employees, setEmployees] = useState([]);
 
-  const [loading, setLoading] = useState(true); // 🔥 loader state
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
     status: "",
@@ -69,6 +71,7 @@ const Tickets = () => {
       if (isAdmin) setEmployees(eRes?.data?.employees || []);
     } catch (err) {
       console.error("Failed to load ticket data:", err);
+      toast.error("Failed to load ticket data");
     } finally {
       setLoading(false);
     }
@@ -81,28 +84,31 @@ const Tickets = () => {
   const filteredTickets = tickets.filter((t) => {
     const matchSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
-      (t.relatedClient?.name || "")
-        .toLowerCase()
-        .includes(search.toLowerCase());
+      (t.relatedClient?.name || "").toLowerCase().includes(search.toLowerCase());
     const matchStatus = !filters.status || t.status === filters.status;
-    const matchEmp =
-      !filters.employee || t.assignedTo?.name === filters.employee;
+    const matchEmp = !filters.employee || t.assignedTo?.name === filters.employee;
     const matchPriority = !filters.priority || t.priority === filters.priority;
     return matchSearch && matchStatus && matchEmp && matchPriority;
   });
 
   // Delete
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this ticket?")) return;
-    try {
-      setLoading(true);
-      await axios.delete(`/ticket/${id}`);
-      await fetchAll();
-    } catch (err) {
-      console.error("Failed to delete ticket:", err);
-    } finally {
-      setLoading(false);
-    }
+    toast.confirmDelete({
+      message: "Are you sure you want to delete this ticket?",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await axios.delete(`/ticket/${id}`);
+          await fetchAll();
+          toast.success("Ticket deleted successfully!");
+        } catch (err) {
+          console.error("Failed to delete ticket:", err);
+          toast.error("Failed to delete ticket");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   // Update status
@@ -111,8 +117,10 @@ const Tickets = () => {
       setLoading(true);
       await axios.put(`/ticket/${ticket._id}`, { status: newStatus });
       await fetchAll();
+      toast.success(`Status updated to "${newStatus}"`);
     } catch (err) {
       console.error("Failed to update status:", err);
+      toast.error("Failed to update status");
     } finally {
       setLoading(false);
     }
@@ -127,11 +135,12 @@ const Tickets = () => {
       await axios.put(`/ticket/${selectedTicket._id}`, {
         assignedTo: selectedEmp._id,
       });
-
       setShowAssignModal(false);
       await fetchAll();
+      toast.success("Ticket assigned successfully!");
     } catch (err) {
       console.error("Failed to assign ticket:", err);
+      toast.error("Failed to assign ticket");
     } finally {
       setLoading(false);
     }
@@ -139,15 +148,14 @@ const Tickets = () => {
 
   // Add
   const handleAddTicket = async () => {
-    if (!newTicket.clientId || !newTicket.title) return;
+    if (!newTicket.clientId || !newTicket.title) {
+      toast.error("Client and Title are required");
+      return;
+    }
 
     try {
       setLoading(true);
-
-      const payload = {
-        ...newTicket,
-        raisedBy: currentUserId,
-      };
+      const payload = { ...newTicket, raisedBy: currentUserId };
 
       if (!isAdmin) delete payload.assignedTo;
       else if (selectedEmp._id) payload.assignedTo = selectedEmp._id;
@@ -164,11 +172,12 @@ const Tickets = () => {
         dueDate: "",
         assignedTo: "",
       });
-
       setSelectedEmp({ _id: null, name: "" });
       await fetchAll();
+      toast.success("Ticket added successfully!");
     } catch (err) {
       console.error("Failed to add ticket:", err);
+      toast.error("Failed to add ticket");
     } finally {
       setLoading(false);
     }

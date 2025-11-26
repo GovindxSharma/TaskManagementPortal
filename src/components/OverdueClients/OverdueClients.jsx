@@ -4,16 +4,18 @@ import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import Dropdown from "../layout/Dropdown";
 import Loader from "../layout/Loader"; // ⭐ CENTRAL LOADER
+import { useToast } from "../layout/ToastProvider.jsx"; // ⭐ CENTRAL TOAST
 
 const OverdueClients = () => {
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [allClients, setAllClients] = useState([]);
   const [overdueClients, setOverdueClients] = useState([]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ status: "All", sort: "Newest" });
   const [addOverdueOpen, setAddOverdueOpen] = useState(false);
-  const [loading, setLoading] = useState(true); // ⭐ LOADING STATE
+  const [loading, setLoading] = useState(true);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const companyId = user?.company_id;
@@ -26,7 +28,8 @@ const OverdueClients = () => {
       });
       setAllClients(res.data.clients || []);
     } catch (err) {
-      console.error("Failed to fetch clients:", err);
+      toast.error("Failed to fetch clients");
+      console.error(err);
     }
   };
 
@@ -38,7 +41,8 @@ const OverdueClients = () => {
       });
       setOverdueClients(res.data.data || []);
     } catch (err) {
-      console.error("Failed to fetch overdue:", err);
+      toast.error("Failed to fetch overdue clients");
+      console.error(err);
     }
   };
 
@@ -59,25 +63,33 @@ const OverdueClients = () => {
         { isOverdue: true },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchOverdueClients();
+      await fetchOverdueClients();
       setAddOverdueOpen(false);
+      toast.success("Client added to overdue list");
     } catch (err) {
-      console.error("Failed to add overdue:", err);
+      toast.error("Failed to add overdue client");
+      console.error(err);
     }
   };
 
-  const removeOverdueClient = async (clientId) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `/client/${clientId}`,
-        { isOverdue: false },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchOverdueClients();
-    } catch (err) {
-      console.error("Failed to remove overdue:", err);
-    }
+  const removeOverdueClient = (clientId) => {
+    toast.confirmDelete({
+      message: "Are you sure you want to remove this client from overdue?",
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem("token");
+          await axios.put(
+            `/client/${clientId}`,
+            { isOverdue: false },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          fetchOverdueClients();
+        } catch (err) {
+          toast.error("Failed to remove overdue client");
+          console.error(err);
+        }
+      },
+    });
   };
 
   const availableClients = allClients.filter((c) => !c.isOverdue);
@@ -95,7 +107,6 @@ const OverdueClients = () => {
       return 0;
     });
 
-  // ⭐ LOADER UI
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -123,7 +134,6 @@ const OverdueClients = () => {
 
       {/* FILTERS + ADD */}
       <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-6">
-        {/* Search + Sort */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-4 py-2 w-full sm:w-80 transition hover:shadow-md">
             <Search size={18} className="text-gray-400" />
@@ -145,7 +155,6 @@ const OverdueClients = () => {
           />
         </div>
 
-        {/* ADD OVERDUE */}
         <div className="relative">
           <button
             onClick={() => setAddOverdueOpen(!addOverdueOpen)}
@@ -156,7 +165,6 @@ const OverdueClients = () => {
 
           {addOverdueOpen && (
             <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-w-xs w-full z-10">
-              {/* SEARCH INPUT */}
               <div className="p-2 border-b border-gray-200">
                 <input
                   type="text"
@@ -166,8 +174,6 @@ const OverdueClients = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400"
                 />
               </div>
-
-              {/* CLIENT LIST */}
               <div className="max-h-64 overflow-y-auto">
                 {availableClients
                   .filter((c) =>
