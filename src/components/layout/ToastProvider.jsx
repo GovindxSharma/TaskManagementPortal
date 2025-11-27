@@ -21,14 +21,17 @@ export const ToastProvider = ({ children }) => {
     success: (msg) => addToast("success", msg),
     error: (msg) => addToast("error", msg),
     warning: (msg) => addToast("warning", msg),
-    confirmDelete: ({ message, onConfirm }) =>
-      setConfirmData({ message, onConfirm }),
+    confirmAction: ({ message, onConfirm, type = "default" }) =>
+      setConfirmData({ message, onConfirm, type }),
   };
 
   const handleConfirm = () => {
-    confirmData?.onConfirm();
+    if (confirmData?.onConfirm) confirmData.onConfirm();
     setConfirmData(null);
-    addToast("success", "Deleted successfully");
+
+    // Only auto-toast for delete type
+    if (confirmData?.type === "delete")
+      addToast("success", "Deleted successfully");
   };
 
   const handleCancel = () => setConfirmData(null);
@@ -44,14 +47,24 @@ export const ToastProvider = ({ children }) => {
         ))}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Confirmation Modal */}
       {confirmData && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[9999] backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-xl w-80 shadow-xl">
+          <div
+            className={`bg-white p-6 rounded-xl w-80 shadow-xl ${
+              confirmData.type === "delete" ? "" : "border border-blue-300"
+            }`}
+          >
             <div className="flex items-center gap-3 mb-3">
-              <Trash2 className="text-red-600" />
+              {confirmData.type === "delete" ? (
+                <Trash2 className="text-red-600" />
+              ) : (
+                <CheckCircle className="text-blue-600" />
+              )}
               <h3 className="text-lg font-semibold text-gray-800">
-                Confirm Delete
+                {confirmData.type === "delete"
+                  ? "Confirm Delete"
+                  : "Confirm Action"}
               </h3>
             </div>
 
@@ -66,9 +79,13 @@ export const ToastProvider = ({ children }) => {
               </button>
               <button
                 onClick={handleConfirm}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className={`px-4 py-2 rounded-lg text-white ${
+                  confirmData.type === "delete"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
               >
-                Delete
+                Confirm
               </button>
             </div>
           </div>

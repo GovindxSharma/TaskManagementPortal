@@ -61,7 +61,7 @@ export default function Login() {
             <LogIn className="text-[#016DB6]" size={40} />
           </div>
           <h1 className="text-2xl font-semibold text-gray-800">
-            Task Management Portal
+            Customer Compliance Services
           </h1>
           <p className="text-gray-500 text-sm mt-1">Login to your account</p>
         </div>
@@ -105,7 +105,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-4">
-          © {new Date().getFullYear()} TaskFlow Internal Suite
+          © {new Date().getFullYear()} Customer Compliance Services
         </p>
       </motion.div>
     </div>

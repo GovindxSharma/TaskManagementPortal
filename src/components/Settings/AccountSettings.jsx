@@ -1,33 +1,27 @@
-import React from "react";
+import axios from "../../api/axiosInstance"; // your axios instance
 
-const AccountSettings = () => {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Account Settings</h2>
+export const updateUserApi = async (userId, payload) => {
+  const { currentPassword, newPassword, name, email } = payload;
 
-      <form className="space-y-4 max-w-md">
-        <input
-          type="text"
-          placeholder="Full Name"
-          className="border w-full p-3 rounded"
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          className="border w-full p-3 rounded"
-        />
-        <input
-          type="password"
-          placeholder="New Password"
-          className="border w-full p-3 rounded"
-        />
+  // Construct the base update payload
+  const updateData = { name, email };
 
-        <button className="bg-black text-white px-5 py-2 rounded hover:bg-gray-900 transition">
-          Save Changes
-        </button>
-      </form>
-    </div>
-  );
+  // If user wants to change password
+  if (currentPassword && newPassword) {
+    // Verify current password
+    const verify = await axios.put(`/user/${userId}`, {
+      password: currentPassword,
+    });
+
+    if (!verify.data.valid) {
+      throw new Error("Current password is incorrect");
+    }
+
+    // Add newPassword to payload
+    updateData.password = newPassword;
+  }
+
+  // Update user
+  const res = await axios.put(`/user/${userId}`, updateData);
+  return res.data;
 };
-
-export default AccountSettings;
