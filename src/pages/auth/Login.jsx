@@ -28,7 +28,7 @@ export default function Login() {
 
       const { data } = await axios.post(`${baseUrl}/auth/login`, formData);
 
-      alert(data.message || "Login successful");
+      // alert(data.message || "Login successful");
 
       // Use global auth context
       login(data.user, data.token);
@@ -72,7 +72,7 @@ export default function Login() {
               Email
             </label>
             <input
-              type="email"
+              type="text"
               name="identifier"
               onChange={handleChange}
               required

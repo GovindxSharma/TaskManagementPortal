@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Pencil, Trash2, UserPlus, ArrowLeft, Search, X } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  UserPlus,
+  ArrowLeft,
+  Search,
+  X,
+  Eye,
+  EyeOff,
+  ClipboardCopy,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../../../components/layout/Loader";
 import axiosInstance from "../../../api/axiosInstance";
@@ -7,7 +17,7 @@ import { useToast } from "../../../components/layout/ToastProvider.jsx";
 
 const Employees = () => {
   const navigate = useNavigate();
-  const { success, error, confirmDelete } = useToast(); // ✅ Toast hook
+  const { success, error, confirmDelete } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
@@ -24,6 +34,9 @@ const Employees = () => {
 
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 👁️ password visibility toggle
+  const [showPassword, setShowPassword] = useState(false);
 
   // FETCH EMPLOYEES
   const fetchEmployees = async () => {
@@ -58,12 +71,14 @@ const Employees = () => {
       const payload = { ...form, role: "Employee" };
 
       if (editingId) {
-        delete payload.password;
+        if (!payload.password) delete payload.password;
         await axiosInstance.put(`/user/${editingId}`, payload);
+
         success("Employee updated");
       } else {
         if (!payload.password) return error("Password is required");
         await axiosInstance.post(`/user`, payload);
+
         success("Employee added");
       }
 
@@ -75,7 +90,7 @@ const Employees = () => {
     }
   };
 
-  // DELETE — using central delete confirmation
+  // DELETE
   const handleDelete = (id) => {
     confirmDelete({
       message: "Are you sure you want to delete this employee?",
@@ -126,9 +141,10 @@ const Employees = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
+    setShowPassword(false);
   };
 
-  // SEARCH with user_id support
+  // SEARCH
   const filteredEmployees = employees.filter((emp) => {
     const s = search.toLowerCase();
     return (
@@ -198,11 +214,26 @@ const Employees = () => {
             {filteredEmployees.map((emp) => (
               <tr
                 key={emp._id}
-                className="border-b last:border-0 hover:bg-gray-50 transition"
+                className="border-b last:border-0 hover:bg-gray-50 transition group"
               >
-                <td className="p-3 font-medium text-gray-800">
+                {/* User ID + Copy */}
+                <td className="p-3 font-medium text-gray-800 relative">
                   {emp.user_id || "—"}
+
+                  {emp.user_id && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(emp.user_id);
+                        success("Copied!");
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100
+             p-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                    >
+                      <ClipboardCopy size={16} className="text-gray-700" />
+                    </button>
+                  )}
                 </td>
+
                 <td className="p-3 font-medium text-gray-800">{emp.name}</td>
                 <td className="p-3 text-gray-700">{emp.email}</td>
                 <td className="p-3 text-gray-700">{emp.role}</td>
@@ -289,6 +320,36 @@ const Employees = () => {
                 />
               </div>
 
+              {/* NEW PASSWORD FIELD (Edit Mode Only) */}
+              {editingId && (
+                <div>
+                  <label className="text-sm text-gray-600">
+                    New Password (optional)
+                  </label>
+
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm({ ...form, password: e.target.value })
+                      }
+                      placeholder="Enter new password"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* PASSWORD FIELD IN ADD MODE */}
               {!editingId && (
                 <div>
                   <label className="text-sm text-gray-600">Password</label>

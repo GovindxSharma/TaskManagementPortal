@@ -387,27 +387,6 @@ const Clients = () => {
                   </select>
                 </div>
 
-                {/* Start Month */}
-                <div className="flex flex-col relative">
-                  <label className="text-sm font-medium text-gray-700 mb-1">
-                    Start Month
-                  </label>
-                  <select
-                    value={form.startMonth}
-                    onChange={(e) =>
-                      setForm({ ...form, startMonth: e.target.value })
-                    }
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
-                  >
-                    <option value="">Select Month</option>
-                    {months.map((m, i) => (
-                      <option key={i} value={i}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Start Year */}
                 <div className="flex flex-col relative">
                   <label className="text-sm font-medium text-gray-700 mb-1">
@@ -427,6 +406,27 @@ const Clients = () => {
                   <small className="text-gray-400 text-xs mt-1">
                     Can type custom numeric year
                   </small>
+                </div>
+
+                {/* Start Month */}
+                <div className="flex flex-col relative">
+                  <label className="text-sm font-medium text-gray-700 mb-1">
+                    Start Month
+                  </label>
+                  <select
+                    value={form.startMonth}
+                    onChange={(e) =>
+                      setForm({ ...form, startMonth: e.target.value })
+                    }
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
+                  >
+                    <option value="">Select Month</option>
+                    {months.map((m, i) => (
+                      <option key={i} value={i}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Attachments */}
