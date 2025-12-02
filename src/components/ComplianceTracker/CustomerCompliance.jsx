@@ -268,8 +268,8 @@ const handleClientClick = (id) => {
             <tr>
               <th className="p-3 text-left">#</th>
               <th className="p-3 text-left">Client Name</th>
-              <th className="p-3 text-left">Site</th>
               <th className="p-3 text-left">Business Unit</th>
+              <th className="p-3 text-left">Company Name</th>
               <th className="p-3 text-left">Assigned To</th>
               <th className="p-3 text-left">Last Update</th>
               <th className="p-3 text-left">Bill Update</th>
