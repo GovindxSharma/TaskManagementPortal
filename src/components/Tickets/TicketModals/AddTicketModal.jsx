@@ -81,14 +81,14 @@ const AddTicketModal = ({
           />
 
           {/* Due Date */}
-          <input
+          {/* <input
             type="date"
             value={newTicket.dueDate}
             onChange={(e) =>
               setNewTicket({ ...newTicket, dueDate: e.target.value })
             }
             className="border px-3 py-2 rounded-lg"
-          />
+          /> */}
 
           {/* Priority */}
           <select

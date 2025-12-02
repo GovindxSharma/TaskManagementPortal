@@ -74,13 +74,13 @@ const EditTicketModal = ({
             className="border px-3 py-2 rounded-lg"
           />
 
-          <label className="text-sm text-gray-600">Due Date</label>
+          {/* <label className="text-sm text-gray-600">Due Date</label>
           <input
             type="date"
             value={form.dueDate}
             onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
             className="border px-3 py-2 rounded-lg"
-          />
+          /> */}
 
           <label className="text-sm text-gray-600">Priority</label>
           <select
