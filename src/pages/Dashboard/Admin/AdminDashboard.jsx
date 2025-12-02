@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+// import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, ArrowRight, Settings } from "lucide-react";
 import {
@@ -14,9 +14,28 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { dashboardStats } from "../../../data/dashboardStats.jsx";
+import axios from "../../../api/axiosInstance";
+import React, { useEffect, useState } from "react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await axios.get(`/notification/unreadCount/${user._id}`);
+        setUnreadCount(res.data.count);
+      } catch (err) {
+        console.error("Failed to fetch unread count");
+      }
+    };
+
+    // load on mount
+    useEffect(() => {
+      fetchUnreadCount();
+    }, []);
+
 
   // ✅ Centralized stats import
   const stats = dashboardStats.admin;
@@ -80,8 +99,13 @@ export default function AdminDashboard() {
             onClick={() => navigate("/admin/notifications")}
           >
             <Bell className="text-gray-600" />
-            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+            )}
           </button>
+          
+          {/* pass refresh function to Notification page */}
+          {/* <NotificationsPage onStatusChange={fetchUnreadCount} /> */}
 
           {/* Settings */}
           <button
@@ -107,7 +131,9 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-gray-500 text-sm">{s.title}</p>
-                <p className="text-3xl font-semibold text-gray-800">{s.value}</p>
+                <p className="text-3xl font-semibold text-gray-800">
+                  {s.value}
+                </p>
               </div>
             </div>
             <ArrowRight className="text-gray-300 group-hover:text-gray-500 transition" />
@@ -133,7 +159,10 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {recentClients.map((c, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                <tr
+                  key={i}
+                  className="border-b last:border-0 hover:bg-gray-50 transition"
+                >
                   <td className="py-2 font-medium">{c.name}</td>
                   <td>{c.email}</td>
                   <td>
@@ -170,7 +199,10 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {recentTickets.map((t, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                <tr
+                  key={i}
+                  className="border-b last:border-0 hover:bg-gray-50 transition"
+                >
                   <td className="py-2">{t.id}</td>
                   <td>{t.subject}</td>
                   <td>{t.assigned}</td>
@@ -208,8 +240,20 @@ export default function AdminDashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="new" stroke="#4F46E5" strokeWidth={3} name="New Clients" />
-              <Line type="monotone" dataKey="inactive" stroke="#EF4444" strokeWidth={3} name="Inactive Clients" />
+              <Line
+                type="monotone"
+                dataKey="new"
+                stroke="#4F46E5"
+                strokeWidth={3}
+                name="New Clients"
+              />
+              <Line
+                type="monotone"
+                dataKey="inactive"
+                stroke="#EF4444"
+                strokeWidth={3}
+                name="Inactive Clients"
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
