@@ -221,8 +221,8 @@ const Clients = () => {
     { label: "Email", key: "email", type: "email" },
     { label: "GST Number", key: "gstNumber" },
     { label: "Address", key: "address" },
-    { label: "Business Unit", key: "businessUnit" },
-    { label: "Site", key: "site" },
+    { label: "Company Name", key: "businessUnit" },
+    { label: "Business Unit", key: "site" },
   ];
 
   return (
