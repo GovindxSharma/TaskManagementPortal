@@ -1,19 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { licenses as dummyLicenses } from "../../data/dummyClients";
-import { X, Edit, Plus } from "lucide-react";
-
-const getAllCategories = (licenses) => {
-  const categorySet = new Set();
-  licenses.forEach((l) =>
-    l.policies.forEach((p) => {
-      if (p.category && p.category.trim().length > 0) {
-        categorySet.add(p.category);
-      }
-    })
-  );
-  return Array.from(categorySet);
-};
+import { X, Edit, Plus, Trash2 } from "lucide-react";
+import axiosInstance from "../../api/axiosInstance";
+import { useToast } from "../../components/layout/ToastProvider.jsx";
+import Loader from "../../components/layout/Loader.jsx"; // centralized loader
 
 function Modal({ open, children, onClose }) {
   if (!open) return null;
@@ -25,7 +15,7 @@ function Modal({ open, children, onClose }) {
       aria-modal="true"
     >
       <div
-        className="bg-white rounded-xl p-8 shadow-2xl min-w-[400px] max-w-[800px] w-full relative"
+        className="bg-white rounded-xl p-6 shadow-xl w-full max-w-[800px] relative"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -43,154 +33,205 @@ function Modal({ open, children, onClose }) {
 
 export default function LicenseTrackerSection() {
   const navigate = useNavigate();
-  const [licenses, setLicenses] = useState(dummyLicenses);
+  const { success, error } = useToast();
+
+  const [licenses, setLicenses] = useState([]);
+  const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
-  const [newPolicy, setNewPolicy] = useState({
-    name: "",
-    start: "",
-    end: "",
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newLicense, setNewLicense] = useState({
+    client_id: "",
+    licenseName: "",
     category: "",
+    startDate: "",
+    endDate: "",
   });
-  const [filter, setFilter] = useState({
-    policyName: "",
+  const [editingLicense, setEditingLicense] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const [filters, setFilters] = useState({
+    licenseName: "",
     category: "",
-    endMonth: "",
+    endDate: "",
   });
-  const [editingIdx, setEditingIdx] = useState(null);
-  const [showAddRow, setShowAddRow] = useState(false);
 
-  const allCategories = useMemo(() => getAllCategories(licenses), [licenses]);
+  // FETCH LICENSES
+  const fetchLicenses = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosInstance.get("/license");
+      setLicenses(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+      error("Failed to fetch licenses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // FETCH CLIENTS
+  const fetchClients = async () => {
+    try {
+      setLoading(true);
+      const companyId = JSON.parse(
+        localStorage.getItem("user") || "{}"
+      )?.company_id;
+      const token = localStorage.getItem("token");
+      const res = await axiosInstance.get(`/client?company_id=${companyId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setClients(res.data.clients || []);
+    } catch (err) {
+      console.error(err);
+      error("Failed to fetch clients");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLicenses();
+    fetchClients();
+  }, []);
+
+  // FILTER CLIENTS BASED ON LICENSES
   const filteredClients = useMemo(() => {
-    return licenses.filter((client) =>
-      client.policies.some((policy) => {
-        const matchesName = filter.policyName
-          ? policy.name.toLowerCase().includes(filter.policyName.toLowerCase())
-          : true;
-        const matchesCategory = filter.category
-          ? policy.category
-              .toLowerCase()
-              .includes(filter.category.toLowerCase())
-          : true;
-        const matchesMonth = filter.endMonth
-          ? policy.end.slice(0, 7) === filter.endMonth
-          : true;
-        return matchesName && matchesCategory && matchesMonth;
+    return clients
+      .map((c) => {
+        const clientLicenses = licenses.filter(
+          (l) => l.client_id._id === c._id
+        );
+        const matching = clientLicenses.filter((l) => {
+          const matchesName = filters.licenseName
+            ? l.licenseName
+                .toLowerCase()
+                .includes(filters.licenseName.toLowerCase())
+            : true;
+          const matchesCategory = filters.category
+            ? l.category.toLowerCase().includes(filters.category.toLowerCase())
+            : true;
+          const matchesEndDate = filters.endDate
+            ? l.endDate.slice(0, 7) === filters.endDate
+            : true;
+          return matchesName && matchesCategory && matchesEndDate;
+        });
+        return matching.length > 0 ? { ...c, licenses: matching } : null;
       })
-    );
-  }, [licenses, filter]);
+      .filter(Boolean);
+  }, [clients, licenses, filters]);
 
-  const handleAddPolicy = () => {
+  // Add License
+  const handleAddLicense = async () => {
     if (
-      !selectedClient ||
-      !newPolicy.name ||
-      !newPolicy.start ||
-      !newPolicy.end ||
-      !newPolicy.category
+      !newLicense.client_id ||
+      !newLicense.licenseName ||
+      !newLicense.category ||
+      !newLicense.startDate ||
+      !newLicense.endDate
     )
+      return error("All fields are required");
+    try {
+      setLoading(true);
+      await axiosInstance.post("/license", newLicense);
+      success("License added");
+      setShowAddModal(false);
+      setNewLicense({
+        client_id: "",
+        licenseName: "",
+        category: "",
+        startDate: "",
+        endDate: "",
+      });
+      fetchLicenses();
+    } catch (err) {
+      console.error(err);
+      error(err.response?.data?.message || "Failed to add license");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete License
+  const handleDeleteLicense = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this license?"))
       return;
-    setLicenses(
-      licenses.map((l) =>
-        l.client === selectedClient.client
-          ? { ...l, policies: [...l.policies, { ...newPolicy }] }
-          : l
-      )
-    );
-    setNewPolicy({ name: "", start: "", end: "", category: "" });
-    setShowAddRow(false);
+    try {
+      setLoading(true);
+      await axiosInstance.delete(`/license/${id}`);
+      success("License deleted");
+      fetchLicenses();
+    } catch (err) {
+      console.error(err);
+      error(err.response?.data?.message || "Failed to delete license");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeletePolicy = (clientName, idx) => {
-    if (!window.confirm("Are you sure you want to delete this policy?")) return;
-    setLicenses(
-      licenses.map((l) =>
-        l.client === clientName
-          ? { ...l, policies: l.policies.filter((_, i) => i !== idx) }
-          : l
-      )
-    );
-    setEditingIdx(null);
-    setNewPolicy({ name: "", start: "", end: "", category: "" });
-  };
-
-  const handleSaveEdit = () => {
-    if (editingIdx === null) return;
-    setLicenses(
-      licenses.map((l) =>
-        l.client === selectedClient.client
-          ? {
-              ...l,
-              policies: l.policies.map((p, i) =>
-                i === editingIdx ? { ...newPolicy } : p
-              ),
-            }
-          : l
-      )
-    );
-    setNewPolicy({ name: "", start: "", end: "", category: "" });
-    setEditingIdx(null);
-  };
-
-  const handleClearFilters = () => {
-    setFilter({ policyName: "", category: "", endMonth: "" });
+  // Save Edited License
+  const handleSaveEdit = async () => {
+    if (!editingLicense) return;
+    try {
+      setLoading(true);
+      await axiosInstance.put(`/license/${editingLicense._id}`, editingLicense);
+      success("License updated");
+      setEditingLicense(null);
+      fetchLicenses();
+    } catch (err) {
+      console.error(err);
+      error(err.response?.data?.message || "Failed to update license");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
-    {/* Back button + heading */}
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-gray-600 hover:text-gray-800 font-medium px-3 py-2 bg-white rounded-lg shadow-sm"
-      >
-        ← Back
-      </button>
-  
-      <h2 className="text-2xl font-semibold text-gray-800">License Tracker</h2>
-    </div>
-  
+      {loading && <Loader />}
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 p-3 bg-gray-50 rounded-lg shadow-sm max-w-full">
-        <div className="flex items-center gap-2 flex-1 min-w-[140px]">
-          <input
-            placeholder="Search Policy..."
-            value={filter.policyName}
-            onChange={(e) =>
-              setFilter({ ...filter, policyName: e.target.value })
-            }
-            className="border rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-1 min-w-[130px]">
-          <input
-            type="month"
-            value={filter.endMonth}
-            onChange={(e) =>
-              setFilter({ ...filter, endMonth: e.target.value })
-            }
-            className="border rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-1 min-w-[130px]">
-          <input
-            type="text"
-            placeholder="Filter Category..."
-            value={filter.category}
-            onChange={(e) =>
-              setFilter({ ...filter, category: e.target.value })
-            }
-            className="border rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </div>
-        {(filter.policyName || filter.endMonth || filter.category) && (
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-semibold text-gray-800">
+          License Tracker
+        </h2>
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
+          onClick={() => setShowAddModal(true)}
+        >
+          <Plus size={16} /> Add License
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg shadow-sm items-center">
+        <input
+          type="text"
+          placeholder="Search License Name..."
+          value={filters.licenseName}
+          onChange={(e) =>
+            setFilters({ ...filters, licenseName: e.target.value })
+          }
+          className="border px-3 py-2 rounded-md w-full md:w-60 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <input
+          type="text"
+          placeholder="Category..."
+          value={filters.category}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+          className="border px-3 py-2 rounded-md w-full md:w-60 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <input
+          type="month"
+          placeholder="End Date..."
+          value={filters.endDate}
+          onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+          className="border px-3 py-2 rounded-md w-full md:w-40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        {(filters.licenseName || filters.category || filters.endDate) && (
           <button
-            className="text-xs bg-red-100 text-red-600 hover:bg-red-200 rounded px-3 py-1 transition"
-            onClick={handleClearFilters}
+            className="bg-red-100 text-red-600 px-3 py-2 rounded hover:bg-red-200 transition text-sm"
+            onClick={() =>
+              setFilters({ licenseName: "", category: "", endDate: "" })
+            }
           >
             Clear Filters
           </button>
@@ -198,69 +239,215 @@ export default function LicenseTrackerSection() {
       </div>
 
       {/* Clients Table */}
-      <table className="w-full border mb-4 rounded-lg overflow-hidden">
+      <table className="w-full border rounded-lg overflow-hidden mb-4">
         <thead className="bg-blue-50 border-b border-blue-300">
           <tr className="text-blue-800 text-base">
-            <th className="p-2 text-left">Client</th>
-            <th className="p-2 text-left"># Policies</th>
+            <th className="p-3 text-left">Client</th>
+            <th className="p-3 text-left"># Licenses</th>
           </tr>
         </thead>
         <tbody>
           {filteredClients.length === 0 && (
             <tr>
-              <td colSpan={2} className="text-center py-4 text-gray-400 italic">
-                No clients found matching filters.
+              <td colSpan={2} className="text-center py-6 text-gray-400 italic">
+                No clients with licenses matching filters.
               </td>
             </tr>
           )}
-          {filteredClients.map((client) => (
+          {filteredClients.map((c) => (
             <tr
+              key={c._id}
               className="hover:bg-blue-100 cursor-pointer transition"
-              key={client.id}
-              onClick={() => setSelectedClient(client)}
+              onClick={() => setSelectedClient(c)}
             >
-              <td className="p-2 font-medium">{client.client}</td>
-              <td className="p-2">{client.policies.length}</td>
+              <td className="p-3 font-medium">{c.name}</td>
+              <td className="p-3">{c.licenses.length}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* Modal Pop-up */}
-      <Modal
-        open={!!selectedClient}
-        onClose={() => {
-          setSelectedClient(null);
-          setEditingIdx(null);
-          setShowAddRow(false);
-          setNewPolicy({ name: "", start: "", end: "", category: "" });
-        }}
-      >
-        {selectedClient && (
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-blue-800 text-xl">
-                {selectedClient.client} Policies
-              </h3>
-              {!showAddRow && (
-                <button
-                  className="bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-2"
-                  onClick={() => {
-                    setShowAddRow(true);
-                    setEditingIdx(null);
-                    setNewPolicy({ name: "", start: "", end: "", category: "" });
-                  }}
-                >
-                  <Plus size={16} /> Add Policy
-                </button>
-              )}
-            </div>
+      {/* View Client Licenses */}
+      <Modal open={!!selectedClient} onClose={() => setSelectedClient(null)}>
+        <h3 className="text-xl font-semibold mb-4">
+          {selectedClient?.name} Licenses
+        </h3>
+        <table className="w-full border rounded-lg overflow-hidden">
+          <thead className="bg-gray-100 border-b">
+            <tr>
+              <th className="p-2 text-left">License Name</th>
+              <th className="p-2 text-left">Category</th>
+              <th className="p-2 text-left">Start Date</th>
+              <th className="p-2 text-left">End Date</th>
+              <th className="p-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {selectedClient?.licenses.map((l) => (
+              <tr key={l._id} className="border-b hover:bg-gray-50 transition">
+                <td className="p-2">{l.licenseName}</td>
+                <td className="p-2">{l.category}</td>
+                <td className="p-2">{l.startDate.slice(0, 10)}</td>
+                <td className="p-2">{l.endDate.slice(0, 10)}</td>
+                <td className="p-2 flex justify-center gap-2">
+                  <button
+                    className="p-1 bg-yellow-100 hover:bg-yellow-200 rounded"
+                    onClick={() => setEditingLicense(l)}
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button
+                    className="p-1 bg-red-100 hover:bg-red-200 rounded"
+                    onClick={() => handleDeleteLicense(l._id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
 
-            <div className="overflow-x-auto">
-              {/* policy table here (unchanged) */}
-            </div>
+            {/* Edit License Row */}
+            {editingLicense && (
+              <tr className="bg-blue-50">
+                <td>
+                  <input
+                    type="text"
+                    value={editingLicense.licenseName}
+                    onChange={(e) =>
+                      setEditingLicense({
+                        ...editingLicense,
+                        licenseName: e.target.value,
+                      })
+                    }
+                    className="border px-2 py-1 rounded w-full"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    value={editingLicense.category}
+                    onChange={(e) =>
+                      setEditingLicense({
+                        ...editingLicense,
+                        category: e.target.value,
+                      })
+                    }
+                    className="border px-2 py-1 rounded w-full"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="date"
+                    value={editingLicense.startDate.slice(0, 10)}
+                    onChange={(e) =>
+                      setEditingLicense({
+                        ...editingLicense,
+                        startDate: e.target.value,
+                      })
+                    }
+                    className="border px-2 py-1 rounded w-full"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="date"
+                    value={editingLicense.endDate.slice(0, 10)}
+                    onChange={(e) =>
+                      setEditingLicense({
+                        ...editingLicense,
+                        endDate: e.target.value,
+                      })
+                    }
+                    className="border px-2 py-1 rounded w-full"
+                  />
+                </td>
+                <td className="flex gap-2 justify-center">
+                  <button
+                    className="bg-green-600 text-white px-3 py-1 rounded"
+                    onClick={handleSaveEdit}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="bg-gray-300 px-3 py-1 rounded"
+                    onClick={() => setEditingLicense(null)}
+                  >
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Modal>
+
+      {/* Add License Modal */}
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)}>
+        <h3 className="text-xl font-semibold mb-4">Add License</h3>
+        <div className="flex flex-col gap-4">
+          <select
+            value={newLicense.client_id}
+            onChange={(e) =>
+              setNewLicense({ ...newLicense, client_id: e.target.value })
+            }
+            className="border px-3 py-2 rounded-md w-full"
+          >
+            <option value="">Select Client</option>
+            {clients.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="License Name"
+            value={newLicense.licenseName}
+            onChange={(e) =>
+              setNewLicense({ ...newLicense, licenseName: e.target.value })
+            }
+            className="border px-3 py-2 rounded-md w-full"
+          />
+          <input
+            type="text"
+            placeholder="Category"
+            value={newLicense.category}
+            onChange={(e) =>
+              setNewLicense({ ...newLicense, category: e.target.value })
+            }
+            className="border px-3 py-2 rounded-md w-full"
+          />
+          <input
+            type="date"
+            value={newLicense.startDate}
+            onChange={(e) =>
+              setNewLicense({ ...newLicense, startDate: e.target.value })
+            }
+            className="border px-3 py-2 rounded-md w-full"
+          />
+          <input
+            type="date"
+            value={newLicense.endDate}
+            onChange={(e) =>
+              setNewLicense({ ...newLicense, endDate: e.target.value })
+            }
+            className="border px-3 py-2 rounded-md w-full"
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+              onClick={handleAddLicense}
+            >
+              Add License
+            </button>
+            <button
+              className="bg-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
           </div>
-        )}
+        </div>
       </Modal>
     </div>
   );
