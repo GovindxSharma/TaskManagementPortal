@@ -95,18 +95,17 @@ const TicketsTable = ({
                   {/* Delete button (Admin only) */}
                   {isAdmin && (
                     <button
-                      onClick={() => {
-                        // Close modals if this ticket is selected
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row clicks from blocking this
+                        // Trigger delete first
+                        handleDelete(t._id);
+
+                        // Reset selected states
                         if (t._id === selectedTicket?._id) {
                           setShowEditModal(false);
                         }
-
-                        // Reset selected states
                         setSelectedTicket(null);
                         setSelectedEmp({ _id: null, name: "" });
-
-                        // Trigger delete
-                        handleDelete(t._id);
                       }}
                       className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
                     >

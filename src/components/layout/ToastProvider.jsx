@@ -21,17 +21,24 @@ export const ToastProvider = ({ children }) => {
     success: (msg) => addToast("success", msg),
     error: (msg) => addToast("error", msg),
     warning: (msg) => addToast("warning", msg),
+
     confirmAction: ({ message, onConfirm, type = "default" }) =>
       setConfirmData({ message, onConfirm, type }),
+
+    confirmDelete: ({ message, onConfirm }) =>
+      setConfirmData({ message, onConfirm, type: "delete" }),
   };
 
   const handleConfirm = () => {
-    if (confirmData?.onConfirm) confirmData.onConfirm();
+    const { onConfirm, type } = confirmData || {};
+    // Call the user-provided confirm function first
+    if (onConfirm) onConfirm();
+
+    // Close the modal
     setConfirmData(null);
 
-    // Only auto-toast for delete type
-    if (confirmData?.type === "delete")
-      addToast("success", "Deleted successfully");
+    // Auto-toast for delete AFTER closing modal
+    if (type === "delete") addToast("success", "Deleted successfully");
   };
 
   const handleCancel = () => setConfirmData(null);
@@ -40,7 +47,7 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={toast}>
       {children}
 
-      {/* Toast Container */}
+      {/* Toast container */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col gap-3 z-[9999]">
         {toasts.map((t) => (
           <ToastItem key={t.id} type={t.type} message={t.message} />
