@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Bell, Settings } from "lucide-react";
 import {
@@ -12,11 +12,30 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-
 import { dashboardStats } from "../../../data/dashboardStats.jsx";
+import axios from "../../../api/axiosInstance";
 
 const AccountantDashboard = () => {
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUserId = user._id;
+
+  // Fetch unread notifications count
+  const fetchUnreadCount = async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await axios.get(`/notification/unreadCount/${currentUserId}`);
+      setUnreadCount(res.data.count || 0);
+    } catch (err) {
+      console.error("Failed to fetch unread notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [currentUserId]);
 
   // Use centralized stats
   const stats = dashboardStats.accountant;
@@ -78,7 +97,9 @@ const AccountantDashboard = () => {
             onClick={() => navigate("/accountant/notifications")}
           >
             <Bell className="text-gray-600" />
-            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse"></span>
+            )}
           </button>
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
@@ -167,50 +188,6 @@ const AccountantDashboard = () => {
               <li key={i}>{n}</li>
             ))}
           </ul>
-        </div>
-
-        {/* Overdue Clients */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Overdue Clients
-          </h2>
-          <ul className="list-disc pl-5 space-y-2 text-gray-700">
-            {overdueClients.map((o, i) => (
-              <li key={i}>
-                {o.name} - {o.days} day(s) overdue
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Compliance Tracker Mini */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Compliance Tracker
-          </h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={complianceStats}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="processed"
-                stroke="#4F46E5"
-                name="Processed"
-                strokeWidth={3}
-              />
-              <Line
-                type="monotone"
-                dataKey="pending"
-                stroke="#EF4444"
-                name="Pending"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>

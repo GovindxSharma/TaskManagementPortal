@@ -16,17 +16,17 @@ export default function NotificationsPage({ onStatusChange }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserId = user._id;
 
-  // 🔹 Fetch unread count for the orange dot
+  // 🔸 Fetch unread dot count
   const fetchUnreadCount = async () => {
     try {
       const res = await axios.get(`/notification/unreadCount/${currentUserId}`);
-      onStatusChange?.(res.data.count); // update dashboard icon
+      onStatusChange?.(res.data.count);
     } catch (err) {
       console.error("Failed to fetch unread count");
     }
   };
 
-  // fetch notifications on mount
+  // 🔸 Load notifications
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -34,7 +34,7 @@ export default function NotificationsPage({ onStatusChange }) {
       try {
         const res = await axios.get(`/notification/recipient/${currentUserId}`);
         setNotifications(res.data.data);
-        fetchUnreadCount(); // update unread dot
+        fetchUnreadCount();
       } catch {
         toast.error("Failed to load notifications");
       }
@@ -43,6 +43,7 @@ export default function NotificationsPage({ onStatusChange }) {
     loadNotifications();
   }, [currentUserId]);
 
+  // 🔸 Filters
   const filteredNotifications = notifications.filter(
     (n) =>
       (filter === "all" || n.type === filter) &&
@@ -51,58 +52,67 @@ export default function NotificationsPage({ onStatusChange }) {
 
   const toggleSelect = (id) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  // SMART SELECT
+  // 🔸 SMART SELECT
   const selectAll = () => setSelected(filteredNotifications.map((n) => n._id));
   const selectUnread = () =>
-    setSelected(
-      filteredNotifications.filter((n) => !n.isRead).map((n) => n._id)
-    );
+    setSelected(filteredNotifications.filter((n) => !n.isRead).map((n) => n._id));
   const selectRead = () =>
-    setSelected(
-      filteredNotifications.filter((n) => n.isRead).map((n) => n._id)
-    );
+    setSelected(filteredNotifications.filter((n) => n.isRead).map((n) => n._id));
   const clearSelection = () => setSelected([]);
 
-  // MARK AS READ
+  // 🔸 MARK AS READ
   const markAsRead = async () => {
     try {
       await Promise.all(
         selected.map((id) => axios.put(`/notification/read/${id}`))
       );
+
       setNotifications((prev) =>
         prev.map((n) => (selected.includes(n._id) ? { ...n, isRead: true } : n))
       );
+
       setSelected([]);
       toast.success("Selected notifications marked as read");
-      fetchUnreadCount(); // refresh orange dot
+      fetchUnreadCount();
     } catch {
       toast.error("Failed to mark notifications as read");
     }
   };
 
-  // DELETE
+  // 🔥🔥 FIXED DELETE LOGIC 🔥🔥
   const deleteNotifications = () => {
     if (!selected.length) return;
 
     toast.confirmDelete({
       message: `Delete ${selected.length} notification(s)?`,
-      onConfirm: () => {
-        setNotifications((prev) =>
-          prev.filter((n) => !selected.includes(n._id))
-        );
-        setSelected([]);
-        fetchUnreadCount(); // refresh orange dot
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            selected.map((id) => axios.delete(`/notification/${id}`))
+          );
+
+          setNotifications((prev) =>
+            prev.filter((n) => !selected.includes(n._id))
+          );
+
+          setSelected([]);
+
+          fetchUnreadCount();
+        } catch (err) {
+          console.error("Delete error:", err);
+          toast.error("Failed to delete notifications");
+        }
       },
     });
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">
-      {/* Top Bar */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Notifications</h1>
         <button
@@ -138,7 +148,7 @@ export default function NotificationsPage({ onStatusChange }) {
         />
       </div>
 
-      {/* SMART SELECT MENU */}
+      {/* Smart Select */}
       <div className="relative mb-4">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -149,47 +159,23 @@ export default function NotificationsPage({ onStatusChange }) {
 
         {menuOpen && (
           <div className="absolute mt-2 w-48 bg-white rounded-lg shadow-lg border z-20">
-            <button
-              onClick={() => {
-                selectAll();
-                setMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-            >
+            <button className="block w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => {selectAll(); setMenuOpen(false);}}>
               Select All
             </button>
-            <button
-              onClick={() => {
-                selectUnread();
-                setMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-            >
+            <button className="block w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => {selectUnread(); setMenuOpen(false);}}>
               Select Unread
             </button>
-            <button
-              onClick={() => {
-                selectRead();
-                setMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-            >
+            <button className="block w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => {selectRead(); setMenuOpen(false);}}>
               Select Read
             </button>
-            <button
-              onClick={() => {
-                clearSelection();
-                setMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-            >
+            <button className="block w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => {clearSelection(); setMenuOpen(false);}}>
               Clear Selection
             </button>
           </div>
         )}
       </div>
 
-      {/* ACTION BUTTONS */}
+      {/* Action Buttons */}
       <div className="flex gap-3 mb-4">
         <button
           onClick={markAsRead}
@@ -216,12 +202,10 @@ export default function NotificationsPage({ onStatusChange }) {
         </button>
       </div>
 
-      {/* NOTIFICATION LIST */}
+      {/* Notification List */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-2">
         {filteredNotifications.length === 0 && (
-          <p className="text-gray-500 text-center py-10">
-            No notifications found.
-          </p>
+          <p className="text-gray-500 text-center py-10">No notifications found.</p>
         )}
 
         {filteredNotifications.map((n) => (
@@ -238,6 +222,7 @@ export default function NotificationsPage({ onStatusChange }) {
                 onChange={() => toggleSelect(n._id)}
                 className="w-4 h-4"
               />
+
               <span className={`${!n.isRead ? "font-semibold" : ""}`}>
                 {n.message}
               </span>

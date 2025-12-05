@@ -112,7 +112,7 @@ const [showEditModal, setShowEditModal] = useState(false);
           setLoading(true);
           await axios.delete(`/ticket/${id}`);
           await fetchAll();
-          toast.success("Ticket deleted!");
+          // toast.success("Ticket deleted!");
         } catch (err) {
           console.error(err);
           toast.error("Failed to delete ticket");

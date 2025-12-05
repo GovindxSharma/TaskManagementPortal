@@ -4,33 +4,71 @@ import { useNavigate } from "react-router-dom";
 import { Bell, ArrowRight, Settings } from "lucide-react";
 import { dashboardStats } from "../../../data/dashboardStats";
 import Loader from "../../../components/layout/Loader";
+import axiosInstance from "../../../api/axiosInstance";
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true); // ✅ Loader state
+  const [loading, setLoading] = useState(true); // Loader state
+  const [unreadCount, setUnreadCount] = useState(0); // 🔴 unread notifications
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUserId = user._id;
+
+  // 🔹 Fetch unread notifications for employee
+  const fetchUnreadCount = async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await axiosInstance.get(
+        `/notification/unreadCount/${currentUserId}`
+      );
+      setUnreadCount(res.data.count || 0);
+    } catch (err) {
+      console.error("Failed to fetch unread notifications:", err);
+    }
+  };
 
   useEffect(() => {
-    // Simulate data fetching delay (replace with real API if needed)
+    // Simulate data fetching delay
     const timer = setTimeout(() => setLoading(false), 1200);
+    fetchUnreadCount(); // fetch unread notifications on mount
     return () => clearTimeout(timer);
   }, []);
 
-  // ✅ Show loader until data is loaded
   if (loading) return <Loader fullscreen={true} size={250} />;
 
-  // ✅ Centralized stats (dummy for now)
   const stats = dashboardStats.employee;
 
   const assignedTasks = [
-    { task: "GST Filing for Acme Corp", dueDate: "Nov 12, 2025", status: "In Progress" },
-    { task: "License Renewal for GreenLeaf Pvt Ltd", dueDate: "Nov 15, 2025", status: "Pending" },
-    { task: "Password Rotation for ZenTax Advisors", dueDate: "Nov 5, 2025", status: "Completed" },
+    {
+      task: "GST Filing for Acme Corp",
+      dueDate: "Nov 12, 2025",
+      status: "In Progress",
+    },
+    {
+      task: "License Renewal for GreenLeaf Pvt Ltd",
+      dueDate: "Nov 15, 2025",
+      status: "Pending",
+    },
+    {
+      task: "Password Rotation for ZenTax Advisors",
+      dueDate: "Nov 5, 2025",
+      status: "Completed",
+    },
   ];
 
   const recentNotifications = [
-    { message: "New task assigned: Income Tax filing for Zenith Corp", time: "2 hours ago" },
-    { message: "Client GreenLeaf Pvt Ltd overdue by 3 days", time: "1 day ago" },
-    { message: "Reminder: License renewal due tomorrow for Acme Corp", time: "3 days ago" },
+    {
+      message: "New task assigned: Income Tax filing for Zenith Corp",
+      time: "2 hours ago",
+    },
+    {
+      message: "Client GreenLeaf Pvt Ltd overdue by 3 days",
+      time: "1 day ago",
+    },
+    {
+      message: "Reminder: License renewal due tomorrow for Acme Corp",
+      time: "3 days ago",
+    },
   ];
 
   const complianceList = [
@@ -59,7 +97,9 @@ export default function EmployeeDashboard() {
             onClick={() => navigate("/employee/notifications")}
           >
             <Bell className="text-gray-600" />
-            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse"></span>
+            )}
           </button>
 
           {/* Settings */}
@@ -84,7 +124,9 @@ export default function EmployeeDashboard() {
               <div className="p-3 bg-gray-100 rounded-lg">{s.icon}</div>
               <div>
                 <p className="text-gray-500 text-sm">{s.title}</p>
-                <p className="text-3xl font-semibold text-gray-800">{s.value}</p>
+                <p className="text-3xl font-semibold text-gray-800">
+                  {s.value}
+                </p>
               </div>
             </div>
             <ArrowRight className="text-gray-400 transition" />
@@ -96,7 +138,9 @@ export default function EmployeeDashboard() {
       <div className="grid md:grid-cols-2 gap-6">
         {/* Assigned Tasks */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Assigned Tasks</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Assigned Tasks
+          </h2>
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
@@ -107,7 +151,10 @@ export default function EmployeeDashboard() {
             </thead>
             <tbody>
               {assignedTasks.map((t, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                <tr
+                  key={i}
+                  className="border-b last:border-0 hover:bg-gray-50 transition"
+                >
                   <td className="py-2 font-medium">{t.task}</td>
                   <td>
                     <span
@@ -131,7 +178,9 @@ export default function EmployeeDashboard() {
 
         {/* Recent Notifications */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Notifications</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Recent Notifications
+          </h2>
           <ul className="divide-y text-gray-700 text-sm">
             {recentNotifications.map((n, i) => (
               <li key={i} className="py-3 flex justify-between items-start">
@@ -150,7 +199,9 @@ export default function EmployeeDashboard() {
 
         {/* Compliance Tracker */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Compliance Tracker</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Compliance Tracker
+          </h2>
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
@@ -161,7 +212,10 @@ export default function EmployeeDashboard() {
             </thead>
             <tbody>
               {complianceList.map((c, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                <tr
+                  key={i}
+                  className="border-b last:border-0 hover:bg-gray-50 transition"
+                >
                   <td className="py-2 font-medium">{c.client}</td>
                   <td>{c.progress}</td>
                   <td>
@@ -185,7 +239,9 @@ export default function EmployeeDashboard() {
 
         {/* Overdue Clients */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Overdue Clients</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Overdue Clients
+          </h2>
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
@@ -196,7 +252,10 @@ export default function EmployeeDashboard() {
             </thead>
             <tbody>
               {overdueClients.map((o, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 transition">
+                <tr
+                  key={i}
+                  className="border-b last:border-0 hover:bg-gray-50 transition"
+                >
                   <td className="py-2 font-medium">{o.client}</td>
                   <td>{o.days}</td>
                   <td className="font-semibold text-red-600">{o.amount}</td>
