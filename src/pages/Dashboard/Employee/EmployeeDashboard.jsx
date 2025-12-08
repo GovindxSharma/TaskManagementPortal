@@ -1,4 +1,3 @@
-// src/pages/Dashboard/Employee/EmployeeDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, ArrowRight, Settings } from "lucide-react";
@@ -8,13 +7,17 @@ import axiosInstance from "../../../api/axiosInstance";
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true); // Loader state
-  const [unreadCount, setUnreadCount] = useState(0); // 🔴 unread notifications
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [recentNotifications, setRecentNotifications] = useState([]);
+  const [overdueClients, setOverdueClients] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
+  const [loadingOverdue, setLoadingOverdue] = useState(true);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserId = user._id;
 
-  // 🔹 Fetch unread notifications for employee
+  // Fetch unread notifications count
   const fetchUnreadCount = async () => {
     if (!currentUserId) return;
     try {
@@ -27,17 +30,51 @@ export default function EmployeeDashboard() {
     }
   };
 
-  useEffect(() => {
-    // Simulate data fetching delay
-    const timer = setTimeout(() => setLoading(false), 1200);
-    fetchUnreadCount(); // fetch unread notifications on mount
-    return () => clearTimeout(timer);
-  }, []);
+  // Fetch latest 5 notifications
+  const fetchRecentNotifications = async () => {
+    if (!currentUserId) return;
+    setLoadingNotifications(true);
+    try {
+      const res = await axiosInstance.get(
+        `/notification/recipient/${currentUserId}`
+      );
+      const notifications = res.data.data || [];
+      notifications.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setRecentNotifications(notifications.slice(0, 5));
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
-  if (loading) return <Loader fullscreen={true} size={250} />;
+  // Fetch overdue clients
+const fetchOverdueClients = async () => {
+  setLoadingOverdue(true);
+  try {
+    const res = await axiosInstance.get("/client/overdue");
+    const clients = res.data.data || [];
+    // Sort by createdAt descending so latest overdue clients first
+    clients.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    setOverdueClients(clients.slice(0, 5));
+  } catch (err) {
+    console.error("Failed to fetch overdue clients:", err);
+  } finally {
+    setLoadingOverdue(false);
+  }
+};
+
+  useEffect(() => {
+    fetchUnreadCount();
+    fetchRecentNotifications();
+    fetchOverdueClients();
+    const timer = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, [currentUserId]);
 
   const stats = dashboardStats.employee;
-
   const assignedTasks = [
     {
       task: "GST Filing for Acme Corp",
@@ -56,31 +93,13 @@ export default function EmployeeDashboard() {
     },
   ];
 
-  const recentNotifications = [
-    {
-      message: "New task assigned: Income Tax filing for Zenith Corp",
-      time: "2 hours ago",
-    },
-    {
-      message: "Client GreenLeaf Pvt Ltd overdue by 3 days",
-      time: "1 day ago",
-    },
-    {
-      message: "Reminder: License renewal due tomorrow for Acme Corp",
-      time: "3 days ago",
-    },
-  ];
-
   const complianceList = [
     { client: "Acme Corp", progress: "80%", status: "In Progress" },
     { client: "GreenLeaf Pvt Ltd", progress: "100%", status: "Completed" },
     { client: "ZenTax Advisors", progress: "60%", status: "Pending" },
   ];
 
-  const overdueClients = [
-    { client: "GreenLeaf Pvt Ltd", days: "3 days overdue", amount: "₹12,000" },
-    { client: "FutureTax Pvt Ltd", days: "7 days overdue", amount: "₹18,500" },
-  ];
+  if (loading) return <Loader fullscreen={true} size={250} />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
@@ -89,9 +108,7 @@ export default function EmployeeDashboard() {
         <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
           Employee Dashboard
         </h1>
-
         <div className="flex items-center">
-          {/* Notifications */}
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
             onClick={() => navigate("/employee/notifications")}
@@ -101,8 +118,6 @@ export default function EmployeeDashboard() {
               <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse"></span>
             )}
           </button>
-
-          {/* Settings */}
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
             onClick={() => navigate("/employee/settings")}
@@ -181,14 +196,24 @@ export default function EmployeeDashboard() {
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Notifications
           </h2>
-          <ul className="divide-y text-gray-700 text-sm">
-            {recentNotifications.map((n, i) => (
-              <li key={i} className="py-3 flex justify-between items-start">
-                <p className="font-medium">{n.message}</p>
-                <span className="text-gray-500 text-xs">{n.time}</span>
-              </li>
-            ))}
-          </ul>
+          {loadingNotifications ? (
+            <Loader fullscreen={false} size={100} />
+          ) : recentNotifications.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">
+              🎉 No new notifications!
+            </p>
+          ) : (
+            <ul className="divide-y text-gray-700 text-sm">
+              {recentNotifications.map((n, i) => (
+                <li key={i} className="py-3 flex justify-between items-start">
+                  <p className="font-medium">{n.message}</p>
+                  <span className="text-gray-500 text-xs">
+                    {new Date(n.createdAt).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <button
             onClick={() => navigate("/employee/notifications")}
             className="text-indigo-600 text-sm font-medium mt-3 hover:underline"
@@ -242,27 +267,35 @@ export default function EmployeeDashboard() {
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Overdue Clients
           </h2>
-          <table className="w-full text-sm text-gray-700">
-            <thead className="border-b text-gray-600">
-              <tr>
-                <th className="pb-2 text-left">Client</th>
-                <th className="pb-2 text-left">Overdue By</th>
-                <th className="pb-2 text-left">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {overdueClients.map((o, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
-                  <td className="py-2 font-medium">{o.client}</td>
-                  <td>{o.days}</td>
-                  <td className="font-semibold text-red-600">{o.amount}</td>
+          {loadingOverdue ? (
+            <Loader fullscreen={false} size={100} />
+          ) : overdueClients.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">
+              🎉 No overdue clients!
+            </p>
+          ) : (
+            <table className="w-full text-sm text-gray-700">
+              <thead className="border-b text-gray-600">
+                <tr>
+                  <th className="pb-2 text-left">Client</th>
+                  <th className="pb-2 text-left">Amount</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {overdueClients.map((o, i) => (
+                  <tr
+                    key={i}
+                    className="border-b last:border-0 hover:bg-gray-50 transition"
+                  >
+                    <td className="py-2 font-medium">{o.name}</td>
+                    <td className="font-semibold text-red-600">
+                      ₹{o.overdueAmount?.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
