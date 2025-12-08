@@ -14,10 +14,15 @@ import {
 
 import { dashboardStats } from "../../../data/dashboardStats.jsx";
 import axios from "../../../api/axiosInstance";
+import Loader from "../../../components/layout/Loader.jsx";
 
 const AccountantDashboard = () => {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [recentBills, setRecentBills] = useState([]);
+  const [recentNotifications, setRecentNotifications] = useState([]);
+  const [loadingBills, setLoadingBills] = useState(true);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserId = user._id;
@@ -33,56 +38,64 @@ const AccountantDashboard = () => {
     }
   };
 
+  // Fetch latest 5 pending bills
+  const fetchPendingBills = async () => {
+    setLoadingBills(true);
+    try {
+      const res = await axios.get("/monthly-compliance/bill-pending");
+      const bills = res.data.clients || [];
+      bills.sort(
+        (a, b) =>
+          b.year - a.year || parseInt(b.month, 10) - parseInt(a.month, 10)
+      );
+      setRecentBills(bills.slice(0, 5));
+    } catch (err) {
+      console.error("Failed to fetch pending bills:", err);
+    } finally {
+      setLoadingBills(false);
+    }
+  };
+
+  // Fetch latest 5 notifications for user
+const fetchRecentNotifications = async () => {
+  if (!currentUserId) return;
+  setLoadingNotifications(true);
+  try {
+    const res = await axios.get(`/notification/recipient/${currentUserId}`);
+    const notifications = res.data.data || []; // <-- use .data instead of .notifications
+    notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    setRecentNotifications(notifications.slice(0, 5));
+  } catch (err) {
+    console.error("Failed to fetch notifications:", err);
+  } finally {
+    setLoadingNotifications(false);
+  }
+};
+
   useEffect(() => {
     fetchUnreadCount();
+    fetchPendingBills();
+    fetchRecentNotifications();
   }, [currentUserId]);
 
-  // Use centralized stats
-  const stats = dashboardStats.accountant;
-
-  // Dummy data for bottom panels
-  const recentTasks = [
-    {
-      client: "Aarav Enterprises",
-      description: "Generate bill for October data",
-      deadline: "2025-10-25",
-      status: "Pending",
-    },
-    {
-      client: "BlueSky Corp",
-      description: "Verify processed data & generate bill",
-      deadline: "2025-10-22",
-      status: "In Progress",
-    },
-    {
-      client: "VisionTech",
-      description: "Mark overdue client & notify team",
-      deadline: "2025-10-18",
-      status: "Completed",
-    },
-  ];
-
-  const notifications = [
-    "Data processing complete: Aarav Enterprises",
-    "BlueSky Corp pending bill generated",
-    "New overdue client added: VisionTech",
-    "Ticket #TCK204 updated",
-    "License renewal required for GreenLeaf Pvt Ltd",
-  ];
-
-  const overdueClients = [
-    { name: "GreenLeaf Pvt Ltd", days: 3 },
-    { name: "ZenTax Advisors", days: 7 },
-  ];
-
-  const complianceStats = [
-    { month: "Jan", processed: 10, pending: 5 },
-    { month: "Feb", processed: 12, pending: 3 },
-    { month: "Mar", processed: 8, pending: 6 },
-    { month: "Apr", processed: 15, pending: 2 },
-    { month: "May", processed: 18, pending: 4 },
-    { month: "Jun", processed: 14, pending: 3 },
-  ];
+  // Helper for month name
+  const getMonthName = (month) => {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return !isNaN(month) ? months[parseInt(month, 10) - 1] : month;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 p-8">
@@ -110,9 +123,9 @@ const AccountantDashboard = () => {
         </div>
       </div>
 
-      {/* Top Cards - Dynamic */}
+      {/* Top Cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-6 mb-10">
-        {stats.map((s, i) => (
+        {dashboardStats.accountant.map((s, i) => (
           <div
             key={i}
             onClick={() => navigate(s.link)}
@@ -139,43 +152,46 @@ const AccountantDashboard = () => {
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Pending Bills
           </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left border-collapse">
-              <thead>
-                <tr className="text-gray-600 border-b">
-                  <th className="py-3 px-4">Client</th>
-                  <th className="py-3 px-4">Task</th>
-                  <th className="py-3 px-4">Deadline</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTasks.map((t, i) => (
-                  <tr
-                    key={i}
-                    className="border-b last:border-none hover:bg-indigo-50/40 transition"
-                  >
-                    <td className="py-3 px-4 font-medium">{t.client}</td>
-                    <td className="py-3 px-4">{t.description}</td>
-                    <td className="py-3 px-4 text-gray-500">{t.deadline}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          t.status === "Completed"
-                            ? "bg-green-100 text-green-700"
-                            : t.status === "In Progress"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {t.status}
-                      </span>
-                    </td>
+          {loadingBills ? (
+            <Loader fullscreen={false} size={100} />
+          ) : recentBills.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">
+              🎉 No pending bills!
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="text-gray-600 border-b">
+                    <th className="py-2 px-3">Client</th>
+                    <th className="py-2 px-3">Month</th>
+                    <th className="py-2 px-3">Year</th>
+                    <th className="py-2 px-3">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recentBills.map((b, i) => (
+                    <tr
+                      key={i}
+                      className="border-b last:border-none hover:bg-indigo-50/40 transition"
+                      onClick={() =>
+                        navigate(`/accountant/pending-bills/${b.clientId}`)
+                      }
+                    >
+                      <td className="py-2 px-3 font-medium">{b.clientName}</td>
+                      <td className="py-2 px-3">{getMonthName(b.month)}</td>
+                      <td className="py-2 px-3">{b.year}</td>
+                      <td className="py-2 px-3">
+                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
+                          {b.billStatus || "Pending"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Recent Notifications */}
@@ -183,11 +199,19 @@ const AccountantDashboard = () => {
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Notifications
           </h2>
-          <ul className="list-disc pl-5 space-y-2 text-gray-700">
-            {notifications.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
+          {loadingNotifications ? (
+            <Loader fullscreen={false} size={100} />
+          ) : recentNotifications.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">
+              🎉 No new notifications!
+            </p>
+          ) : (
+            <ul className="list-disc pl-5 space-y-2 text-gray-700">
+              {recentNotifications.map((n, i) => (
+                <li key={i}>{n.message}</li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
