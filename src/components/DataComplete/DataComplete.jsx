@@ -95,7 +95,6 @@ const DataComplete = () => {
       clientName: "",
       month: "",
       year: "",
-      assignedTo: "",
       billStatus: "",
     });
 
@@ -152,15 +151,6 @@ const DataComplete = () => {
             </option>
           ))}
         </select>
-        <input
-          type="text"
-          placeholder="Assigned To"
-          value={filters.assignedTo}
-          onChange={(e) =>
-            setFilters({ ...filters, assignedTo: e.target.value })
-          }
-          className="border rounded px-3 py-1 focus:outline-blue-500"
-        />
         <select
           value={filters.billStatus}
           onChange={(e) =>
@@ -196,8 +186,6 @@ const DataComplete = () => {
                 <th className="p-3 text-left">Year</th>
                 <th className="p-3 text-left">Bill Status</th>
                 <th className="p-3 text-left">Remarks</th>
-
-                {/* <th className="p-3 text-left">Overdue</th> */}
               </tr>
             </thead>
             <tbody>
