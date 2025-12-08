@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import Loader from "../layout/Loader";
 
-const DataReceived = () => {
+const DataComplete = () => {
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +13,8 @@ const DataReceived = () => {
     clientName: "",
     month: "",
     year: "",
+    assignedTo: "",
+    billStatus: "",
   });
 
   const navigate = useNavigate();
@@ -40,12 +42,12 @@ const DataReceived = () => {
     return month;
   };
 
-  // Fetch clients
+  // Fetch completed clients
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("/monthly-compliance/data-received");
+        const res = await axios.get("/monthly-compliance/data-complete");
         setClients(res.data.clients || []);
         setFilteredClients(res.data.clients || []);
       } catch (err) {
@@ -72,12 +74,30 @@ const DataReceived = () => {
       filtered = filtered.filter(
         (c) => c.year.toString() === filters.year.toString()
       );
+    if (filters.assignedTo)
+      filtered = filtered.filter(
+        (c) =>
+          (c.assignedTo || "").toLowerCase() ===
+          filters.assignedTo.toLowerCase()
+      );
+    if (filters.billStatus)
+      filtered = filtered.filter(
+        (c) =>
+          (c.billStatus || "").toLowerCase() ===
+          filters.billStatus.toLowerCase()
+      );
 
     setFilteredClients(filtered);
   }, [filters, clients]);
 
   const resetFilters = () =>
-    setFilters({ clientName: "", month: "", year: ""});
+    setFilters({
+      clientName: "",
+      month: "",
+      year: "",
+      assignedTo: "",
+      billStatus: "",
+    });
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 relative">
@@ -93,7 +113,7 @@ const DataReceived = () => {
         </button>
 
         <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
-          Data Received
+          Data Complete
         </h2>
       </div>
 
@@ -132,6 +152,26 @@ const DataReceived = () => {
             </option>
           ))}
         </select>
+        <input
+          type="text"
+          placeholder="Assigned To"
+          value={filters.assignedTo}
+          onChange={(e) =>
+            setFilters({ ...filters, assignedTo: e.target.value })
+          }
+          className="border rounded px-3 py-1 focus:outline-blue-500"
+        />
+        <select
+          value={filters.billStatus}
+          onChange={(e) =>
+            setFilters({ ...filters, billStatus: e.target.value })
+          }
+          className="border rounded px-3 py-1 focus:outline-blue-500"
+        >
+          <option value="">Bill Status</option>
+          <option value="Pending">Pending</option>
+          <option value="Generated">Generated</option>
+        </select>
         <button
           onClick={resetFilters}
           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
@@ -144,7 +184,7 @@ const DataReceived = () => {
       <div className="bg-white shadow rounded-xl overflow-hidden">
         {!loading && filteredClients.length === 0 ? (
           <p className="text-gray-500 text-center py-10">
-            ✅ No clients pending!
+            ✅ No completed data!
           </p>
         ) : (
           <table className="min-w-full text-sm">
@@ -154,7 +194,10 @@ const DataReceived = () => {
                 <th className="p-3 text-left">Contact</th>
                 <th className="p-3 text-left">Month</th>
                 <th className="p-3 text-left">Year</th>
-                <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-left">Bill Status</th>
+                <th className="p-3 text-left">Remarks</th>
+
+                {/* <th className="p-3 text-left">Overdue</th> */}
               </tr>
             </thead>
             <tbody>
@@ -168,11 +211,8 @@ const DataReceived = () => {
                   </td>
                   <td className="p-3 text-gray-600">{getMonthName(c.month)}</td>
                   <td className="p-3 text-gray-600">{c.year}</td>
-                  <td className="p-3 text-center">
-                    <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                      Progress Pending
-                    </span>
-                  </td>
+                  <td className="p-3 text-gray-600">{c.billStatus || "-"}</td>
+                  <td className="p-3 text-gray-600">{c.remarks || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -183,4 +223,4 @@ const DataReceived = () => {
   );
 };
 
-export default DataReceived;
+export default DataComplete;
