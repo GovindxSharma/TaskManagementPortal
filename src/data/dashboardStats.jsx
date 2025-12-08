@@ -86,10 +86,10 @@ export const dashboardStats = {
       link: "/employee/data-received",
     },
     {
-      title: "In Progress",
+      title: "Data Complete",
       value: 4,
       icon: <Users className="text-yellow-500" />,
-      link: "/employee/in-progress",
+      link: "/employee/data-complete",
     },
   ],
 

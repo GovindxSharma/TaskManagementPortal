@@ -11,7 +11,7 @@ import SettingsPage from "../components/Settings/SettingsPage.jsx";
 import NotificationsPage from "../components/Notifications/NotificationPage.jsx";
 import PendingBills from "../components/Pendingbills/PendingBills.jsx";
 import DataReceived from "../components/DataReceived/DataReceived.jsx";
-import InProgress from "../components/InProgress/InProgress.jsx";
+import DataComplete from "../components/DataComplete/DataComplete.jsx";
 
 export const dashboardRoutes = {
   admin: [
@@ -37,7 +37,7 @@ export const dashboardRoutes = {
     { path: "/employee/notifications", element: <NotificationsPage /> },
     { path: "/employee/settings", element: <SettingsPage /> },
     { path: "/employee/data-received", element: <DataReceived /> },
-    { path: "/employee/in-progress", element: <InProgress /> },
+    { path: "/employee/data-complete", element: <DataComplete /> },
   ],
 
   accountant: [
