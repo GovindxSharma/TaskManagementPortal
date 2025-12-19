@@ -20,11 +20,14 @@ export default function SettingsPage() {
 
   // --- account info from localStorage ---
   const userLS = JSON.parse(localStorage.getItem("user") || "{}");
+  const role = userLS.role;
+  const isAdmin = role === "Admin";
+
   const [account, setAccount] = useState({
     name: userLS.name || "",
     email: userLS.email || "",
-    password: "",
     newPassword: "",
+    confirmPassword: "",
   });
 
   // --- company info ---
@@ -46,8 +49,9 @@ export default function SettingsPage() {
   const handleCompanyChange = (e) =>
     setCompany({ ...company, [e.target.name]: e.target.value });
 
-  // fetch categories
+  // --- admin-only API calls ---
   const fetchCategories = async () => {
+    if (!isAdmin) return;
     try {
       setLoadingCategories(true);
       const data = await getCategories();
@@ -60,9 +64,8 @@ export default function SettingsPage() {
     }
   };
 
-  // fetch company info
   const fetchCompany = async () => {
-    if (!userLS.company_id) return;
+    if (!isAdmin || !userLS.company_id) return;
     try {
       setLoadingCompany(true);
       const data = await getCompanyById(userLS.company_id);
@@ -81,11 +84,13 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchCompany();
-  }, []);
+    if (isAdmin) {
+      fetchCategories();
+      fetchCompany();
+    }
+  }, [isAdmin]);
 
-  // categories handlers
+  // --- category handlers ---
   const handleCategoryChange = (index, value) => {
     const updated = [...categories];
     updated[index].price = Number(value);
@@ -93,6 +98,7 @@ export default function SettingsPage() {
   };
 
   const handleUpdateCategories = async () => {
+    if (!isAdmin) return;
     try {
       setLoadingCategories(true);
       await Promise.all(
@@ -111,6 +117,7 @@ export default function SettingsPage() {
   };
 
   const handleAddCategory = async () => {
+    if (!isAdmin) return;
     try {
       const newCat = { name: "New Range", price: 0 };
       const created = await createCategory(newCat);
@@ -123,6 +130,7 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategory = async (id) => {
+    if (!isAdmin) return;
     toast.confirmDelete({
       message: "Are you sure you want to delete this category?",
       onConfirm: async () => {
@@ -137,32 +145,44 @@ export default function SettingsPage() {
     });
   };
 
-  // account update
-const handleUpdateAccount = async () => {
-  try {
-    setLoadingAccount(true);
+  // --- account update (everyone can do this) ---
+  const handleUpdateAccount = async () => {
+    try {
+      setLoadingAccount(true);
 
-    const payload = {
-      name: account.name,
-      email: account.email,
-      currentPassword: account.password, // optional
-      newPassword: account.newPassword, // optional
-    };
+      if (
+        account.newPassword &&
+        account.newPassword !== account.confirmPassword
+      ) {
+        toast.error("Passwords do not match");
+        return;
+      }
 
-    await updateUserApi(userLS._id, payload);
-    toast.success("Account updated successfully!");
-    setAccount({ ...account, password: "", newPassword: "" }); // clear password fields
-  } catch (err) {
-    console.error(err);
-    toast.error(err.message || "Failed to update account");
-  } finally {
-    setLoadingAccount(false);
-  }
-};
+      const payload = {
+        name: account.name,
+        email: account.email,
+        password: account.newPassword || undefined,
+      };
 
+      await updateUserApi(userLS._id, payload);
 
-  // company update
+      toast.success("Account updated successfully!");
+      setAccount({
+        ...account,
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Failed to update account");
+    } finally {
+      setLoadingAccount(false);
+    }
+  };
+
+  // --- company update (admin only) ---
   const handleUpdateCompany = async () => {
+    if (!isAdmin) return;
     try {
       setLoadingCompany(true);
       await updateCompanyApi(userLS.company_id, company);
@@ -188,6 +208,7 @@ const handleUpdateAccount = async () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
+        {/* Sidebar */}
         <div className="w-full md:w-64 bg-white rounded-xl shadow-md p-4 flex flex-col gap-2">
           <button
             onClick={() => setActiveTab("account")}
@@ -197,24 +218,30 @@ const handleUpdateAccount = async () => {
           >
             <User className="text-blue-500" /> Account Settings
           </button>
-          <button
-            onClick={() => setActiveTab("company")}
-            className={`flex items-center gap-2 p-3 rounded-lg hover:bg-green-100 transition ${
-              activeTab === "company" ? "bg-green-100 font-semibold" : ""
-            }`}
-          >
-            <Building className="text-green-500" /> Company Settings
-          </button>
-          <button
-            onClick={() => setActiveTab("categories")}
-            className={`flex items-center gap-2 p-3 rounded-lg hover:bg-teal-100 transition ${
-              activeTab === "categories" ? "bg-teal-100 font-semibold" : ""
-            }`}
-          >
-            <Layers className="text-teal-500" /> Categories
-          </button>
+
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab("company")}
+                className={`flex items-center gap-2 p-3 rounded-lg hover:bg-green-100 transition ${
+                  activeTab === "company" ? "bg-green-100 font-semibold" : ""
+                }`}
+              >
+                <Building className="text-green-500" /> Company Settings
+              </button>
+              <button
+                onClick={() => setActiveTab("categories")}
+                className={`flex items-center gap-2 p-3 rounded-lg hover:bg-teal-100 transition ${
+                  activeTab === "categories" ? "bg-teal-100 font-semibold" : ""
+                }`}
+              >
+                <Layers className="text-teal-500" /> Categories
+              </button>
+            </>
+          )}
         </div>
 
+        {/* Content */}
         <div className="flex-1 bg-white rounded-xl shadow-md p-6 space-y-6">
           {/* Account */}
           {activeTab === "account" && (
@@ -245,18 +272,6 @@ const handleUpdateAccount = async () => {
                 </div>
                 <div>
                   <label className="block text-gray-600 mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={account.password}
-                    onChange={handleAccountChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-600 mb-1">
                     New Password
                   </label>
                   <input
@@ -264,6 +279,20 @@ const handleUpdateAccount = async () => {
                     name="newPassword"
                     value={account.newPassword}
                     onChange={handleAccountChange}
+                    placeholder="Enter new password"
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-600 mb-1">
+                    Re-enter Password
+                  </label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={account.confirmPassword}
+                    onChange={handleAccountChange}
+                    placeholder="Re-enter new password"
                     className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
@@ -279,7 +308,7 @@ const handleUpdateAccount = async () => {
           )}
 
           {/* Company */}
-          {activeTab === "company" && (
+          {isAdmin && activeTab === "company" && (
             <div>
               <h2 className="text-2xl font-semibold text-gray-800 mb-4">
                 Company Settings
@@ -341,7 +370,7 @@ const handleUpdateAccount = async () => {
           )}
 
           {/* Categories */}
-          {activeTab === "categories" && (
+          {isAdmin && activeTab === "categories" && (
             <div>
               <h2 className="text-2xl font-semibold text-gray-800 mb-4">
                 Categories
