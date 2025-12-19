@@ -215,7 +215,7 @@ const Clients = () => {
   const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
 
   const fields = [
-    { label: "Company Name", key: "name" },
+    { label: "Client Name", key: "name" },
     { label: "Contact Person", key: "contactPerson" },
     { label: "Contact Number", key: "contactNumber" },
     { label: "Email", key: "email", type: "email" },
