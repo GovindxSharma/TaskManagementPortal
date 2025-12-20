@@ -4,6 +4,7 @@ import { Bell, ArrowRight, Settings } from "lucide-react";
 import { dashboardStats } from "../../../data/dashboardStats";
 import Loader from "../../../components/layout/Loader";
 import axiosInstance from "../../../api/axiosInstance";
+import { loadDashboardStats } from "../../../data/dashboardStats";
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function EmployeeDashboard() {
 
   // Fetch unread notifications count
   const fetchUnreadCount = async () => {
+  await loadDashboardStats();
     if (!currentUserId) return;
     try {
       const res = await axiosInstance.get(

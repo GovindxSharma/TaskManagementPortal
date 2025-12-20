@@ -15,6 +15,7 @@ import {
 import { dashboardStats } from "../../../data/dashboardStats.jsx";
 import axios from "../../../api/axiosInstance";
 import Loader from "../../../components/layout/Loader.jsx";
+import { loadDashboardStats } from "../../../data/dashboardStats.jsx";
 
 const AccountantDashboard = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const AccountantDashboard = () => {
 
   // Fetch unread notifications count
   const fetchUnreadCount = async () => {
+      await loadDashboardStats();
     if (!currentUserId) return;
     try {
       const res = await axios.get(`/notification/unreadCount/${currentUserId}`);
