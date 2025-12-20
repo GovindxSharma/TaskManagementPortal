@@ -4,6 +4,7 @@ import { LogIn } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { loadDashboardStats } from "../../data/dashboardStats";
 
 export default function Login() {
   const { login } = useAuth();
@@ -32,6 +33,8 @@ export default function Login() {
 
       // Use global auth context
       login(data.user, data.token);
+
+      await loadDashboardStats();
 
       // Role-based navigation
       const role = data.user.role.toLowerCase();

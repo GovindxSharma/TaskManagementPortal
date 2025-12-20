@@ -16,13 +16,15 @@ import {
 import { dashboardStats } from "../../../data/dashboardStats.jsx";
 import axios from "../../../api/axiosInstance";
 import React, { useEffect, useState } from "react";
+import { loadDashboardStats } from "../../../data/dashboardStats.jsx";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-    const fetchUnreadCount = async () => {
+  const fetchUnreadCount = async () => {
+      await loadDashboardStats();
       try {
         const res = await axios.get(`/notification/unreadCount/${user._id}`);
         setUnreadCount(res.data.count);
