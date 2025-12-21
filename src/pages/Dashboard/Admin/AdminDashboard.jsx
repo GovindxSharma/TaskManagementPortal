@@ -20,12 +20,13 @@ import { loadDashboardStats } from "../../../data/dashboardStats.jsx";
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
-
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   /* -------------------- NEW STATES -------------------- */
   const [recentClients, setRecentClients] = useState([]);
   const [recentTickets, setRecentTickets] = useState([]);
+  const [clientStats, setClientStats] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
 
   /* -------------------- NOTIFICATIONS -------------------- */
   const fetchUnreadCount = async () => {
@@ -38,65 +39,63 @@ export default function AdminDashboard() {
     }
   };
 
-  /* -------------------- NEW LOGIC -------------------- */
+  /* -------------------- RECENT CLIENTS -------------------- */
   const fetchRecentClients = async () => {
     try {
       const res = await axios.get(`/client?company_id=${user.company_id}`);
-
       const clients = (res.data?.data || res.data?.clients || [])
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         .slice(0, 5);
-
       setRecentClients(clients);
     } catch (err) {
       console.error("Failed to fetch recent clients");
     }
   };
 
-const fetchRecentTickets = async () => {
-  try {
-    const res = await axios.get(`/ticket`);
+  /* -------------------- RECENT TICKETS -------------------- */
+  const fetchRecentTickets = async () => {
+    try {
+      const res = await axios.get(`/ticket`);
+      const tickets = (res.data?.tickets || [])
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5);
+      setRecentTickets(tickets);
+    } catch (err) {
+      console.error("Failed to fetch recent tickets", err);
+    }
+  };
 
-    const tickets = (res.data?.tickets || [])
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
+  /* -------------------- CLIENT STATS -------------------- */
+  const fetchClientStats = async () => {
+    try {
+      const res = await axios.get("/auth/client-monthly-stats");
+      setClientStats(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch client stats", err);
+    }
+  };
 
-    setRecentTickets(tickets);
-  } catch (err) {
-    console.error("Failed to fetch recent tickets", err);
-  }
-};
-
+  /* -------------------- REVENUE DATA -------------------- */
+  const fetchRevenueData = async () => {
+    try {
+      const res = await axios.get("/auth/revenue-monthly");
+      setRevenueData(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch revenue stats", err);
+    }
+  };
 
   /* -------------------- LOAD ON MOUNT -------------------- */
   useEffect(() => {
     fetchUnreadCount();
     fetchRecentClients();
     fetchRecentTickets();
+    fetchClientStats();
+    fetchRevenueData();
   }, []);
 
   /* -------------------- STATS -------------------- */
   const stats = dashboardStats.admin;
-
-  /* -------------------- REST IS UNCHANGED -------------------- */
-
-  const clientStats = [
-    { month: "Jan", new: 10, inactive: 2 },
-    { month: "Feb", new: 14, inactive: 4 },
-    { month: "Mar", new: 8, inactive: 3 },
-    { month: "Apr", new: 18, inactive: 6 },
-    { month: "May", new: 22, inactive: 5 },
-    { month: "Jun", new: 15, inactive: 2 },
-  ];
-
-  const revenueData = [
-    { month: "Jan", revenue: 85000 },
-    { month: "Feb", revenue: 90000 },
-    { month: "Mar", revenue: 75000 },
-    { month: "Apr", revenue: 120000 },
-    { month: "May", revenue: 135000 },
-    { month: "Jun", revenue: 110000 },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-10">
@@ -152,19 +151,17 @@ const fetchRecentTickets = async () => {
 
       {/* Tables */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Recent Clients */}
+        {/* Recent Clients Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Clients
           </h2>
-
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
                 <th className="pb-2 text-left">Client</th>
                 <th className="pb-2 text-left">Email</th>
                 <th className="pb-2 text-left">Phone</th>
-                {/* <th className="pb-2 text-left">Assigned</th> */}
               </tr>
             </thead>
             <tbody>
@@ -175,24 +172,18 @@ const fetchRecentTickets = async () => {
                 >
                   <td className="py-2 font-medium">{c.name}</td>
                   <td>{c.email}</td>
-                  <td>
-                    {/* <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"> */}
-                      {c.contactNumber}
-                    {/* </span> */}
-                  </td>
-                  {/* <td>{c.assignedTo?.name || "-"}</td> */}
+                  <td>{c.contactNumber}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Recent Tickets */}
+        {/* Recent Tickets Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Tickets
           </h2>
-
           <table className="w-full text-sm text-gray-700">
             <thead className="border-b text-gray-600">
               <tr>
@@ -225,7 +216,7 @@ const fetchRecentTickets = async () => {
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
-        {/* Client Growth */}
+        {/* Client Growth Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Client Growth Trend
@@ -255,7 +246,7 @@ const fetchRecentTickets = async () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Revenue */}
+        {/* Revenue Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Monthly Revenue
