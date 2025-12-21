@@ -1,4 +1,3 @@
-// import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, ArrowRight, Settings } from "lucide-react";
 import {
@@ -21,70 +20,82 @@ import { loadDashboardStats } from "../../../data/dashboardStats.jsx";
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
+  /* -------------------- NEW STATES -------------------- */
+  const [recentClients, setRecentClients] = useState([]);
+  const [recentTickets, setRecentTickets] = useState([]);
+  const [clientStats, setClientStats] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
+
+  /* -------------------- NOTIFICATIONS -------------------- */
   const fetchUnreadCount = async () => {
-      await loadDashboardStats();
-      try {
-        const res = await axios.get(`/notification/unreadCount/${user._id}`);
-        setUnreadCount(res.data.count);
-      } catch (err) {
-        console.error("Failed to fetch unread count");
-      }
-    };
-
-    // load on mount
-    useEffect(() => {
-      fetchUnreadCount();
-    }, []);
-
-
-  // ✅ Centralized stats import
-  const stats = dashboardStats.admin;
-
-  // Dummy category pricing just for UI
-  const [categories, setCategories] = useState([
-    { label: "1 - 20 Clients", price: 3000 },
-    { label: "21 - 50 Clients", price: 7000 },
-    { label: "51 - 150 Clients", price: 15000 },
-  ]);
-
-  const handlePriceChange = (index, value) => {
-    const updated = [...categories];
-    updated[index].price = value;
-    setCategories(updated);
+    await loadDashboardStats();
+    try {
+      const res = await axios.get(`/notification/unreadCount/${user._id}`);
+      setUnreadCount(res.data.count);
+    } catch (err) {
+      console.error("Failed to fetch unread count");
+    }
   };
 
-  // Dummy Data
-  const recentClients = [
-    { name: "Acme Corp", email: "billing@acme.com", status: "Active", assigned: "Amit Verma" },
-    { name: "GreenLeaf Pvt Ltd", email: "contact@greenleaf.in", status: "Pending", assigned: "Riya Sharma" },
-    { name: "ZenTax Advisors", email: "info@zentax.com", status: "Active", assigned: "Arjun Mehta" },
-  ];
+  /* -------------------- RECENT CLIENTS -------------------- */
+  const fetchRecentClients = async () => {
+    try {
+      const res = await axios.get(`/client?company_id=${user.company_id}`);
+      const clients = (res.data?.data || res.data?.clients || [])
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+        .slice(0, 5);
+      setRecentClients(clients);
+    } catch (err) {
+      console.error("Failed to fetch recent clients");
+    }
+  };
 
-  const recentTickets = [
-    { id: "#TCK1021", subject: "GST filing delay", assigned: "Riya Sharma", status: "Open" },
-    { id: "#TCK1022", subject: "Invoice correction", assigned: "Arjun Mehta", status: "In Progress" },
-    { id: "#TCK1023", subject: "Client onboarding", assigned: "Amit Verma", status: "Completed" },
-  ];
+  /* -------------------- RECENT TICKETS -------------------- */
+  const fetchRecentTickets = async () => {
+    try {
+      const res = await axios.get(`/ticket`);
+      const tickets = (res.data?.tickets || [])
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5);
+      setRecentTickets(tickets);
+    } catch (err) {
+      console.error("Failed to fetch recent tickets", err);
+    }
+  };
 
-  const clientStats = [
-    { month: "Jan", new: 10, inactive: 2 },
-    { month: "Feb", new: 14, inactive: 4 },
-    { month: "Mar", new: 8, inactive: 3 },
-    { month: "Apr", new: 18, inactive: 6 },
-    { month: "May", new: 22, inactive: 5 },
-    { month: "Jun", new: 15, inactive: 2 },
-  ];
+  /* -------------------- CLIENT STATS -------------------- */
+  const fetchClientStats = async () => {
+    try {
+      const res = await axios.get("/auth/client-monthly-stats");
+      setClientStats(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch client stats", err);
+    }
+  };
 
-  const revenueData = [
-    { month: "Jan", revenue: 85000 },
-    { month: "Feb", revenue: 90000 },
-    { month: "Mar", revenue: 75000 },
-    { month: "Apr", revenue: 120000 },
-    { month: "May", revenue: 135000 },
-    { month: "Jun", revenue: 110000 },
-  ];
+  /* -------------------- REVENUE DATA -------------------- */
+  const fetchRevenueData = async () => {
+    try {
+      const res = await axios.get("/auth/revenue-monthly");
+      setRevenueData(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch revenue stats", err);
+    }
+  };
+
+  /* -------------------- LOAD ON MOUNT -------------------- */
+  useEffect(() => {
+    fetchUnreadCount();
+    fetchRecentClients();
+    fetchRecentTickets();
+    fetchClientStats();
+    fetchRevenueData();
+  }, []);
+
+  /* -------------------- STATS -------------------- */
+  const stats = dashboardStats.admin;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-10">
@@ -95,7 +106,6 @@ export default function AdminDashboard() {
         </h1>
 
         <div className="flex items-center">
-          {/* Notifications */}
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
             onClick={() => navigate("/admin/notifications")}
@@ -105,11 +115,7 @@ export default function AdminDashboard() {
               <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
             )}
           </button>
-          
-          {/* pass refresh function to Notification page */}
-          {/* <NotificationsPage onStatusChange={fetchUnreadCount} /> */}
 
-          {/* Settings */}
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
             onClick={() => navigate("/admin/settings")}
@@ -143,9 +149,9 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Tables Section */}
+      {/* Tables */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Clients Table */}
+        {/* Recent Clients Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Clients
@@ -155,8 +161,7 @@ export default function AdminDashboard() {
               <tr>
                 <th className="pb-2 text-left">Client</th>
                 <th className="pb-2 text-left">Email</th>
-                <th className="pb-2 text-left">Status</th>
-                <th className="pb-2 text-left">Assigned</th>
+                <th className="pb-2 text-left">Phone</th>
               </tr>
             </thead>
             <tbody>
@@ -167,25 +172,14 @@ export default function AdminDashboard() {
                 >
                   <td className="py-2 font-medium">{c.name}</td>
                   <td>{c.email}</td>
-                  <td>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        c.status === "Active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                  </td>
-                  <td>{c.assigned}</td>
+                  <td>{c.contactNumber}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Tickets Table */}
+        {/* Recent Tickets Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Tickets
@@ -205,19 +199,11 @@ export default function AdminDashboard() {
                   key={i}
                   className="border-b last:border-0 hover:bg-gray-50 transition"
                 >
-                  <td className="py-2">{t.id}</td>
-                  <td>{t.subject}</td>
-                  <td>{t.assigned}</td>
+                  <td className="py-2">#{t.ticketId || t._id}</td>
+                  <td>{t.title}</td>
+                  <td>{t.assignedTo?.name || "-"}</td>
                   <td>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        t.status === "Open"
-                          ? "bg-red-100 text-red-700"
-                          : t.status === "In Progress"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-green-100 text-green-700"
-                      }`}
-                    >
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
                       {t.status}
                     </span>
                   </td>
@@ -230,7 +216,7 @@ export default function AdminDashboard() {
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
-        {/* Client Growth */}
+        {/* Client Growth Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Client Growth Trend
@@ -260,7 +246,7 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Revenue */}
+        {/* Revenue Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Monthly Revenue
