@@ -19,7 +19,7 @@ const TicketsTable = ({
         <thead className="bg-gray-100 border-b">
           <tr className="text-gray-700">
             <th className="p-3 text-left">Title</th>
-            <th className="p-3 text-left">Client</th>
+            {/* <th className="p-3 text-left">Client</th> */}
             <th className="p-3 text-left">Raised By</th>
             <th className="p-3 text-left">Assigned To</th>
             <th className="p-3 text-left">Status</th>
@@ -34,7 +34,7 @@ const TicketsTable = ({
             filteredTickets.map((t) => (
               <tr key={t._id} className="border-b hover:bg-gray-50 transition">
                 <td className="p-3 font-medium text-gray-800">{t.title}</td>
-                <td className="p-3">{t.relatedClient?.name || "N/A"}</td>
+                {/* <td className="p-3">{t.relatedClient?.name || "N/A"}</td> */}
                 <td className="p-3">{t.raisedBy?.name || "N/A"}</td>
                 <td className="p-3">{t.assignedTo?.name || "Unassigned"}</td>
                 <td className="p-3">
