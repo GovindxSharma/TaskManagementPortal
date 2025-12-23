@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
-import { Search, X } from "lucide-react";
+import { Search, X, FileText, File } from "lucide-react";
 import Dropdown from "../layout/Dropdown";
-import Loader from "../layout/Loader"; // ⬅️ CENTRAL LOADER IMPORTED
+import Loader from "../layout/Loader";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function CustomerCompliance() {
   const navigate = useNavigate();
@@ -107,14 +110,12 @@ export default function CustomerCompliance() {
     );
   });
 
-  // const handleClientClick = (id) => navigate(`/admin/customer/${id}`);
-const handleClientClick = (id) => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  if (user.role === "Admin") navigate(`/admin/customer/${id}`);
-  else if (user.role === "Employee") navigate(`/employee/customer/${id}`);
-  else if (user.role === "Accountant") navigate(`/accountant/customer/${id}`);
-};
-
+  const handleClientClick = (id) => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.role === "Admin") navigate(`/admin/customer/${id}`);
+    else if (user.role === "Employee") navigate(`/employee/customer/${id}`);
+    else if (user.role === "Accountant") navigate(`/accountant/customer/${id}`);
+  };
 
   const getLastUpdate = (client) => {
     const statusText = parseStatus(client.lastDataStatus);
@@ -171,7 +172,77 @@ const handleClientClick = (id) => {
     );
   };
 
-  // 🌀 SHOW REAL LOADER COMPONENT
+  // ✅ EXPORT FUNCTIONS (use only filteredClients)
+  const exportExcel = () => {
+    if (!filteredClients.length) return alert("No records to export");
+
+    const data = filteredClients.map((c, i) => ({
+      "#": i + 1,
+      "Client Name": c.name,
+      "Business Unit": c.businessUnit || "-",
+      "Company Name": c.site || "-",
+      "Assigned To": c.assignedTo || "-",
+      "Last Update": parseStatus(c.lastDataStatus),
+      "Last Update Month": formatMonth(c.lastDataStatus),
+      "Bill Update": parseStatus(c.lastBillStatus),
+      "Bill Update Month": formatMonth(c.lastBillStatus),
+      "Client Status": c.clientStatus,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+    XLSX.writeFile(workbook, "ClientCompliance.xlsx");
+  };
+
+ const exportPDF = async () => {
+   if (!filteredClients.length) return alert("No records to export");
+
+   // Dynamic import to avoid Vite caching issues
+   const { jsPDF } = await import("jspdf");
+   const autoTable = (await import("jspdf-autotable")).default;
+
+   const doc = new jsPDF();
+
+   const tableColumn = [
+     "#",
+     "Client Name",
+     "Business Unit",
+     "Company Name",
+     "Assigned To",
+     "Last Update",
+     "Last Update Month",
+     "Bill Update",
+     "Bill Update Month",
+     "Client Status",
+   ];
+
+   const tableRows = filteredClients.map((c, i) => [
+     i + 1,
+     c.name,
+     c.businessUnit || "-",
+     c.site || "-",
+     c.assignedTo || "-",
+     parseStatus(c.lastDataStatus),
+     formatMonth(c.lastDataStatus),
+     parseStatus(c.lastBillStatus),
+     formatMonth(c.lastBillStatus),
+     c.clientStatus,
+   ]);
+
+   // ✅ Use autoTable plugin correctly
+   autoTable(doc, {
+     head: [tableColumn],
+     body: tableRows,
+     startY: 20,
+     styles: { fontSize: 8 },
+     headStyles: { fillColor: [30, 144, 255], textColor: 255 },
+   });
+
+   doc.save("ClientCompliance.pdf");
+ };
+
+
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -182,83 +253,96 @@ const handleClientClick = (id) => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-gray-600 hover:text-gray-800 font-medium px-3 py-2 bg-white rounded-lg shadow-sm"
+            className="px-3 py-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600"
           >
             ← Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-800">
+          <h1 className="text-2xl font-semibold text-gray-800 mt-2">
             Compliance Tracker
           </h1>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white p-5 rounded-xl shadow-sm flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search
-              className="absolute left-3 top-2.5 text-gray-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Search by client, status, or month..."
-              className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <Dropdown
-            label="Select Employee"
-            options={employeeList}
-            value={employeeFilter}
-            onChange={setEmployeeFilter}
-            placeholder="Select Employee"
-          />
-
-          <Dropdown
-            label="Data Status"
-            options={["Not Received", "Received", "In Progress", "Completed"]}
-            value={dataStatusFilter}
-            onChange={setDataStatusFilter}
-            placeholder="Data Status"
-          />
-
-          <Dropdown
-            label="Bill Status"
-            options={["Generated", "Overdue", "Pending"]}
-            value={billStatusFilter}
-            onChange={setBillStatusFilter}
-            placeholder="Bill Status"
-          />
-
-          <Dropdown
-            label="Month"
-            options={[
-              ...new Set(
-                clients
-                  .flatMap((c) => [
-                    formatMonth(c.lastDataStatus),
-                    formatMonth(c.lastBillStatus),
-                  ])
-                  .filter(Boolean)
-              ),
-            ]}
-            value={monthFilter}
-            onChange={setMonthFilter}
-            placeholder="Select Month"
-          />
-
+        {/* EXPORT BUTTONS */}
+        <div className="flex gap-3">
           <button
-            onClick={resetFilters}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-all duration-200"
+            onClick={exportExcel}
+            className="flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            <X size={16} className="text-red-500" /> Reset Filters
+            <File size={16} /> Export Excel
+          </button>
+          <button
+            onClick={exportPDF}
+            className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <FileText size={16} /> Export PDF
           </button>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-5 rounded-xl shadow-sm flex flex-wrap gap-3 items-center mb-6">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search by client, status, or month..."
+            className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <Dropdown
+          label="Select Employee"
+          options={employeeList}
+          value={employeeFilter}
+          onChange={setEmployeeFilter}
+          placeholder="Select Employee"
+        />
+
+        <Dropdown
+          label="Data Status"
+          options={["Not Received", "Received", "In Progress", "Completed"]}
+          value={dataStatusFilter}
+          onChange={setDataStatusFilter}
+          placeholder="Data Status"
+        />
+
+        <Dropdown
+          label="Bill Status"
+          options={["Generated", "Overdue", "Pending"]}
+          value={billStatusFilter}
+          onChange={setBillStatusFilter}
+          placeholder="Bill Status"
+        />
+
+        <Dropdown
+          label="Month"
+          options={[
+            ...new Set(
+              clients
+                .flatMap((c) => [
+                  formatMonth(c.lastDataStatus),
+                  formatMonth(c.lastBillStatus),
+                ])
+                .filter(Boolean)
+            ),
+          ]}
+          value={monthFilter}
+          onChange={setMonthFilter}
+          placeholder="Select Month"
+        />
+
+        <button
+          onClick={resetFilters}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-all duration-200"
+        >
+          <X size={16} /> Reset Filters
+        </button>
       </div>
 
       {/* Clients Table */}
