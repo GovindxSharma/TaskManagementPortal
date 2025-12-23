@@ -34,8 +34,6 @@ const Employees = () => {
 
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // 👁️ password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
 
   // FETCH EMPLOYEES
@@ -52,8 +50,8 @@ const Employees = () => {
 
       setEmployees(employeesList);
     } catch (err) {
+      console.error(err);
       error("Failed to fetch employees");
-      console.error("❌ Failed to fetch employees:", err);
     } finally {
       setLoading(false);
     }
@@ -68,24 +66,22 @@ const Employees = () => {
     e.preventDefault();
 
     try {
-      const payload = { ...form, role: "Employee" };
+      const payload = { ...form };
 
       if (editingId) {
         if (!payload.password) delete payload.password;
         await axiosInstance.put(`/user/${editingId}`, payload);
-
         success("Employee updated");
       } else {
         if (!payload.password) return error("Password is required");
         await axiosInstance.post(`/user`, payload);
-
         success("Employee added");
       }
 
       fetchEmployees();
       closeModal();
     } catch (err) {
-      console.error("❌ Error saving employee:", err);
+      console.error(err);
       error(err.response?.data?.message || "Failed to save employee");
     }
   };
@@ -99,7 +95,7 @@ const Employees = () => {
           await axiosInstance.delete(`/user/${id}`);
           fetchEmployees();
         } catch (err) {
-          console.error("❌ Error deleting employee:", err);
+          console.error(err);
           error("Failed to delete employee");
         }
       },
@@ -131,7 +127,7 @@ const Employees = () => {
       password: "",
       company_id: emp.company_id,
       user_id: emp.user_id,
-      role: "Employee",
+      role: emp.role || "Employee",
     });
 
     setEditingId(emp._id);
@@ -174,7 +170,6 @@ const Employees = () => {
           </h2>
         </div>
 
-        {/* Search + Add */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-3 py-2 w-full sm:w-72">
             <Search size={18} className="text-gray-500" />
@@ -216,7 +211,6 @@ const Employees = () => {
                 key={emp._id}
                 className="border-b last:border-0 hover:bg-gray-50 transition group"
               >
-                {/* User ID + Copy */}
                 <td className="p-3 font-medium text-gray-800 relative">
                   {emp.user_id || "—"}
 
@@ -227,9 +221,9 @@ const Employees = () => {
                         success("Copied!");
                       }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100
-             p-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                        p-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
                     >
-                      <ClipboardCopy size={16} className="text-gray-700" />
+                      <ClipboardCopy size={16} />
                     </button>
                   )}
                 </td>
@@ -259,7 +253,7 @@ const Employees = () => {
             {filteredEmployees.length === 0 && (
               <tr>
                 <td
-                  colSpan="7"
+                  colSpan="5"
                   className="text-center py-6 text-gray-400 italic"
                 >
                   No employees found.
@@ -320,13 +314,24 @@ const Employees = () => {
                 />
               </div>
 
-              {/* NEW PASSWORD FIELD (Edit Mode Only) */}
-              {editingId && (
+              {/* ROLE */}
+              <div>
+                <label className="text-sm text-gray-600">Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
+                >
+                  <option value="Employee">Employee</option>
+                  <option value="Accountant">Accountant</option>
+                </select>
+              </div>
+
+              {editingId ? (
                 <div>
                   <label className="text-sm text-gray-600">
                     New Password (optional)
                   </label>
-
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
@@ -335,22 +340,17 @@ const Employees = () => {
                       onChange={(e) =>
                         setForm({ ...form, password: e.target.value })
                       }
-                      placeholder="Enter new password"
                     />
-
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {showPassword ? <EyeOff /> : <Eye />}
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* PASSWORD FIELD IN ADD MODE */}
-              {!editingId && (
+              ) : (
                 <div>
                   <label className="text-sm text-gray-600">Password</label>
                   <input
@@ -364,8 +364,6 @@ const Employees = () => {
                   />
                 </div>
               )}
-
-              <input type="hidden" value={form.company_id} />
 
               <div className="flex justify-end">
                 <button
