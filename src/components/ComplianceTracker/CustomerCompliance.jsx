@@ -19,6 +19,7 @@ export default function CustomerCompliance() {
   const [dataStatusFilter, setDataStatusFilter] = useState("");
   const [billStatusFilter, setBillStatusFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState(""); // add this
 
   const monthNames = [
     "January",
@@ -53,6 +54,15 @@ export default function CustomerCompliance() {
     return parts.join(" ");
   };
 
+  // Add this function
+  const parseStatusWithMonthYear = (str) => {
+    if (!str || str === "-") return { status: "-", month: "-", year: "-" };
+    const parts = str.split(" ");
+    const status = parts.slice(0, -1).join(" ");
+    const [month, year] = parts[parts.length - 1]?.split("-") || ["-", "-"];
+    return { status, month, year };
+  };
+
   const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
@@ -81,34 +91,56 @@ export default function CustomerCompliance() {
     setDataStatusFilter("");
     setBillStatusFilter("");
     setMonthFilter("");
+    setYearFilter("");
   };
 
   const employeeList = [
     ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
   ];
 
+  const yearList = [
+    ...new Set(
+      clients
+        .flatMap((c) => [
+          parseStatusWithMonthYear(c.lastDataStatus).year,
+          parseStatusWithMonthYear(c.lastBillStatus).year,
+        ])
+        .filter(Boolean)
+    ),
+  ];
+
   // Filter Logic
-  const filteredClients = clients.filter((client) => {
-    const dataStatusRaw = parseStatus(client.lastDataStatus);
-    const billStatusRaw = parseStatus(client.lastBillStatus);
-    const dataMonthRaw = formatMonth(client.lastDataStatus);
-    const billMonthRaw = formatMonth(client.lastBillStatus);
+const filteredClients = clients.filter((client) => {
+  const dataParsed = parseStatusWithMonthYear(client.lastDataStatus);
+  const billParsed = parseStatusWithMonthYear(client.lastBillStatus);
 
-    const matchesSearch =
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dataStatusRaw.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      billStatusRaw.toLowerCase().includes(searchQuery.toLowerCase());
+  // Data/Bill Status normalized to match dropdown options
+  const dataStatusRaw = dataParsed.status.trim().toLowerCase();
+  const billStatusRaw = billParsed.status.trim().toLowerCase();
 
-    return (
-      matchesSearch &&
-      (!employeeFilter || client.assignedTo === employeeFilter) &&
-      (!dataStatusFilter || dataStatusRaw === dataStatusFilter) &&
-      (!billStatusFilter || billStatusRaw === billStatusFilter) &&
-      (!monthFilter ||
-        dataMonthRaw === monthFilter ||
-        billMonthRaw === monthFilter)
-    );
-  });
+  // Month only (for month dropdown)
+  const dataMonthRaw = monthNames[parseInt(dataParsed.month, 10) - 1] || "-";
+  const billMonthRaw = monthNames[parseInt(billParsed.month, 10) - 1] || "-";
+
+  const matchesSearch =
+    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    dataStatusRaw.includes(searchQuery.toLowerCase()) ||
+    billStatusRaw.includes(searchQuery.toLowerCase());
+
+  return (
+    matchesSearch &&
+    (!employeeFilter || client.assignedTo === employeeFilter) &&
+    (!dataStatusFilter || dataStatusRaw === dataStatusFilter.toLowerCase()) &&
+    (!billStatusFilter || billStatusRaw === billStatusFilter.toLowerCase()) &&
+    (!monthFilter ||
+      dataMonthRaw === monthFilter ||
+      billMonthRaw === monthFilter) &&
+    (!yearFilter ||
+      dataParsed.year === yearFilter ||
+      billParsed.year === yearFilter)
+  );
+});
+
 
   const handleClientClick = (id) => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -195,53 +227,52 @@ export default function CustomerCompliance() {
     XLSX.writeFile(workbook, "ClientCompliance.xlsx");
   };
 
- const exportPDF = async () => {
-   if (!filteredClients.length) return alert("No records to export");
+  const exportPDF = async () => {
+    if (!filteredClients.length) return alert("No records to export");
 
-   // Dynamic import to avoid Vite caching issues
-   const { jsPDF } = await import("jspdf");
-   const autoTable = (await import("jspdf-autotable")).default;
+    // Dynamic import to avoid Vite caching issues
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
 
-   const doc = new jsPDF();
+    const doc = new jsPDF();
 
-   const tableColumn = [
-     "#",
-     "Client Name",
-     "Business Unit",
-     "Company Name",
-     "Assigned To",
-     "Last Update",
-     "Last Update Month",
-     "Bill Update",
-     "Bill Update Month",
-     "Client Status",
-   ];
+    const tableColumn = [
+      "#",
+      "Client Name",
+      "Business Unit",
+      "Company Name",
+      "Assigned To",
+      "Last Update",
+      "Last Update Month",
+      "Bill Update",
+      "Bill Update Month",
+      "Client Status",
+    ];
 
-   const tableRows = filteredClients.map((c, i) => [
-     i + 1,
-     c.name,
-     c.businessUnit || "-",
-     c.site || "-",
-     c.assignedTo || "-",
-     parseStatus(c.lastDataStatus),
-     formatMonth(c.lastDataStatus),
-     parseStatus(c.lastBillStatus),
-     formatMonth(c.lastBillStatus),
-     c.clientStatus,
-   ]);
+    const tableRows = filteredClients.map((c, i) => [
+      i + 1,
+      c.name,
+      c.businessUnit || "-",
+      c.site || "-",
+      c.assignedTo || "-",
+      parseStatus(c.lastDataStatus),
+      formatMonth(c.lastDataStatus),
+      parseStatus(c.lastBillStatus),
+      formatMonth(c.lastBillStatus),
+      c.clientStatus,
+    ]);
 
-   // ✅ Use autoTable plugin correctly
-   autoTable(doc, {
-     head: [tableColumn],
-     body: tableRows,
-     startY: 20,
-     styles: { fontSize: 8 },
-     headStyles: { fillColor: [30, 144, 255], textColor: 255 },
-   });
+    // ✅ Use autoTable plugin correctly
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [30, 144, 255], textColor: 255 },
+    });
 
-   doc.save("ClientCompliance.pdf");
- };
-
+    doc.save("ClientCompliance.pdf");
+  };
 
   if (loading)
     return (
@@ -306,7 +337,7 @@ export default function CustomerCompliance() {
 
         <Dropdown
           label="Data Status"
-          options={["Not Received", "Received", "In Progress", "Completed"]}
+          options={["Data Received", "Data Complete"]}
           value={dataStatusFilter}
           onChange={setDataStatusFilter}
           placeholder="Data Status"
@@ -314,7 +345,7 @@ export default function CustomerCompliance() {
 
         <Dropdown
           label="Bill Status"
-          options={["Generated", "Overdue", "Pending"]}
+          options={["Bill Generated", "Bill Pending"]}
           value={billStatusFilter}
           onChange={setBillStatusFilter}
           placeholder="Bill Status"
@@ -326,8 +357,18 @@ export default function CustomerCompliance() {
             ...new Set(
               clients
                 .flatMap((c) => [
-                  formatMonth(c.lastDataStatus),
-                  formatMonth(c.lastBillStatus),
+                  monthNames[
+                    parseInt(
+                      parseStatusWithMonthYear(c.lastDataStatus).month,
+                      10
+                    ) - 1
+                  ],
+                  monthNames[
+                    parseInt(
+                      parseStatusWithMonthYear(c.lastBillStatus).month,
+                      10
+                    ) - 1
+                  ],
                 ])
                 .filter(Boolean)
             ),
@@ -335,6 +376,23 @@ export default function CustomerCompliance() {
           value={monthFilter}
           onChange={setMonthFilter}
           placeholder="Select Month"
+        />
+
+        <Dropdown
+          label="Year"
+          options={[
+            ...new Set(
+              clients
+                .flatMap((c) => [
+                  parseStatusWithMonthYear(c.lastDataStatus).year,
+                  parseStatusWithMonthYear(c.lastBillStatus).year,
+                ])
+                .filter(Boolean)
+            ),
+          ]}
+          value={yearFilter}
+          onChange={setYearFilter}
+          placeholder="Select Year"
         />
 
         <button
@@ -352,8 +410,8 @@ export default function CustomerCompliance() {
             <tr>
               <th className="p-3 text-left">#</th>
               <th className="p-3 text-left">Client Name</th>
-              <th className="p-3 text-left">Business Unit</th>
               <th className="p-3 text-left">Company Name</th>
+              <th className="p-3 text-left">Business Unit</th>
               <th className="p-3 text-left">Assigned To</th>
               <th className="p-3 text-left">Last Update</th>
               <th className="p-3 text-left">Bill Update</th>
@@ -370,8 +428,8 @@ export default function CustomerCompliance() {
                 >
                   <td className="p-3">{i + 1}</td>
                   <td className="p-3 font-medium text-gray-800">{c.name}</td>
-                  <td className="p-3">{c.site || "-"}</td>
                   <td className="p-3">{c.businessUnit || "-"}</td>
+                  <td className="p-3">{c.site || "-"}</td>
                   <td className="p-3">{c.assignedTo || "-"}</td>
                   <td className="p-3">{getLastUpdate(c)}</td>
                   <td className="p-3">{getBillUpdate(c)}</td>
