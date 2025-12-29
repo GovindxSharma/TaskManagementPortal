@@ -78,6 +78,7 @@ export default function AdminDashboard() {
   /* -------------------- REVENUE DATA -------------------- */
   const fetchRevenueData = async () => {
     try {
+    await loadDashboardStats();
       const res = await axios.get("/auth/revenue-monthly");
       setRevenueData(res.data.data || []);
     } catch (err) {
@@ -138,7 +139,7 @@ export default function AdminDashboard() {
           >
             <LogOut className="text-white" />
           </button>
-          
+
         </div>
       </div>
 
