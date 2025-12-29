@@ -22,13 +22,13 @@ export default function AdminDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  /* -------------------- NEW STATES -------------------- */
   const [recentClients, setRecentClients] = useState([]);
   const [recentTickets, setRecentTickets] = useState([]);
+  const [expiringLicenses, setExpiringLicenses] = useState([]);
+  const [overdueClients, setOverdueClients] = useState([]);
   const [clientStats, setClientStats] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
 
-  /* -------------------- NOTIFICATIONS -------------------- */
   const fetchUnreadCount = async () => {
     await loadDashboardStats();
     try {
@@ -39,7 +39,6 @@ export default function AdminDashboard() {
     }
   };
 
-  /* -------------------- RECENT CLIENTS -------------------- */
   const fetchRecentClients = async () => {
     try {
       const res = await axios.get(`/client?company_id=${user.company_id}`);
@@ -52,7 +51,6 @@ export default function AdminDashboard() {
     }
   };
 
-  /* -------------------- RECENT TICKETS -------------------- */
   const fetchRecentTickets = async () => {
     try {
       const res = await axios.get(`/ticket`);
@@ -65,7 +63,45 @@ export default function AdminDashboard() {
     }
   };
 
-  /* -------------------- CLIENT STATS -------------------- */
+  const fetchExpiringLicenses = async () => {
+    try {
+      const res = await axios.get("/license");
+
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const nextMonth = (currentMonth + 1) % 12;
+      const nextMonthYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+
+      const licenses = (res.data?.data || [])
+        .filter((l) => {
+          if (!l.endDate) return false;
+          const expiry = new Date(l.endDate);
+          const expiryMonth = expiry.getMonth();
+          const expiryYear = expiry.getFullYear();
+          return (
+            (expiryMonth === currentMonth && expiryYear === currentYear) ||
+            (expiryMonth === nextMonth && expiryYear === nextMonthYear)
+          );
+        })
+        .sort((a, b) => new Date(a.endDate) - new Date(b.endDate))
+        .slice(0, 5);
+
+      setExpiringLicenses(licenses);
+    } catch (err) {
+      console.error("Failed to fetch expiring licenses", err);
+    }
+  };
+
+  const fetchOverdueClients = async () => {
+    try {
+      const res = await axios.get("/client/overdue");
+      setOverdueClients(res.data?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch overdue clients", err);
+    }
+  };
+
   const fetchClientStats = async () => {
     try {
       const res = await axios.get("/auth/client-monthly-stats");
@@ -75,10 +111,9 @@ export default function AdminDashboard() {
     }
   };
 
-  /* -------------------- REVENUE DATA -------------------- */
   const fetchRevenueData = async () => {
     try {
-    await loadDashboardStats();
+      await loadDashboardStats();
       const res = await axios.get("/auth/revenue-monthly");
       setRevenueData(res.data.data || []);
     } catch (err) {
@@ -92,17 +127,16 @@ export default function AdminDashboard() {
     navigate("/");
   };
 
-
-  /* -------------------- LOAD ON MOUNT -------------------- */
   useEffect(() => {
     fetchUnreadCount();
     fetchRecentClients();
     fetchRecentTickets();
+    fetchExpiringLicenses();
+    fetchOverdueClients();
     fetchClientStats();
     fetchRevenueData();
   }, []);
 
-  /* -------------------- STATS -------------------- */
   const stats = dashboardStats.admin;
 
   return (
@@ -112,7 +146,6 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
           Admin Dashboard
         </h1>
-
         <div className="flex items-center">
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
@@ -120,18 +153,15 @@ export default function AdminDashboard() {
           >
             <Bell className="text-gray-600" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full"></span>
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse"></span>
             )}
           </button>
-
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
             onClick={() => navigate("/admin/settings")}
           >
             <Settings className="text-gray-600" />
           </button>
-
-          {/* Logout */}
           <button
             className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
             onClick={handleLogout}
@@ -139,11 +169,10 @@ export default function AdminDashboard() {
           >
             <LogOut className="text-white" />
           </button>
-
         </div>
       </div>
 
-      {/* Stats Section */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {stats.map((s, i) => (
           <div
@@ -169,72 +198,194 @@ export default function AdminDashboard() {
 
       {/* Tables */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Recent Clients Table */}
+        {/* Recent Clients */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Clients
           </h2>
-          <table className="w-full text-sm text-gray-700">
-            <thead className="border-b text-gray-600">
-              <tr>
-                <th className="pb-2 text-left">Client</th>
-                <th className="pb-2 text-left">Email</th>
-                <th className="pb-2 text-left">Phone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentClients.map((c, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
-                  <td className="py-2 font-medium">{c.name}</td>
-                  <td>{c.email}</td>
-                  <td>{c.contactNumber}</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {recentClients.map((c, i) => (
+                  <tr key={i} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {c.name}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {c.email}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {c.contactNumber}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Recent Tickets Table */}
+        {/* Expiring Licenses */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Expiring Licenses
+          </h2>
+          {expiringLicenses.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center">
+              🎉 No licenses expiring soon
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Client
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      License
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Expiry
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {expiringLicenses.map((l) => (
+                    <tr key={l._id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {l.client_id?.name || "-"}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {l.licenseName}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-semibold text-red-600">
+                        {new Date(l.endDate).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tickets + Overdue Clients */}
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+        {/* Recent Tickets */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Recent Tickets
           </h2>
-          <table className="w-full text-sm text-gray-700">
-            <thead className="border-b text-gray-600">
-              <tr>
-                <th className="pb-2 text-left">Ticket ID</th>
-                <th className="pb-2 text-left">Subject</th>
-                <th className="pb-2 text-left">Assigned</th>
-                <th className="pb-2 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentTickets.map((t, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
-                  <td className="py-2">#{t.ticketId || t._id}</td>
-                  <td>{t.title}</td>
-                  <td>{t.assignedTo?.name || "-"}</td>
-                  <td>
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                      {t.status}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ticket ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Subject
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Assigned
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {recentTickets.map((t, i) => (
+                  <tr key={i} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                      #{t.ticketId || t._id}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {t.title}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {t.assignedTo?.name || "-"}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Overdue Clients */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Overdue Clients
+          </h2>
+          {overdueClients.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center">
+              🎉 No overdue clients
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Client
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact Person
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Overdue Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {overdueClients.map((c) => (
+                    <tr key={c._id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {c.name}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {c.contactPerson}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {c.email}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-semibold text-red-600">
+                        ₹{c.overdueAmount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
-        {/* Client Growth Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Client Growth Trend
@@ -264,7 +415,6 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Revenue Chart */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Monthly Revenue

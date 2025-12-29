@@ -84,30 +84,7 @@ const fetchOverdueClients = async () => {
   }, [currentUserId]);
 
   const stats = dashboardStats.employee;
-  const assignedTasks = [
-    {
-      task: "GST Filing for Acme Corp",
-      dueDate: "Nov 12, 2025",
-      status: "In Progress",
-    },
-    {
-      task: "License Renewal for GreenLeaf Pvt Ltd",
-      dueDate: "Nov 15, 2025",
-      status: "Pending",
-    },
-    {
-      task: "Password Rotation for ZenTax Advisors",
-      dueDate: "Nov 5, 2025",
-      status: "Completed",
-    },
-  ];
-
-  const complianceList = [
-    { client: "Acme Corp", progress: "80%", status: "In Progress" },
-    { client: "GreenLeaf Pvt Ltd", progress: "100%", status: "Completed" },
-    { client: "ZenTax Advisors", progress: "60%", status: "Pending" },
-  ];
-
+  
   if (loading) return <Loader fullscreen={true} size={250} />;
 
   return (
@@ -170,45 +147,6 @@ const fetchOverdueClients = async () => {
 
       {/* Panels */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Assigned Tasks */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Assigned Tasks
-          </h2>
-          <table className="w-full text-sm text-gray-700">
-            <thead className="border-b text-gray-600">
-              <tr>
-                <th className="pb-2 text-left">Task</th>
-                <th className="pb-2 text-left">Status</th>
-                <th className="pb-2 text-left">Due Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignedTasks.map((t, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
-                  <td className="py-2 font-medium">{t.task}</td>
-                  <td>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        t.status === "Completed"
-                          ? "bg-green-100 text-green-700"
-                          : t.status === "In Progress"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {t.status}
-                    </span>
-                  </td>
-                  <td>{t.dueDate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
 
         {/* Recent Notifications */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
@@ -239,46 +177,6 @@ const fetchOverdueClients = async () => {
           >
             View all notifications →
           </button>
-        </div>
-
-        {/* Compliance Tracker */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Compliance Tracker
-          </h2>
-          <table className="w-full text-sm text-gray-700">
-            <thead className="border-b text-gray-600">
-              <tr>
-                <th className="pb-2 text-left">Client</th>
-                <th className="pb-2 text-left">Progress</th>
-                <th className="pb-2 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {complianceList.map((c, i) => (
-                <tr
-                  key={i}
-                  className="border-b last:border-0 hover:bg-gray-50 transition"
-                >
-                  <td className="py-2 font-medium">{c.client}</td>
-                  <td>{c.progress}</td>
-                  <td>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        c.status === "Completed"
-                          ? "bg-green-100 text-green-700"
-                          : c.status === "In Progress"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
 
         {/* Overdue Clients */}
