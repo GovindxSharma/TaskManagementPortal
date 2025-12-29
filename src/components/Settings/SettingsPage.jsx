@@ -235,7 +235,7 @@ export default function SettingsPage() {
                   activeTab === "categories" ? "bg-teal-100 font-semibold" : ""
                 }`}
               >
-                <Layers className="text-teal-500" /> Categories
+                <Layers className="text-teal-500" /> Fees
               </button>
             </>
           )}
@@ -373,7 +373,7 @@ export default function SettingsPage() {
           {isAdmin && activeTab === "categories" && (
             <div>
               <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-                Categories
+                Fees
               </h2>
               {loadingCategories ? (
                 <p className="text-gray-500">Loading categories...</p>
