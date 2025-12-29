@@ -39,6 +39,7 @@ export default function LicenseTrackerSection() {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showExpiringModal, setShowExpiringModal] = useState(false);
   const [newLicense, setNewLicense] = useState({
     client_id: "",
     licenseName: "",
@@ -185,6 +186,27 @@ export default function LicenseTrackerSection() {
     }
   };
 
+  const expiringLicenses = useMemo(() => {
+    const now = new Date();
+
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const endOfNextMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 2,
+      0,
+      23,
+      59,
+      59
+    );
+
+    return licenses.filter((l) => {
+      const endDate = new Date(l.endDate);
+      return endDate >= startOfCurrentMonth && endDate <= endOfNextMonth;
+    });
+  }, [licenses]);
+
+
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
       {loading && <Loader />}
@@ -193,12 +215,22 @@ export default function LicenseTrackerSection() {
         <h2 className="text-2xl font-semibold text-gray-800">
           License Tracker
         </h2>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
-          onClick={() => setShowAddModal(true)}
-        >
-          <Plus size={16} /> Add License
-        </button>
+
+        <div className="flex gap-3">
+          <button
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition"
+            onClick={() => setShowExpiringModal(true)}
+          >
+            Expiring Licenses
+          </button>
+
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus size={16} /> Add License
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -448,6 +480,67 @@ export default function LicenseTrackerSection() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={showExpiringModal}
+        onClose={() => setShowExpiringModal(false)}
+      >
+        <h3 className="text-xl font-semibold mb-4 text-orange-600">
+          Licenses Expiring Soon
+        </h3>
+
+        {expiringLicenses.length === 0 ? (
+          <p className="text-gray-500 italic">
+            No licenses expiring in current or next month 🎉
+          </p>
+        ) : (
+          <table className="w-full border rounded-lg overflow-hidden">
+            <thead className="bg-orange-50 border-b">
+              <tr>
+                <th className="p-2 text-left">Client</th>
+                <th className="p-2 text-left">License</th>
+                <th className="p-2 text-left">Category</th>
+                <th className="p-2 text-left">End Date</th>
+                <th className="p-2 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expiringLicenses.map((l) => {
+                const end = new Date(l.endDate);
+                const today = new Date();
+                const diffDays = Math.ceil(
+                  (end - today) / (1000 * 60 * 60 * 24)
+                );
+
+                return (
+                  <tr
+                    key={l._id}
+                    className="border-b hover:bg-orange-50 transition"
+                  >
+                    <td className="p-2 font-medium">{l.client_id?.name}</td>
+                    <td className="p-2">{l.licenseName}</td>
+                    <td className="p-2">{l.category}</td>
+                    <td className="p-2">{end.toISOString().slice(0, 10)}</td>
+                    <td className="p-2">
+                      <span
+                        className={`px-2 py-1 rounded text-sm font-medium ${
+                          diffDays <= 30
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {diffDays <= 30
+                          ? "Expiring This Month"
+                          : "Expiring Next Month"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </Modal>
     </div>
   );
