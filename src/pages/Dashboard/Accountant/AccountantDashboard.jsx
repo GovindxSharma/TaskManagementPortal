@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Bell, Settings } from "lucide-react";
+import { ArrowRight, Bell, Settings, LogOut } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -72,7 +72,14 @@ const fetchRecentNotifications = async () => {
   } finally {
     setLoadingNotifications(false);
   }
-};
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  };
+
 
   useEffect(() => {
     fetchUnreadCount();
@@ -122,6 +129,16 @@ const fetchRecentNotifications = async () => {
           >
             <Settings className="text-gray-600" />
           </button>
+
+          {/* Logout */}
+          <button
+            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
+            onClick={handleLogout}
+            title="Logout"
+          >
+            <LogOut className="text-white" />
+          </button>
+
         </div>
       </div>
 

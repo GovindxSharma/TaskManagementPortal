@@ -25,7 +25,6 @@ const dataOptions = [
   "Data Received",
   "Not Received",
   "Inactive",
-  "Data Pending",
 ];
 const workOptions = [
   "Not Started",
@@ -93,11 +92,12 @@ const MonthCard = ({ clientId }) => {
       dataReceiveStatus: state.dataStatus,
       workProgress: state.workProgress,
       billStatus: state.billStatus,
-      expectedBill: state.expectedBill,
-      actualBill: state.actualBill,
-      workersAsPerData: state.workers,
+      expectedBill: Number(state.expectedBill) || 0,
+      actualBill: Number(state.actualBill) || 0,
+      workersAsPerData: Number(state.workers) || 0,
       remarks: state.remarks,
     };
+
     try {
       setSaving(true);
       const { data } = await axios.put(
@@ -261,13 +261,13 @@ const MonthCard = ({ clientId }) => {
                   <input
                     type="number"
                     min="0"
-                    value={state.workers}
+                    value={state.workers ?? ""}
                     onChange={(e) =>
                       setMonthStates({
                         ...monthStates,
                         [monthRecord._id]: {
                           ...state,
-                          workers: Number(e.target.value),
+                          workers: e.target.value, // 👈 keep string
                         },
                       })
                     }
@@ -348,13 +348,13 @@ const MonthCard = ({ clientId }) => {
                 {isEditing && canEdit("actualBill") ? (
                   <input
                     type="number"
-                    value={state.actualBill}
+                    value={state.actualBill ?? ""}
                     onChange={(e) =>
                       setMonthStates({
                         ...monthStates,
                         [monthRecord._id]: {
                           ...state,
-                          actualBill: Number(e.target.value),
+                          actualBill: e.target.value, // 👈 string
                         },
                       })
                     }

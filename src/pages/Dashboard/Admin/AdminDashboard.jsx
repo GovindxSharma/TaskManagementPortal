@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, ArrowRight, Settings } from "lucide-react";
+import { Bell, ArrowRight, Settings, LogOut } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -85,6 +85,13 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  };
+
+
   /* -------------------- LOAD ON MOUNT -------------------- */
   useEffect(() => {
     fetchUnreadCount();
@@ -122,6 +129,16 @@ export default function AdminDashboard() {
           >
             <Settings className="text-gray-600" />
           </button>
+
+          {/* Logout */}
+          <button
+            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
+            onClick={handleLogout}
+            title="Logout"
+          >
+            <LogOut className="text-white" />
+          </button>
+          
         </div>
       </div>
 
