@@ -5,6 +5,9 @@ import axios from "../../api/axiosInstance";
 import Dropdown from "../layout/Dropdown";
 import Loader from "../layout/Loader";
 import { useToast } from "../layout/ToastProvider.jsx";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const OverdueClients = () => {
   const navigate = useNavigate();
@@ -61,6 +64,49 @@ const OverdueClients = () => {
       toast.error("Failed to fetch overdue clients");
       console.error(err);
     }
+  };
+
+  // Export overdue clients as PDF
+const exportPDF = () => {
+  if (!overdueClients.length) return;
+
+  const doc = new jsPDF();
+  const tableColumn = ["Client", "Status", "Overdue Amount", "Updated"];
+  const tableRows = overdueClients.map((c) => [
+    c.name,
+    "Overdue",
+    c.overdueAmount || "-",
+    new Date(c.updatedAt).toLocaleDateString(),
+  ]);
+
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY: 20,
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [59, 130, 246] }, // blue header
+  });
+
+  doc.save("Overdue_Clients.pdf");
+};
+
+
+  // Export overdue clients as Excel
+  const exportExcel = () => {
+    if (!overdueClients.length) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(
+      overdueClients.map((c) => ({
+        Client: c.name,
+        Status: "Overdue",
+        "Overdue Amount": c.overdueAmount || "-",
+        Updated: new Date(c.updatedAt).toLocaleDateString(),
+      }))
+    );
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Overdue Clients");
+    XLSX.writeFile(workbook, "Overdue_Clients.xlsx");
   };
 
   useEffect(() => {
@@ -157,10 +203,14 @@ const OverdueClients = () => {
       filters.status === "All" ? true : c.status === filters.status
     )
     .sort((a, b) => {
-      if (filters.sort === "Newest")
-        return new Date(b.updatedAt) - new Date(a.updatedAt);
+      if (filters.sort === "Newest") {
+        return new Date(b.updatedAt) - new Date(a.updatedAt); // latest first
+      } else if (filters.sort === "Oldest") {
+        return new Date(a.updatedAt) - new Date(b.updatedAt); // earliest first
+      }
       return 0;
     });
+
 
   if (loading) return <Loader />;
 
@@ -198,59 +248,77 @@ const OverdueClients = () => {
             label="Sort"
             value={filters.sort}
             onChange={(val) => setFilters({ ...filters, sort: val })}
-            options={["Newest"]}
+            options={["Newest", "Oldest"]}
             placeholder="Sort By"
           />
         </div>
 
         {/* ADD OVERDUE CLIENT BUTTON */}
         {user.role !== "Employee" && (
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setAddOverdueOpen(!addOverdueOpen)}
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition shadow-md"
-            >
-              <Plus size={16} /> Add Overdue Client
-            </button>
+          <div className="flex gap-2 items-center">
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setAddOverdueOpen(!addOverdueOpen)}
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition shadow-md"
+              >
+                <Plus size={16} /> Add Overdue Client
+              </button>
 
-            {addOverdueOpen && (
-              <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-w-xs w-full z-10">
-                <div className="p-2 border-b border-gray-200">
-                  <input
-                    type="text"
-                    placeholder="Search clients..."
-                    value={addSearch}
-                    onChange={(e) => setAddSearch(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400"
-                  />
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {availableClients
-                    .filter((c) =>
+              {addOverdueOpen && (
+                <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-w-xs w-full z-10">
+                  <div className="p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      placeholder="Search clients..."
+                      value={addSearch}
+                      onChange={(e) => setAddSearch(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400"
+                    />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {availableClients
+                      .filter((c) =>
+                        c.name.toLowerCase().includes(addSearch.toLowerCase())
+                      )
+                      .map((c) => (
+                        <div
+                          key={c._id}
+                          className="px-4 py-2 cursor-pointer hover:bg-red-50 flex justify-between items-center transition"
+                          onClick={() =>
+                            setModalData({ client: c, amount: "" })
+                          }
+                        >
+                          <span className="text-gray-800 font-medium">
+                            {c.name}
+                          </span>
+                          <Plus size={14} className="text-red-600" />
+                        </div>
+                      ))}
+                    {availableClients.filter((c) =>
                       c.name.toLowerCase().includes(addSearch.toLowerCase())
-                    )
-                    .map((c) => (
-                      <div
-                        key={c._id}
-                        className="px-4 py-2 cursor-pointer hover:bg-red-50 flex justify-between items-center transition"
-                        onClick={() => setModalData({ client: c, amount: "" })}
-                      >
-                        <span className="text-gray-800 font-medium">
-                          {c.name}
-                        </span>
-                        <Plus size={14} className="text-red-600" />
+                    ).length === 0 && (
+                      <div className="px-4 py-2 text-gray-500 italic">
+                        No clients found
                       </div>
-                    ))}
-                  {availableClients.filter((c) =>
-                    c.name.toLowerCase().includes(addSearch.toLowerCase())
-                  ).length === 0 && (
-                    <div className="px-4 py-2 text-gray-500 italic">
-                      No clients found
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Export buttons */}
+            <button
+              onClick={exportPDF}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition"
+            >
+              Export PDF
+            </button>
+            <button
+              onClick={exportExcel}
+              className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition"
+            >
+              Export Excel
+            </button>
           </div>
         )}
       </div>
