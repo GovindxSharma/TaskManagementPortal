@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ArrowRight, Settings } from "lucide-react";
+import { Bell, ArrowRight, Settings, LogOut } from "lucide-react";
 import { dashboardStats } from "../../../data/dashboardStats";
 import Loader from "../../../components/layout/Loader";
 import axiosInstance from "../../../api/axiosInstance";
@@ -66,7 +66,14 @@ const fetchOverdueClients = async () => {
   } finally {
     setLoadingOverdue(false);
   }
-};
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  };
+
 
   useEffect(() => {
     fetchUnreadCount();
@@ -126,6 +133,16 @@ const fetchOverdueClients = async () => {
           >
             <Settings className="text-gray-600" />
           </button>
+
+          {/* Logout */}
+          <button
+            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
+            onClick={handleLogout}
+            title="Logout"
+          >
+            <LogOut className="text-white" />
+          </button>
+
         </div>
       </div>
 
