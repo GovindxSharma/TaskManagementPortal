@@ -4,6 +4,9 @@ import { X, Edit, Plus, Trash2 } from "lucide-react";
 import axiosInstance from "../../api/axiosInstance";
 import { useToast } from "../../components/layout/ToastProvider.jsx";
 import Loader from "../../components/layout/Loader.jsx"; // centralized loader
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 function Modal({ open, children, onClose }) {
   if (!open) return null;
@@ -186,6 +189,55 @@ export default function LicenseTrackerSection() {
     }
   };
 
+  const exportLicensesPDF = () => {
+    if (!licenses.length) return;
+
+    const doc = new jsPDF();
+    const tableColumn = [
+      "Client",
+      "License Name",
+      "Category",
+      "Start Date",
+      "End Date",
+    ];
+    const tableRows = licenses.map((l) => [
+      l.client_id?.name || "-",
+      l.licenseName,
+      l.category,
+      l.startDate.slice(0, 10),
+      l.endDate.slice(0, 10),
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [59, 130, 246] }, // blue header
+    });
+
+    doc.save("Licenses.pdf");
+  };
+
+  // Export all licenses as Excel
+  const exportLicensesExcel = () => {
+    if (!licenses.length) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(
+      licenses.map((l) => ({
+        Client: l.client_id?.name || "-",
+        "License Name": l.licenseName,
+        Category: l.category,
+        "Start Date": l.startDate.slice(0, 10),
+        "End Date": l.endDate.slice(0, 10),
+      }))
+    );
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Licenses");
+    XLSX.writeFile(workbook, "Licenses.xlsx");
+  };
+
   const expiringLicenses = useMemo(() => {
     const now = new Date();
 
@@ -206,15 +258,22 @@ export default function LicenseTrackerSection() {
     });
   }, [licenses]);
 
-
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
       {loading && <Loader />}
 
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          License Tracker
-        </h2>
+        <div className="flex items-center gap-3">
+          <button
+            className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300 transition"
+            onClick={() => navigate(-1)}
+          >
+            ← Back
+          </button>
+          <h2 className="text-2xl font-semibold text-gray-800">
+            License Tracker
+          </h2>
+        </div>
 
         <div className="flex gap-3">
           <button
@@ -229,6 +288,20 @@ export default function LicenseTrackerSection() {
             onClick={() => setShowAddModal(true)}
           >
             <Plus size={16} /> Add License
+          </button>
+
+          {/* Export buttons */}
+          <button
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+            onClick={exportLicensesPDF}
+          >
+            Export PDF
+          </button>
+          <button
+            className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition"
+            onClick={exportLicensesExcel}
+          >
+            Export Excel
           </button>
         </div>
       </div>
