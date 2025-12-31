@@ -48,6 +48,7 @@ const Clients = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [attachments, setAttachments] = useState([]);
 
@@ -79,23 +80,25 @@ const Clients = () => {
     fetchEmployees();
   }, [fetchClients, fetchEmployees]);
 
-  const resetForm = () => {
-    setForm({
-      name: "",
-      contactPerson: "",
-      contactNumber: "",
-      email: "",
-      gstNumber: "",
-      address: "",
-      businessUnit: "",
-      site: "",
-      startMonth: "",
-      startYear: "",
-      assignedTo: "",
-      assignedToName: "",
-    });
-    setAttachments([]);
-  };
+const resetForm = () => {
+  setForm({
+    name: "",
+    contactPerson: "",
+    contactNumber: "",
+    email: "",
+    gstNumber: "",
+    address: "",
+    businessUnit: "",
+    site: "",
+    startMonth: "",
+    startYear: "",
+    assignedTo: "",
+    assignedToName: "",
+  });
+  setAttachments([]);
+  setSendWelcomeEmail(true);
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -134,20 +137,27 @@ const Clients = () => {
         clientData = data.client;
         setClients((prev) => [...prev, clientData]);
 
-        const formData = new FormData();
-        formData.append("contactPerson", clientData.contactPerson);
-        formData.append("companyName", clientData.name);
-        formData.append("email", clientData.email);
-        formData.append(
-          "html",
-          clientWelcomeEmail(clientData.contactPerson, clientData.name)
-        );
-        attachments.forEach((file) => formData.append("attachments", file));
+        // ✅ Send email ONLY if toggle is ON
+        if (sendWelcomeEmail) {
+          const formData = new FormData();
+          formData.append("contactPerson", clientData.contactPerson);
+          formData.append("companyName", clientData.name);
+          formData.append("email", clientData.email);
+          formData.append(
+            "html",
+            clientWelcomeEmail(clientData.contactPerson, clientData.name)
+          );
 
-        await axiosInstance.post("/email/send-welcome", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        toast.success("Client added and welcome email sent!");
+          attachments.forEach((file) => formData.append("attachments", file));
+
+          await axiosInstance.post("/email/send-welcome", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+          toast.success("Client added & welcome email sent!");
+        } else {
+          toast.success("Client added successfully!");
+        }
       }
 
       resetForm();
@@ -429,18 +439,45 @@ const Clients = () => {
                   </select>
                 </div>
 
-                {/* Attachments */}
-                <div className="flex items-center gap-2 mt-2">
-                  <label className="text-sm text-gray-600 flex items-center gap-1">
-                    <Paperclip /> Attach Files
+                {/* Send Welcome Email Toggle */}
+                <div className="flex items-center gap-3 mt-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Send Welcome Email
                   </label>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="text-sm text-gray-600"
-                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setSendWelcomeEmail((prev) => !prev)}
+                    className={`relative w-12 h-6 rounded-full transition ${
+                      sendWelcomeEmail ? "bg-blue-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${
+                        sendWelcomeEmail ? "translate-x-6" : ""
+                      }`}
+                    />
+                  </button>
+
+                  <span className="text-xs text-gray-500">
+                    {sendWelcomeEmail ? "ON" : "OFF"}
+                  </span>
                 </div>
+
+                {/* Attachments – ONLY when email is ON */}
+                {sendWelcomeEmail && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="text-sm text-gray-600 flex items-center gap-1">
+                      <Paperclip size={14} /> Attach Files
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileChange}
+                      className="text-sm text-gray-600"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end border-t pt-4">
