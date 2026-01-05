@@ -17,6 +17,7 @@ export default function CustomerCompliance() {
   const [searchQuery, setSearchQuery] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [dataStatusFilter, setDataStatusFilter] = useState("");
+  const [workProgressFilter, setWorkProgressFilter] = useState("");
   const [billStatusFilter, setBillStatusFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
   const [yearFilter, setYearFilter] = useState(""); // add this
@@ -107,6 +108,7 @@ export default function CustomerCompliance() {
     setSearchQuery("");
     setEmployeeFilter("");
     setDataStatusFilter("");
+    setWorkProgressFilter("");
     setBillStatusFilter("");
     setMonthFilter("");
     setYearFilter("");
@@ -154,59 +156,77 @@ export default function CustomerCompliance() {
       return dataStatusMatch && billStatusMatch && monthMatch && yearMatch;
     });
   };
-
-
-  // Filter Logic
-// const filteredClients = clients.filter((client) => {
-//   const dataParsed = parseStatusWithMonthYear(client.lastDataStatus);
-//   const billParsed = parseStatusWithMonthYear(client.lastBillStatus);
-
-//   // Data/Bill Status normalized to match dropdown options
-//   const dataStatusRaw = dataParsed.status.trim().toLowerCase();
-//   const billStatusRaw = billParsed.status.trim().toLowerCase();
-
-//   // Month only (for month dropdown)
-//   const dataMonthRaw = monthNames[parseInt(dataParsed.month, 10) - 1] || "-";
-//   const billMonthRaw = monthNames[parseInt(billParsed.month, 10) - 1] || "-";
-
-//   const matchesSearch =
-//     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-//     dataStatusRaw.includes(searchQuery.toLowerCase()) ||
-//     billStatusRaw.includes(searchQuery.toLowerCase());
-
-//   return (
-//     matchesSearch &&
-//     (!employeeFilter || client.assignedTo === employeeFilter) &&
-//     (!dataStatusFilter || dataStatusRaw === dataStatusFilter.toLowerCase()) &&
-//     (!billStatusFilter || billStatusRaw === billStatusFilter.toLowerCase()) &&
-//     (!monthFilter ||
-//       dataMonthRaw === monthFilter ||
-//       billMonthRaw === monthFilter) &&
-//     (!yearFilter ||
-//       dataParsed.year === yearFilter ||
-//       billParsed.year === yearFilter)
-//   );
-  // });
   
-  const filteredClients = clients.filter((client) => {
-    const matchesSearch =
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.assignedTo?.toLowerCase().includes(searchQuery.toLowerCase());
+const filteredClients = clients.filter((client) => {
+  // -----------------------------
+  // SEARCH
+  // -----------------------------
+  const matchesSearch = client.name
+    .toLowerCase()
+    .includes(searchQuery.toLowerCase());
 
-    const matchesEmployee =
-      !employeeFilter || client.assignedTo === employeeFilter;
+  // -----------------------------
+  // EMPLOYEE
+  // -----------------------------
+  const matchesEmployee =
+    !employeeFilter || client.assignedTo === employeeFilter;
 
-    const matchesCompliance = matchesMonthlyFilter(client.monthlyCompliances, {
-      dataStatusFilter,
-      billStatusFilter,
-      monthFilter,
-      yearFilter,
-    });
+  // -----------------------------
+  // ✅ DATA STATUS (THIS IS WHERE YOUR BLOCK GOES)
+  // -----------------------------
+  const matchesDataStatus =
+    !dataStatusFilter ||
+    client.monthlyCompliances?.some(
+      (m) =>
+        m.dataReceiveStatus.toLowerCase() === dataStatusFilter.toLowerCase()
+    );
 
-    return matchesSearch && matchesEmployee && matchesCompliance;
-  });
+  const matchesWorkProgress =
+    !workProgressFilter ||
+    client.monthlyCompliances?.some(
+      (m) => m.workProgress === workProgressFilter
+    );
 
+  // -----------------------------
+  // BILL STATUS
+  // -----------------------------
+  const matchesBillStatus =
+    !billStatusFilter ||
+    client.monthlyCompliances?.some(
+      (m) => m.billStatus.toLowerCase() === billStatusFilter.toLowerCase()
+    );
 
+  // -----------------------------
+  // MONTH
+  // -----------------------------
+  const matchesMonth =
+    !monthFilter ||
+    client.monthlyCompliances?.some(
+      (m) => monthNames[parseInt(m.month, 10) - 1] === monthFilter
+    );
+
+  // -----------------------------
+  // YEAR
+  // -----------------------------
+  const matchesYear =
+    !yearFilter ||
+    client.monthlyCompliances?.some(
+      (m) => String(m.year) === String(yearFilter)
+    );
+
+  // -----------------------------
+  // FINAL RETURN
+  // -----------------------------
+  return (
+    matchesSearch &&
+    matchesEmployee &&
+    matchesDataStatus &&
+    matchesWorkProgress &&
+    matchesBillStatus &&
+    matchesMonth &&
+    matchesYear
+  );
+});
 
   const handleClientClick = (id) => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -403,10 +423,29 @@ export default function CustomerCompliance() {
 
         <Dropdown
           label="Data Status"
-          options={["Data Received", "Data Complete"]}
+          options={[
+            "Data Received",
+            "Data Incomplete",
+            "Not Received",
+            "Data Pending",
+            "Inactive",
+          ]}
           value={dataStatusFilter}
           onChange={setDataStatusFilter}
           placeholder="Data Status"
+        />
+
+        <Dropdown
+          label="Work Progress"
+          options={[
+            "Not Started",
+            "In Progress",
+            "Completed",
+            "Payment Overdue",
+          ]}
+          value={workProgressFilter}
+          onChange={setWorkProgressFilter}
+          placeholder="Work Progress"
         />
 
         <Dropdown
