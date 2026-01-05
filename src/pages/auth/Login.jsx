@@ -64,7 +64,7 @@ export default function Login() {
             <LogIn className="text-[#016DB6]" size={40} />
           </div>
           <h1 className="text-2xl font-semibold text-gray-800">
-            Customer Compliance Services
+            Contractor Compliance Services
           </h1>
           <p className="text-gray-500 text-sm mt-1">Login to your account</p>
         </div>
@@ -107,9 +107,38 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
-          © {new Date().getFullYear()} Customer Compliance Services
-        </p>
+        <div className="text-center text-sm text-gray-500 mt-4 space-y-1">
+          <p>© {new Date().getFullYear()} Contractor Compliance Services</p>
+          <p>
+            Developed by{" "}
+            <a
+              href="https://trusha-jadeja.onrender.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Trusha Jadeja
+            </a>
+            ,{" "}
+            <a
+              href="https://govind-sharma.onrender.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Govind Sharma
+            </a>
+            ,{" "}
+            <a
+              href="https://www.linkedin.com/in/saim-khoja/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Saim Khoja
+            </a>
+          </p>
+        </div>
       </motion.div>
     </div>
   );
