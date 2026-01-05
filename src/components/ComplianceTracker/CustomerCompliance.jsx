@@ -427,7 +427,6 @@ const filteredClients = clients.filter((client) => {
             "Data Received",
             "Data Incomplete",
             "Not Received",
-            "Data Pending",
             "Inactive",
           ]}
           value={dataStatusFilter}
