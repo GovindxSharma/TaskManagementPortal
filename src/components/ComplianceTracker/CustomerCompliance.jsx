@@ -85,6 +85,24 @@ export default function CustomerCompliance() {
     fetchClients();
   }, [fetchClients]);
 
+  const monthOptions = [
+    ...new Set(
+      clients.flatMap((c) =>
+        (c.monthlyCompliances || []).map(
+          (m) => monthNames[parseInt(m.month, 10) - 1]
+        )
+      )
+    ),
+  ];
+
+  const yearOptions = [
+    ...new Set(
+      clients.flatMap((c) =>
+        (c.monthlyCompliances || []).map((m) => String(m.year))
+      )
+    ),
+  ];
+
   const resetFilters = () => {
     setSearchQuery("");
     setEmployeeFilter("");
@@ -109,37 +127,85 @@ export default function CustomerCompliance() {
     ),
   ];
 
+  const normalize = (v = "") => v.trim().toLowerCase();
+
+  const matchesMonthlyFilter = (
+    monthlyCompliances,
+    { dataStatusFilter, billStatusFilter, monthFilter, yearFilter }
+  ) => {
+    if (!monthlyCompliances?.length) return false;
+
+    return monthlyCompliances.some((m) => {
+      const monthName = monthNames[parseInt(m.month, 10) - 1];
+      const year = String(m.year);
+
+      const dataStatusMatch =
+        !dataStatusFilter ||
+        normalize(m.dataReceiveStatus) === normalize(dataStatusFilter);
+
+      const billStatusMatch =
+        !billStatusFilter ||
+        normalize(m.billStatus) ===
+          normalize(billStatusFilter.replace("Bill ", ""));
+
+      const monthMatch = !monthFilter || monthName === monthFilter;
+      const yearMatch = !yearFilter || year === yearFilter;
+
+      return dataStatusMatch && billStatusMatch && monthMatch && yearMatch;
+    });
+  };
+
+
   // Filter Logic
-const filteredClients = clients.filter((client) => {
-  const dataParsed = parseStatusWithMonthYear(client.lastDataStatus);
-  const billParsed = parseStatusWithMonthYear(client.lastBillStatus);
+// const filteredClients = clients.filter((client) => {
+//   const dataParsed = parseStatusWithMonthYear(client.lastDataStatus);
+//   const billParsed = parseStatusWithMonthYear(client.lastBillStatus);
 
-  // Data/Bill Status normalized to match dropdown options
-  const dataStatusRaw = dataParsed.status.trim().toLowerCase();
-  const billStatusRaw = billParsed.status.trim().toLowerCase();
+//   // Data/Bill Status normalized to match dropdown options
+//   const dataStatusRaw = dataParsed.status.trim().toLowerCase();
+//   const billStatusRaw = billParsed.status.trim().toLowerCase();
 
-  // Month only (for month dropdown)
-  const dataMonthRaw = monthNames[parseInt(dataParsed.month, 10) - 1] || "-";
-  const billMonthRaw = monthNames[parseInt(billParsed.month, 10) - 1] || "-";
+//   // Month only (for month dropdown)
+//   const dataMonthRaw = monthNames[parseInt(dataParsed.month, 10) - 1] || "-";
+//   const billMonthRaw = monthNames[parseInt(billParsed.month, 10) - 1] || "-";
 
-  const matchesSearch =
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dataStatusRaw.includes(searchQuery.toLowerCase()) ||
-    billStatusRaw.includes(searchQuery.toLowerCase());
+//   const matchesSearch =
+//     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//     dataStatusRaw.includes(searchQuery.toLowerCase()) ||
+//     billStatusRaw.includes(searchQuery.toLowerCase());
 
-  return (
-    matchesSearch &&
-    (!employeeFilter || client.assignedTo === employeeFilter) &&
-    (!dataStatusFilter || dataStatusRaw === dataStatusFilter.toLowerCase()) &&
-    (!billStatusFilter || billStatusRaw === billStatusFilter.toLowerCase()) &&
-    (!monthFilter ||
-      dataMonthRaw === monthFilter ||
-      billMonthRaw === monthFilter) &&
-    (!yearFilter ||
-      dataParsed.year === yearFilter ||
-      billParsed.year === yearFilter)
-  );
-});
+//   return (
+//     matchesSearch &&
+//     (!employeeFilter || client.assignedTo === employeeFilter) &&
+//     (!dataStatusFilter || dataStatusRaw === dataStatusFilter.toLowerCase()) &&
+//     (!billStatusFilter || billStatusRaw === billStatusFilter.toLowerCase()) &&
+//     (!monthFilter ||
+//       dataMonthRaw === monthFilter ||
+//       billMonthRaw === monthFilter) &&
+//     (!yearFilter ||
+//       dataParsed.year === yearFilter ||
+//       billParsed.year === yearFilter)
+//   );
+  // });
+  
+  const filteredClients = clients.filter((client) => {
+    const matchesSearch =
+      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.assignedTo?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesEmployee =
+      !employeeFilter || client.assignedTo === employeeFilter;
+
+    const matchesCompliance = matchesMonthlyFilter(client.monthlyCompliances, {
+      dataStatusFilter,
+      billStatusFilter,
+      monthFilter,
+      yearFilter,
+    });
+
+    return matchesSearch && matchesEmployee && matchesCompliance;
+  });
+
 
 
   const handleClientClick = (id) => {
@@ -353,26 +419,7 @@ const filteredClients = clients.filter((client) => {
 
         <Dropdown
           label="Month"
-          options={[
-            ...new Set(
-              clients
-                .flatMap((c) => [
-                  monthNames[
-                    parseInt(
-                      parseStatusWithMonthYear(c.lastDataStatus).month,
-                      10
-                    ) - 1
-                  ],
-                  monthNames[
-                    parseInt(
-                      parseStatusWithMonthYear(c.lastBillStatus).month,
-                      10
-                    ) - 1
-                  ],
-                ])
-                .filter(Boolean)
-            ),
-          ]}
+          options={monthOptions}
           value={monthFilter}
           onChange={setMonthFilter}
           placeholder="Select Month"
@@ -380,16 +427,7 @@ const filteredClients = clients.filter((client) => {
 
         <Dropdown
           label="Year"
-          options={[
-            ...new Set(
-              clients
-                .flatMap((c) => [
-                  parseStatusWithMonthYear(c.lastDataStatus).year,
-                  parseStatusWithMonthYear(c.lastBillStatus).year,
-                ])
-                .filter(Boolean)
-            ),
-          ]}
+          options={yearOptions}
           value={yearFilter}
           onChange={setYearFilter}
           placeholder="Select Year"
