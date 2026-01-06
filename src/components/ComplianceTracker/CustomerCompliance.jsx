@@ -55,14 +55,7 @@ export default function CustomerCompliance() {
     return parts.join(" ");
   };
 
-  // Add this function
-  const parseStatusWithMonthYear = (str) => {
-    if (!str || str === "-") return { status: "-", month: "-", year: "-" };
-    const parts = str.split(" ");
-    const status = parts.slice(0, -1).join(" ");
-    const [month, year] = parts[parts.length - 1]?.split("-") || ["-", "-"];
-    return { status, month, year };
-  };
+
 
   const fetchClients = useCallback(async () => {
     try {
@@ -118,45 +111,6 @@ export default function CustomerCompliance() {
     ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
   ];
 
-  const yearList = [
-    ...new Set(
-      clients
-        .flatMap((c) => [
-          parseStatusWithMonthYear(c.lastDataStatus).year,
-          parseStatusWithMonthYear(c.lastBillStatus).year,
-        ])
-        .filter(Boolean)
-    ),
-  ];
-
-  const normalize = (v = "") => v.trim().toLowerCase();
-
-  const matchesMonthlyFilter = (
-    monthlyCompliances,
-    { dataStatusFilter, billStatusFilter, monthFilter, yearFilter }
-  ) => {
-    if (!monthlyCompliances?.length) return false;
-
-    return monthlyCompliances.some((m) => {
-      const monthName = monthNames[parseInt(m.month, 10) - 1];
-      const year = String(m.year);
-
-      const dataStatusMatch =
-        !dataStatusFilter ||
-        normalize(m.dataReceiveStatus) === normalize(dataStatusFilter);
-
-      const billStatusMatch =
-        !billStatusFilter ||
-        normalize(m.billStatus) ===
-          normalize(billStatusFilter.replace("Bill ", ""));
-
-      const monthMatch = !monthFilter || monthName === monthFilter;
-      const yearMatch = !yearFilter || year === yearFilter;
-
-      return dataStatusMatch && billStatusMatch && monthMatch && yearMatch;
-    });
-  };
-  
 const filteredClients = clients.filter((client) => {
   // -----------------------------
   // SEARCH
@@ -472,11 +426,12 @@ const filteredClients = clients.filter((client) => {
         />
 
         <button
-          onClick={resetFilters}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-all duration-200"
-        >
-          <X size={16} /> Reset Filters
-        </button>
+        onClick={resetFilters}
+        className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200"
+      >
+        Reset Filters
+      </button>
+      
       </div>
 
       {/* Clients Table */}

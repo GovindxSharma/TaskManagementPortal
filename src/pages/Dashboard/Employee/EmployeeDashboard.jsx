@@ -124,7 +124,7 @@ useEffect(() => {
   if (loading) return <Loader fullscreen={true} size={250} />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-10">
         <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
@@ -158,27 +158,29 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-6 mb-10">
-        {stats.map((s, i) => (
-          <div
-            key={i}
-            onClick={() => navigate(s.link)}
-            className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer p-6 flex items-center justify-between border border-gray-100 hover:-translate-y-1"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gray-100 rounded-lg">{s.icon}</div>
-              <div>
-                <p className="text-gray-500 text-sm">{s.title}</p>
-                <p className="text-3xl font-semibold text-gray-800">
-                  {s.value}
-                </p>
-              </div>
+       {/* Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+              {stats.map((s, i) => (
+                <div
+                  key={i}
+                  onClick={() => navigate(s.link)}
+                  className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer p-6 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 bg-gray-50 rounded-xl group-hover:bg-gray-100 transition">
+                      {s.icon}
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-sm">{s.title}</p>
+                      <p className="text-3xl font-semibold text-gray-800">
+                        {s.value}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="text-gray-300 group-hover:text-gray-500 transition" />
+                </div>
+              ))}
             </div>
-            <ArrowRight className="text-gray-400 transition" />
-          </div>
-        ))}
-      </div>
 
       {/* Panels */}
       <div className="grid md:grid-cols-2 gap-6">
