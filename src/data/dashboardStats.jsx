@@ -91,6 +91,18 @@ const dashboardStats = {
 
   employee: [
     {
+      title: "Data Received",
+      value: 0,
+      icon: <Users className="text-blue-500" />,
+      link: "/employee/data-received",
+    },
+    {
+      title: "Data Complete",
+      value: 0,
+      icon: <Users className="text-yellow-500" />,
+      link: "/employee/data-complete",
+    },
+    {
       title: "Compliance Tracker",
       value: 0,
       icon: <FileText className="text-purple-500" />,
@@ -120,18 +132,7 @@ const dashboardStats = {
       icon: <Key className="text-indigo-500" />,
       link: "/employee/passwords",
     },
-    {
-      title: "Data Received",
-      value: 0,
-      icon: <Users className="text-blue-500" />,
-      link: "/employee/data-received",
-    },
-    {
-      title: "Data Complete",
-      value: 0,
-      icon: <Users className="text-yellow-500" />,
-      link: "/employee/data-complete",
-    },
+    
   ],
 };
 
