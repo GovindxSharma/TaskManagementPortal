@@ -65,15 +65,20 @@ const Clients = () => {
     }
   }, [toast]);
 
-  const fetchEmployees = useCallback(async () => {
-    try {
-      const { data } = await axiosInstance.get(`/user/employees`);
-      setEmployees(data.employees);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to fetch employees");
-    }
-  }, [toast]);
+const fetchEmployees = useCallback(async () => {
+  try {
+    const { data } = await axiosInstance.get(`/user/employees`);
+
+    const onlyEmployees = data.employees.filter(
+      (user) => user.role === "Employee"
+    );
+
+    setEmployees(onlyEmployees);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to fetch employees");
+  }
+}, [toast]);
 
   useEffect(() => {
     fetchClients();
