@@ -409,7 +409,7 @@ const resetForm = () => {
                   </label>
                   <input
                     type="number"
-                    min={years[0]}
+                    // min={years[0]}
                     max={years[1]}
                     value={form.startYear}
                     onChange={(e) =>
