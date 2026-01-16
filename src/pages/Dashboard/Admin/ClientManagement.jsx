@@ -13,17 +13,35 @@ import axiosInstance from "../../../api/axiosInstance";
 import { clientWelcomeEmail } from "../../../commons/emailContent";
 import { useToast } from "../../../components/layout/ToastProvider.jsx"; // ⭐ CENTRAL TOAST
 
-const InputField = ({ label, value, onChange, type = "text", placeholder }) => (
-  <div className="flex flex-col">
-    <label className="text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <input
-      type={type}
-      value={value}
-      placeholder={placeholder}
-      onChange={onChange}
-      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
-    />
-  </div>
+const InputField = ({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  required = false,
+  error,
+}) => (
+ <div className="flex flex-col">
+  <label className="text-sm font-medium text-gray-700 mb-1">
+    {label}
+    {required && <span className="text-red-500 ml-1">*</span>}
+  </label>
+
+  <input
+    type={type}
+    value={value}
+    placeholder={placeholder}
+    onChange={onChange}
+    required={required}
+    className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+      ${error ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}
+    `}
+  />
+
+  {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
+</div>
+
 );
 
 const Clients = () => {
@@ -31,6 +49,7 @@ const Clients = () => {
   const toast = useToast();
 
   const [clients, setClients] = useState([]);
+  const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -107,6 +126,25 @@ const resetForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+  const newErrors = {};
+
+  if (!form.name.trim()) {
+    newErrors.name = "Client name is required";
+  }
+
+  if (!form.email.trim()) {
+    newErrors.email = "Email is required";
+  } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+    newErrors.email = "Enter a valid email address";
+  }
+
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    toast.error("Please fix required fields");
+    return;
+  }
+
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -230,15 +268,16 @@ const resetForm = () => {
   const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
 
   const fields = [
-    { label: "Client Name", key: "name" },
-    { label: "Contact Person", key: "contactPerson" },
-    { label: "Contact Number", key: "contactNumber" },
-    { label: "Email", key: "email", type: "email" },
-    { label: "GST Number", key: "gstNumber" },
-    { label: "Address", key: "address" },
-    { label: "Company Name", key: "businessUnit" },
-    { label: "Business Unit", key: "site" },
-  ];
+  { label: "Client Name", key: "name", required: true },
+  { label: "Contact Person", key: "contactPerson" },
+  { label: "Contact Number", key: "contactNumber" },
+  { label: "Email", key: "email", type: "email", required: true },
+  { label: "GST Number", key: "gstNumber" },
+  { label: "Address", key: "address" },
+  { label: "Company Name", key: "businessUnit" },
+  { label: "Business Unit", key: "site" },
+];
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">
@@ -369,17 +408,21 @@ const resetForm = () => {
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {fields.map((f) => (
-                  <InputField
-                    key={f.key}
-                    label={f.label}
-                    value={form[f.key]}
-                    type={f.type}
-                    placeholder={`Enter ${f.label.toLowerCase()}`}
-                    onChange={(e) =>
-                      setForm({ ...form, [f.key]: e.target.value })
-                    }
-                  />
-                ))}
+  <InputField
+    key={f.key}
+    label={f.label}
+    value={form[f.key]}
+    type={f.type}
+    placeholder={`Enter ${f.label.toLowerCase()}`}
+    required={f.required}
+    error={errors[f.key]}
+    onChange={(e) => {
+      setForm({ ...form, [f.key]: e.target.value });
+      setErrors((prev) => ({ ...prev, [f.key]: "" }));
+    }}
+  />
+))}
+
 
                 {/* Assign To */}
                 <div className="flex flex-col relative">
@@ -487,11 +530,19 @@ const resetForm = () => {
 
               <div className="flex justify-end border-t pt-4">
                 <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition"
-                >
-                  {editingId ? "Update Client" : "Add Client"}
-                </button>
+  type="submit"
+  disabled={!form.name || !form.email}
+  className={`px-6 py-2 rounded-lg font-medium transition
+    ${
+      !form.name || !form.email
+        ? "bg-gray-300 cursor-not-allowed"
+        : "bg-blue-600 hover:bg-blue-700 text-white"
+    }
+  `}
+>
+  {editingId ? "Update Client" : "Add Client"}
+</button>
+
               </div>
             </form>
           </div>
