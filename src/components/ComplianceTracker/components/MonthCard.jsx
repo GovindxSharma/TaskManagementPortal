@@ -159,11 +159,22 @@ const MonthCard = ({ clientId }) => {
 
   if (loading) return <Loader message="Loading monthly data..." />;
 
-  const filteredData = monthlyData.filter((m) => {
-    const monthMatch = filterMonth ? m.month === filterMonth : true;
-    const yearMatch = filterYear ? m.year === Number(filterYear) : true;
-    return monthMatch && yearMatch;
-  });
+  const filteredData = monthlyData
+    .filter((m) => {
+      const monthMatch = filterMonth ? m.month === filterMonth : true;
+      const yearMatch = filterYear ? m.year === Number(filterYear) : true;
+      return monthMatch && yearMatch;
+    })
+    .sort((a, b) => {
+      // 1️⃣ Year DESC
+      if (b.year !== a.year) {
+        return b.year - a.year;
+      }
+
+      // 2️⃣ Month ASC (01 → 12)
+      return Number(a.month) - Number(b.month);
+    });
+
 
   return (
     <>
