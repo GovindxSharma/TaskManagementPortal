@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
+import axiosInstance from "../../../api/axiosInstance"; // adjust path
 
 const EditTicketModal = ({
   show,
   setShow,
   selectedTicket,
-  employees,
+  employees = [],
   isAdmin,
   handleUpdateTicket,
 }) => {
@@ -20,9 +21,33 @@ const EditTicketModal = ({
     status: "",
   });
 
+  const [clients, setClients] = useState([]);
   const [selectedEmp, setSelectedEmp] = useState({ _id: null, name: "" });
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState({ _id: null, name: "" });
+  const [empDropdownOpen, setEmpDropdownOpen] = useState(false);
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const clientRef = useRef(null);
+  const empRef = useRef(null);
+
+  // Fetch clients like AddTicket
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await axiosInstance.get(
+          `/client?company_id=${user.company_id}`,
+        );
+        setClients(res.data.clients || []);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      }
+    };
+    fetchClients();
+  }, []);
+
+  // Populate form and selected items when ticket opens
   useEffect(() => {
     if (selectedTicket) {
       setForm({
@@ -35,12 +60,32 @@ const EditTicketModal = ({
         assignedTo: selectedTicket.assignedTo?._id || "",
         status: selectedTicket.status || "Open",
       });
+
       setSelectedEmp({
         _id: selectedTicket.assignedTo?._id || null,
         name: selectedTicket.assignedTo?.name || "",
       });
+
+      setSelectedClient({
+        _id: selectedTicket.relatedClient?._id || null,
+        name: selectedTicket.relatedClient?.name || "",
+      });
     }
   }, [selectedTicket]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (clientRef.current && !clientRef.current.contains(e.target)) {
+        setClientDropdownOpen(false);
+      }
+      if (empRef.current && !empRef.current.contains(e.target)) {
+        setEmpDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (!show || !selectedTicket) return null;
 
@@ -54,11 +99,51 @@ const EditTicketModal = ({
           <X size={18} />
         </button>
 
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Edit Ticket
         </h3>
 
         <div className="flex flex-col gap-3">
+          {/* Client Dropdown */}
+          <label className="text-sm text-gray-600">Client</label>
+          <div className="relative" ref={clientRef}>
+            <input
+              type="text"
+              placeholder="Type client name..."
+              value={selectedClient.name}
+              onChange={(e) => {
+                setSelectedClient({ _id: null, name: e.target.value });
+                setClientDropdownOpen(true);
+              }}
+              onFocus={() => setClientDropdownOpen(true)}
+              className="border px-3 py-2 rounded-lg w-full"
+            />
+            {clientDropdownOpen && clients.length > 0 && (
+              <ul className="absolute bg-white left-0 right-0 border rounded-lg max-h-52 overflow-y-auto mt-1 shadow z-50">
+                {clients
+                  .filter((c) =>
+                    c.name
+                      .toLowerCase()
+                      .includes(selectedClient.name.toLowerCase()),
+                  )
+                  .map((c) => (
+                    <li
+                      key={c._id}
+                      onClick={() => {
+                        setSelectedClient(c);
+                        setForm({ ...form, clientId: c._id });
+                        setClientDropdownOpen(false);
+                      }}
+                      className="px-3 py-2 hover:bg-indigo-100 cursor-pointer"
+                    >
+                      {c.name}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Title */}
           <label className="text-sm text-gray-600">Title</label>
           <input
             type="text"
@@ -67,6 +152,7 @@ const EditTicketModal = ({
             className="border px-3 py-2 rounded-lg"
           />
 
+          {/* Description */}
           <label className="text-sm text-gray-600">Description</label>
           <textarea
             value={form.description}
@@ -74,14 +160,7 @@ const EditTicketModal = ({
             className="border px-3 py-2 rounded-lg"
           />
 
-          {/* <label className="text-sm text-gray-600">Due Date</label>
-          <input
-            type="date"
-            value={form.dueDate}
-            onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-            className="border px-3 py-2 rounded-lg"
-          /> */}
-
+          {/* Priority */}
           <label className="text-sm text-gray-600">Priority</label>
           <select
             value={form.priority}
@@ -94,6 +173,7 @@ const EditTicketModal = ({
             <option value="High">High</option>
           </select>
 
+          {/* Status */}
           <label className="text-sm text-gray-600">Status</label>
           <select
             value={form.status}
@@ -106,35 +186,36 @@ const EditTicketModal = ({
             <option value="Closed">Closed</option>
           </select>
 
+          {/* Admin Only Assign */}
           {isAdmin && (
             <>
               <label className="text-sm text-gray-600">Assign To</label>
-              <div className="relative">
+              <div className="relative" ref={empRef}>
                 <input
                   type="text"
                   placeholder="Type employee name..."
                   value={selectedEmp.name}
                   onChange={(e) => {
                     setSelectedEmp({ _id: null, name: e.target.value });
-                    setDropdownOpen(true);
+                    setEmpDropdownOpen(true);
                   }}
-                  onFocus={() => setDropdownOpen(true)}
+                  onFocus={() => setEmpDropdownOpen(true)}
                   className="border px-3 py-2 rounded-lg w-full"
                 />
-                {dropdownOpen && (
-                  <ul className="absolute bg-white left-0 right-0 border rounded-lg max-h-52 overflow-y-auto mt-1 shadow">
+                {empDropdownOpen && employees.length > 0 && (
+                  <ul className="absolute bg-white left-0 right-0 border rounded-lg max-h-52 overflow-y-auto mt-1 shadow z-50">
                     {employees
                       .filter((e) =>
                         e.name
                           .toLowerCase()
-                          .includes(selectedEmp.name.toLowerCase())
+                          .includes(selectedEmp.name.toLowerCase()),
                       )
                       .map((e) => (
                         <li
                           key={e._id}
                           onClick={() => {
                             setSelectedEmp(e);
-                            setDropdownOpen(false);
+                            setEmpDropdownOpen(false);
                           }}
                           className="px-3 py-2 hover:bg-indigo-100 cursor-pointer"
                         >

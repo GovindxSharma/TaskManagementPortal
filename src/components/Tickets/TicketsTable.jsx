@@ -1,4 +1,3 @@
-// components/Tickets/TicketsTable.jsx
 import React from "react";
 import { UserCheck, CheckCircle2, Trash2, Pencil } from "lucide-react";
 import { statusColor } from "./ticketUtils";
@@ -19,7 +18,7 @@ const TicketsTable = ({
         <thead className="bg-gray-100 border-b">
           <tr className="text-gray-700">
             <th className="p-3 text-left">Title</th>
-            {/* <th className="p-3 text-left">Client</th> */}
+            <th className="p-3 text-left">Client</th> {/* Added Client column */}
             <th className="p-3 text-left">Raised By</th>
             <th className="p-3 text-left">Assigned To</th>
             <th className="p-3 text-left">Status</th>
@@ -34,7 +33,7 @@ const TicketsTable = ({
             filteredTickets.map((t) => (
               <tr key={t._id} className="border-b hover:bg-gray-50 transition">
                 <td className="p-3 font-medium text-gray-800">{t.title}</td>
-                {/* <td className="p-3">{t.relatedClient?.name || "N/A"}</td> */}
+                <td className="p-3">{t.relatedClient?.name || "N/A"}</td> {/* Show client name */}
                 <td className="p-3">{t.raisedBy?.name || "N/A"}</td>
                 <td className="p-3">{t.assignedTo?.name || "Unassigned"}</td>
                 <td className="p-3">
@@ -51,7 +50,6 @@ const TicketsTable = ({
                   {new Date(t.updatedAt).toLocaleDateString()}
                 </td>
                 <td className="p-3 flex justify-center gap-2">
-                  {/* Assign button (Admin only) */}
                   {isAdmin && (
                     <button
                       onClick={() => {
@@ -68,7 +66,6 @@ const TicketsTable = ({
                     </button>
                   )}
 
-                  {/* Status Toggle */}
                   <button
                     onClick={() =>
                       handleStatusChange(
@@ -81,7 +78,6 @@ const TicketsTable = ({
                     <CheckCircle2 size={16} />
                   </button>
 
-                  {/* Edit button (Everyone) */}
                   <button
                     onClick={() => {
                       setSelectedTicket(t);
@@ -92,15 +88,11 @@ const TicketsTable = ({
                     <Pencil size={16} />
                   </button>
 
-                  {/* Delete button (Admin only) */}
                   {isAdmin && (
                     <button
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row clicks from blocking this
-                        // Trigger delete first
+                        e.stopPropagation();
                         handleDelete(t._id);
-
-                        // Reset selected states
                         if (t._id === selectedTicket?._id) {
                           setShowEditModal(false);
                         }
