@@ -121,7 +121,14 @@ const MonthCard = ({ clientId }) => {
 
   const canEdit = (field) => {
     if (role === "ADMIN")
-      return ["data", "work", "bill", "remarks"].includes(field);
+      return [
+        "data",
+        "work",
+        "bill",
+        "workers", 
+        "actualBill", 
+        "remarks",
+      ].includes(field);
     if (role === "EMPLOYEE")
       return ["data", "work", "workers", "remarks"].includes(field);
     if (role === "ACCOUNTANT")
