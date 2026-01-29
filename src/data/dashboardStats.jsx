@@ -48,6 +48,12 @@ const dashboardStats = {
       icon: <Award className="text-teal-500" />,
       link: "/admin/license-tracker",
     },
+    {
+      title: "Pending Bills",
+      value: 0,
+      icon: <Award className="text-teal-500" />,
+      link: "/admin/bill-pending",
+    },
   ],
 
   accountant: [
@@ -132,7 +138,6 @@ const dashboardStats = {
       icon: <Key className="text-indigo-500" />,
       link: "/employee/passwords",
     },
-    
   ],
 };
 
@@ -153,6 +158,7 @@ export async function loadDashboardStats() {
       dashboardStats.admin[4].value = data.overdueClients || 0;
       dashboardStats.admin[5].value = data.passwords || 0;
       dashboardStats.admin[6].value = data.licenses || 0;
+      dashboardStats.admin[7].value = data.billPending || 0;
     }
 
     if (user.role === "Accountant") {
