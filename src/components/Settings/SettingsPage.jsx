@@ -91,11 +91,15 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   // --- category handlers ---
-  const handleCategoryChange = (index, value) => {
-    const updated = [...categories];
-    updated[index].price = Number(value);
-    setCategories(updated);
-  };
+const handleCategoryChange = (index, value) => {
+  const updated = [...categories];
+
+  // allow empty input while typing
+  updated[index].price = value === "" ? "" : value;
+
+  setCategories(updated);
+};
+
 
   const handleUpdateCategories = async () => {
     if (!isAdmin) return;
