@@ -25,6 +25,7 @@ export const dashboardRoutes = {
     { path: "/admin/license-tracker", element: <LicenseTrackerSection /> },
     { path: "/admin/notifications", element: <NotificationsPage /> },
     { path: "/admin/settings", element: <SettingsPage /> },
+    { path: "/admin/bill-pending", element: <PendingBills /> },
   ],
 
   employee: [
@@ -50,6 +51,5 @@ export const dashboardRoutes = {
     { path: "/accountant/notifications", element: <NotificationsPage /> },
     { path: "/accountant/settings", element: <SettingsPage /> },
     { path: "/accountant/bill-pending", element: <PendingBills /> },
-    
   ],
 };
