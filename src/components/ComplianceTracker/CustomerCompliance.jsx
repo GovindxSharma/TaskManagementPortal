@@ -10,17 +10,43 @@ import "jspdf-autotable";
 
 export default function CustomerCompliance() {
   const navigate = useNavigate();
+
+  const loadFilter = (key, defaultValue = "") => {
+    return localStorage.getItem(key) || defaultValue;
+  };
+  
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [employeeFilter, setEmployeeFilter] = useState("");
-  const [dataStatusFilter, setDataStatusFilter] = useState("");
-  const [workProgressFilter, setWorkProgressFilter] = useState("");
-  const [billStatusFilter, setBillStatusFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState(""); // add this
+  const [searchQuery, setSearchQuery] = useState(loadFilter("searchQuery"));
+  const [employeeFilter, setEmployeeFilter] = useState(loadFilter("employeeFilter"));
+  const [dataStatusFilter, setDataStatusFilter] = useState(loadFilter("dataStatusFilter"));
+  const [workProgressFilter, setWorkProgressFilter] = useState(loadFilter("workProgressFilter"));
+  const [billStatusFilter, setBillStatusFilter] = useState(loadFilter("billStatusFilter"));
+  const [monthFilter, setMonthFilter] = useState(loadFilter("monthFilter"));
+  const [yearFilter, setYearFilter] = useState(loadFilter("yearFilter"));
+
+  useEffect(() => {
+    localStorage.setItem("searchQuery", searchQuery);
+    localStorage.setItem("employeeFilter", employeeFilter);
+    localStorage.setItem("dataStatusFilter", dataStatusFilter);
+    localStorage.setItem("workProgressFilter", workProgressFilter);
+    localStorage.setItem("billStatusFilter", billStatusFilter);
+    localStorage.setItem("monthFilter", monthFilter);
+    localStorage.setItem("yearFilter", yearFilter);
+  }, [
+    searchQuery,
+    employeeFilter,
+    dataStatusFilter,
+    workProgressFilter,
+    billStatusFilter,
+    monthFilter,
+    yearFilter,
+  ]);
+  
+  
 
   const monthNames = [
     "January",
@@ -105,7 +131,16 @@ export default function CustomerCompliance() {
     setBillStatusFilter("");
     setMonthFilter("");
     setYearFilter("");
+  
+    localStorage.removeItem("searchQuery");
+    localStorage.removeItem("employeeFilter");
+    localStorage.removeItem("dataStatusFilter");
+    localStorage.removeItem("workProgressFilter");
+    localStorage.removeItem("billStatusFilter");
+    localStorage.removeItem("monthFilter");
+    localStorage.removeItem("yearFilter");
   };
+  
 
   const employeeList = [
     ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
@@ -145,10 +180,19 @@ const filteredClients = clients.filter((client) => {
   // BILL STATUS
   // -----------------------------
   const matchesBillStatus =
-    !billStatusFilter ||
-    client.monthlyCompliances?.some(
-      (m) => m.billStatus.toLowerCase() === billStatusFilter.toLowerCase()
-    );
+  !billStatusFilter ||
+  client.monthlyCompliances?.some((m) => {
+    const status = m.billStatus?.toLowerCase() || "";
+
+    if (billStatusFilter === "Bill Generated")
+      return status.includes("generated");
+
+    if (billStatusFilter === "Bill Pending")
+      return status.includes("pending");
+
+    return true;
+  });
+
 
   // -----------------------------
   // MONTH
