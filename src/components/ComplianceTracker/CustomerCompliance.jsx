@@ -179,20 +179,29 @@ const filteredClients = clients.filter((client) => {
   // -----------------------------
   // BILL STATUS
   // -----------------------------
+  // const matchesBillStatus =
+  //   !billStatusFilter ||
+  //   client.monthlyCompliances?.some(
+  //     (m) => m.billStatus.toLowerCase() === billStatusFilter.toLowerCase()
+  //   );
+
   const matchesBillStatus =
-  !billStatusFilter ||
-  client.monthlyCompliances?.some((m) => {
-    const status = m.billStatus?.toLowerCase() || "";
+    !billStatusFilter ||
+    client.monthlyCompliances?.some((m) => {
+      // Bill Generated → show directly
+      if (billStatusFilter === "Bill Generated") {
+        return m.billStatus === "Generated";
+      }
 
-    if (billStatusFilter === "Bill Generated")
-      return status.includes("generated");
+      // ✅ Bill Pending → ONLY if work is completed
+      if (billStatusFilter === "Bill Pending") {
+        return (
+          m.billStatus === "Pending" && m.workProgress === "Completed"
+        );
+      }
 
-    if (billStatusFilter === "Bill Pending")
-      return status.includes("pending");
-
-    return true;
-  });
-
+      return false;
+    });
 
   // -----------------------------
   // MONTH
