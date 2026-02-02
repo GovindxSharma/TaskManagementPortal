@@ -29,6 +29,18 @@ export default function CustomerCompliance() {
   const [yearFilter, setYearFilter] = useState(loadFilter("yearFilter"));
 
   useEffect(() => {
+    return () => {
+      localStorage.removeItem("searchQuery");
+      localStorage.removeItem("employeeFilter");
+      localStorage.removeItem("dataStatusFilter");
+      localStorage.removeItem("workProgressFilter");
+      localStorage.removeItem("billStatusFilter");
+      localStorage.removeItem("monthFilter");
+      localStorage.removeItem("yearFilter");
+    };
+  }, []);
+  
+  useEffect(() => {
     localStorage.setItem("searchQuery", searchQuery);
     localStorage.setItem("employeeFilter", employeeFilter);
     localStorage.setItem("dataStatusFilter", dataStatusFilter);
