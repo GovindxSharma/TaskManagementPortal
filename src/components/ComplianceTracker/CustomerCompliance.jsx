@@ -14,7 +14,22 @@ export default function CustomerCompliance() {
   const loadFilter = (key, defaultValue = "") => {
     return localStorage.getItem(key) || defaultValue;
   };
-  
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -25,20 +40,13 @@ export default function CustomerCompliance() {
   const [dataStatusFilter, setDataStatusFilter] = useState(loadFilter("dataStatusFilter"));
   const [workProgressFilter, setWorkProgressFilter] = useState(loadFilter("workProgressFilter"));
   const [billStatusFilter, setBillStatusFilter] = useState(loadFilter("billStatusFilter"));
-  const [monthFilter, setMonthFilter] = useState(loadFilter("monthFilter"));
-  const [yearFilter, setYearFilter] = useState(loadFilter("yearFilter"));
+   const [monthFilter, setMonthFilter] = useState(() =>
+     loadFilter("monthFilter"),
+   );
+   const [yearFilter, setYearFilter] = useState(() =>
+     loadFilter("yearFilter"),
+   );
 
-  useEffect(() => {
-    return () => {
-      localStorage.removeItem("searchQuery");
-      localStorage.removeItem("employeeFilter");
-      localStorage.removeItem("dataStatusFilter");
-      localStorage.removeItem("workProgressFilter");
-      localStorage.removeItem("billStatusFilter");
-      localStorage.removeItem("monthFilter");
-      localStorage.removeItem("yearFilter");
-    };
-  }, []);
   
   useEffect(() => {
     localStorage.setItem("searchQuery", searchQuery);
@@ -57,23 +65,6 @@ export default function CustomerCompliance() {
     monthFilter,
     yearFilter,
   ]);
-  
-  
-
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
 
   const formatMonth = (str) => {
     if (!str || str === "-") return "-";
@@ -95,23 +86,50 @@ export default function CustomerCompliance() {
 
 
 
-  const fetchClients = useCallback(async () => {
-    try {
-      setLoading(true);
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
+ const fetchClients = useCallback(async () => {
+  try {
+    setLoading(true);
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-      const { data } = await axios.get(
-        `/client/clients-with-compliance?company_id=${user.company_id}`
-      );
+    const params = new URLSearchParams({
+      company_id: user.company_id,
+      search: searchQuery || "",
+      employee: employeeFilter || "",
+      dataStatus: dataStatusFilter || "",
+      workProgress: workProgressFilter || "",
+      billStatus:
+        billStatusFilter === "Bill Generated"
+          ? "Generated"
+          : billStatusFilter === "Bill Pending"
+          ? "Pending"
+          : "",
+      month: monthFilter
+        ? String(monthNames.indexOf(monthFilter) + 1)
+        : "",
+      year: yearFilter || "",
+    });
 
-      setClients(data.clients || []);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch clients");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    const { data } = await axios.get(
+      `/client/clients-with-compliance?${params.toString()}`
+    );
+
+    setClients(data.clients || []);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to fetch clients");
+  } finally {
+    setLoading(false);
+  }
+}, [
+  searchQuery,
+  employeeFilter,
+  dataStatusFilter,
+  workProgressFilter,
+  billStatusFilter,
+  monthFilter,
+  yearFilter,
+]);
+
 
   useEffect(() => {
     fetchClients();
@@ -141,8 +159,8 @@ export default function CustomerCompliance() {
     setDataStatusFilter("");
     setWorkProgressFilter("");
     setBillStatusFilter("");
-    setMonthFilter("");
-    setYearFilter("");
+setMonthFilter("");
+setYearFilter("");
   
     localStorage.removeItem("searchQuery");
     localStorage.removeItem("employeeFilter");
@@ -158,101 +176,81 @@ export default function CustomerCompliance() {
     ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
   ];
 
-const filteredClients = clients.filter((client) => {
-  // -----------------------------
-  // SEARCH
-  // -----------------------------
-  const matchesSearch = client.name
-    .toLowerCase()
-    .includes(searchQuery.toLowerCase());
+// const filteredClients = clients.filter((client) => {
+//   // -----------------------------
+//   // SEARCH
+//   // -----------------------------
+//   const matchesSearch = client.name
+//     .toLowerCase()
+//     .includes(searchQuery.toLowerCase());
 
-  // -----------------------------
-  // EMPLOYEE
-  // -----------------------------
-  const matchesEmployee =
-    !employeeFilter || client.assignedTo === employeeFilter;
+//   // -----------------------------
+//   // EMPLOYEE
+//   // -----------------------------
+//   const matchesEmployee =
+//     !employeeFilter || client.assignedTo === employeeFilter;
 
-  // -----------------------------
-  // ✅ DATA STATUS (THIS IS WHERE YOUR BLOCK GOES)
-  // -----------------------------
-  const matchesDataStatus =
-    !dataStatusFilter ||
-    client.monthlyCompliances?.some(
-      (m) =>
-        m.dataReceiveStatus.toLowerCase() === dataStatusFilter.toLowerCase()
-    );
+//   // -----------------------------
+//   // ✅ FILTER MONTHLY RECORDS TOGETHER
+//   // -----------------------------
+//   const filteredMonths = (client.monthlyCompliances || []).filter((m) => {
+//     const matchData =
+//       !dataStatusFilter ||
+//       m.dataReceiveStatus.toLowerCase() === dataStatusFilter.toLowerCase();
 
-  const matchesWorkProgress =
-    !workProgressFilter ||
-    client.monthlyCompliances?.some(
-      (m) => m.workProgress === workProgressFilter
-    );
+//     const matchWork =
+//       !workProgressFilter || m.workProgress === workProgressFilter;
 
-  // -----------------------------
-  // BILL STATUS
-  // -----------------------------
-  // const matchesBillStatus =
-  //   !billStatusFilter ||
-  //   client.monthlyCompliances?.some(
-  //     (m) => m.billStatus.toLowerCase() === billStatusFilter.toLowerCase()
-  //   );
+//     const matchBill =
+//       !billStatusFilter ||
+//       (billStatusFilter === "Bill Generated"
+//         ? m.billStatus === "Generated"
+//         : m.billStatus === "Pending" && m.workProgress === "Completed");
 
-  const matchesBillStatus =
-    !billStatusFilter ||
-    client.monthlyCompliances?.some((m) => {
-      // Bill Generated → show directly
-      if (billStatusFilter === "Bill Generated") {
-        return m.billStatus === "Generated";
-      }
+//     const matchMonth =
+//       !monthFilter || monthNames[parseInt(m.month, 10) - 1] === monthFilter;
 
-      // ✅ Bill Pending → ONLY if work is completed
-      if (billStatusFilter === "Bill Pending") {
-        return (
-          m.billStatus === "Pending" && m.workProgress === "Completed"
-        );
-      }
+//     const matchYear = !yearFilter || String(m.year) === String(yearFilter);
 
-      return false;
-    });
+//     return matchData && matchWork && matchBill && matchMonth && matchYear;
+//   });
 
-  // -----------------------------
-  // MONTH
-  // -----------------------------
-  const matchesMonth =
-    !monthFilter ||
-    client.monthlyCompliances?.some(
-      (m) => monthNames[parseInt(m.month, 10) - 1] === monthFilter
-    );
+//   // -----------------------------
+//   // FINAL CLIENT MATCH
+//   // -----------------------------
+//   return (
+//     matchesSearch && matchesEmployee && filteredMonths.length > 0 // 🔥 IMPORTANT
+//   );
+// });
 
-  // -----------------------------
-  // YEAR
-  // -----------------------------
-  const matchesYear =
-    !yearFilter ||
-    client.monthlyCompliances?.some(
-      (m) => String(m.year) === String(yearFilter)
-    );
 
-  // -----------------------------
-  // FINAL RETURN
-  // -----------------------------
-  return (
-    matchesSearch &&
-    matchesEmployee &&
-    matchesDataStatus &&
-    matchesWorkProgress &&
-    matchesBillStatus &&
-    matchesMonth &&
-    matchesYear
-  );
-});
+const handleClientClick = (id) => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const handleClientClick = (id) => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user.role === "Admin") navigate(`/admin/customer/${id}`);
-    else if (user.role === "Employee") navigate(`/employee/customer/${id}`);
-    else if (user.role === "Accountant") navigate(`/accountant/customer/${id}`);
+  const filters = {
+    month: monthFilter
+      ? String(monthNames.indexOf(monthFilter) + 1).padStart(2, "0")
+      : "",
+    year: yearFilter || "",
+    dataStatus: dataStatusFilter || "",
+    workProgress: workProgressFilter || "",
+    billStatus:
+      billStatusFilter === "Bill Generated"
+        ? "Generated"
+        : billStatusFilter === "Bill Pending"
+          ? "Pending"
+          : "",
   };
+
+  const state = { filters };
+
+  if (user.role === "Admin") navigate(`/admin/customer/${id}`, { state });
+  else if (user.role === "Employee")
+    navigate(`/employee/customer/${id}`, { state });
+  else if (user.role === "Accountant")
+    navigate(`/accountant/customer/${id}`, { state });
+};
+
 
   const getLastUpdate = (client) => {
     const statusText = parseStatus(client.lastDataStatus);
@@ -311,9 +309,9 @@ const filteredClients = clients.filter((client) => {
 
   // ✅ EXPORT FUNCTIONS (use only filteredClients)
   const exportExcel = () => {
-    if (!filteredClients.length) return alert("No records to export");
+    if (!clients.length) return alert("No records to export");
 
-    const data = filteredClients.map((c, i) => ({
+    const data = clients.map((c, i) => ({
       "#": i + 1,
       "Client Name": c.name,
       "Business Unit": c.businessUnit || "-",
@@ -333,7 +331,7 @@ const filteredClients = clients.filter((client) => {
   };
 
   const exportPDF = async () => {
-    if (!filteredClients.length) return alert("No records to export");
+    if (!clients.length) return alert("No records to export");
 
     // Dynamic import to avoid Vite caching issues
     const { jsPDF } = await import("jspdf");
@@ -354,7 +352,7 @@ const filteredClients = clients.filter((client) => {
       "Client Status",
     ];
 
-    const tableRows = filteredClients.map((c, i) => [
+    const tableRows = clients.map((c, i) => [
       i + 1,
       c.name,
       c.businessUnit || "-",
@@ -515,8 +513,8 @@ const filteredClients = clients.filter((client) => {
             </tr>
           </thead>
           <tbody>
-            {filteredClients.length > 0 ? (
-              filteredClients.map((c, i) => (
+            {clients.length > 0 ? (
+              clients.map((c, i) => (
                 <tr
                   key={c.id}
                   className="border-b hover:bg-gray-50 cursor-pointer transition-all"
