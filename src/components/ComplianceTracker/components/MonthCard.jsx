@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import axios from "../../../api/axiosInstance";
 import StatusBadge from "./StatusBadge";
 import Loader from "../../layout/Loader";
@@ -35,6 +36,9 @@ const workOptions = [
 const billOptions = ["Pending", "Generated"];
 
 const MonthCard = ({ clientId }) => {
+  const location = useLocation();
+  const filters = location.state?.filters || {};
+
   const toast = useToast();
   const [monthlyData, setMonthlyData] = useState([]);
   const [monthStates, setMonthStates] = useState({});
@@ -57,7 +61,8 @@ const MonthCard = ({ clientId }) => {
     try {
       setLoading(true);
       const { data } = await axios.get(
-        `/monthly-compliance/client/${clientId}`
+        `/monthly-compliance/client/${clientId}`,
+        { params: filters },
       );
       setMonthlyData(data);
 
@@ -84,7 +89,7 @@ const MonthCard = ({ clientId }) => {
 
   useEffect(() => {
     if (clientId) fetchMonthlyCompliance();
-  }, [clientId]);
+  }, [clientId, JSON.stringify(filters)]);
 
   const saveChanges = async (monthRecord) => {
     const state = monthStates[monthRecord._id];
@@ -102,12 +107,12 @@ const MonthCard = ({ clientId }) => {
       setSaving(true);
       const { data } = await axios.put(
         `/monthly-compliance/${monthRecord._id}`,
-        payload
+        payload,
       );
       setMonthlyData(
         monthlyData.map((m) =>
-          m._id === monthRecord._id ? { ...m, ...data.record } : m
-        )
+          m._id === monthRecord._id ? { ...m, ...data.record } : m,
+        ),
       );
       toast.success("Month data saved successfully");
       setEditingMonthId(null);
@@ -125,8 +130,8 @@ const MonthCard = ({ clientId }) => {
         "data",
         "work",
         "bill",
-        "workers", 
-        "actualBill", 
+        "workers",
+        "actualBill",
         "remarks",
       ].includes(field);
     if (role === "EMPLOYEE")
@@ -181,7 +186,6 @@ const MonthCard = ({ clientId }) => {
       // 2️⃣ Month ASC (01 → 12)
       return Number(a.month) - Number(b.month);
     });
-
 
   return (
     <>

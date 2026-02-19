@@ -30,11 +30,6 @@ export default function CustomerCompliance() {
     "December",
   ];
 
-  // ✅ Current date defaults
-  const today = new Date();
-  const currentMonth = monthNames[today.getMonth()];
-  const currentYear = String(today.getFullYear());
-  
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -229,12 +224,33 @@ setYearFilter("");
 // });
 
 
-  const handleClientClick = (id) => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user.role === "Admin") navigate(`/admin/customer/${id}`);
-    else if (user.role === "Employee") navigate(`/employee/customer/${id}`);
-    else if (user.role === "Accountant") navigate(`/accountant/customer/${id}`);
+const handleClientClick = (id) => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const filters = {
+    month: monthFilter
+      ? String(monthNames.indexOf(monthFilter) + 1).padStart(2, "0")
+      : "",
+    year: yearFilter || "",
+    dataStatus: dataStatusFilter || "",
+    workProgress: workProgressFilter || "",
+    billStatus:
+      billStatusFilter === "Bill Generated"
+        ? "Generated"
+        : billStatusFilter === "Bill Pending"
+          ? "Pending"
+          : "",
   };
+
+  const state = { filters };
+
+  if (user.role === "Admin") navigate(`/admin/customer/${id}`, { state });
+  else if (user.role === "Employee")
+    navigate(`/employee/customer/${id}`, { state });
+  else if (user.role === "Accountant")
+    navigate(`/accountant/customer/${id}`, { state });
+};
+
 
   const getLastUpdate = (client) => {
     const statusText = parseStatus(client.lastDataStatus);
