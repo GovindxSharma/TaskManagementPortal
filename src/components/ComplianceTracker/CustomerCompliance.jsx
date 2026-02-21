@@ -36,6 +36,8 @@ export default function CustomerCompliance() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(loadFilter("searchQuery"));
+  const [searchText, setSearchText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState(loadFilter("employeeFilter"));
   const [dataStatusFilter, setDataStatusFilter] = useState(loadFilter("dataStatusFilter"));
   const [workProgressFilter, setWorkProgressFilter] = useState(loadFilter("workProgressFilter"));
@@ -87,53 +89,68 @@ export default function CustomerCompliance() {
 
 
  const fetchClients = useCallback(async () => {
-  try {
-    setLoading(true);
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+   try {
+     setLoading(true);
+     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-    const params = new URLSearchParams({
-      company_id: user.company_id,
-      search: searchQuery || "",
-      employee: employeeFilter || "",
-      dataStatus: dataStatusFilter || "",
-      workProgress: workProgressFilter || "",
-      billStatus:
-        billStatusFilter === "Bill Generated"
-          ? "Generated"
-          : billStatusFilter === "Bill Pending"
-          ? "Pending"
-          : "",
-      month: monthFilter
-        ? String(monthNames.indexOf(monthFilter) + 1)
-        : "",
-      year: yearFilter || "",
-    });
+     const params = new URLSearchParams();
 
-    const { data } = await axios.get(
-      `/client/clients-with-compliance?${params.toString()}`
-    );
+     params.append("company_id", user.company_id);
 
-    setClients(data.clients || []);
-  } catch (err) {
-    console.error(err);
-    alert("Failed to fetch clients");
-  } finally {
-    setLoading(false);
-  }
-}, [
-  searchQuery,
-  employeeFilter,
-  dataStatusFilter,
-  workProgressFilter,
-  billStatusFilter,
-  monthFilter,
-  yearFilter,
-]);
+     if (employeeFilter) params.append("employee", employeeFilter);
+     if (dataStatusFilter) params.append("dataStatus", dataStatusFilter);
+     if (workProgressFilter) params.append("workProgress", workProgressFilter);
+     if (billStatusFilter)
+       params.append(
+         "billStatus",
+         billStatusFilter === "Bill Generated"
+           ? "Generated"
+           : billStatusFilter === "Bill Pending"
+             ? "Pending"
+             : "",
+       );
+
+     if (monthFilter)
+       params.append("month", String(monthNames.indexOf(monthFilter) + 1));
+
+     if (yearFilter) params.append("year", yearFilter);
+
+     if (debouncedSearch) params.append("searchText", debouncedSearch);
+
+     const { data } = await axios.get(
+       `/client/clients-with-compliance?${params.toString()}`,
+     );
+
+     setClients(data.clients || []);
+   } catch (err) {
+     console.error(err);
+     alert("Failed to fetch clients");
+   } finally {
+     setLoading(false);
+   }
+ }, [
+   searchQuery,
+   employeeFilter,
+   dataStatusFilter,
+   workProgressFilter,
+   billStatusFilter,
+   monthFilter,
+   yearFilter,
+   debouncedSearch, // 👈 MUST be here
+ ]);
 
 
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   const monthOptions = [
     ...new Set(
@@ -160,7 +177,8 @@ export default function CustomerCompliance() {
     setWorkProgressFilter("");
     setBillStatusFilter("");
 setMonthFilter("");
-setYearFilter("");
+    setYearFilter("");
+    setSearchText("");
   
     localStorage.removeItem("searchQuery");
     localStorage.removeItem("employeeFilter");
@@ -169,60 +187,13 @@ setYearFilter("");
     localStorage.removeItem("billStatusFilter");
     localStorage.removeItem("monthFilter");
     localStorage.removeItem("yearFilter");
+    localStorage.removeItem("setSearchText");
   };
   
 
   const employeeList = [
     ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
   ];
-
-// const filteredClients = clients.filter((client) => {
-//   // -----------------------------
-//   // SEARCH
-//   // -----------------------------
-//   const matchesSearch = client.name
-//     .toLowerCase()
-//     .includes(searchQuery.toLowerCase());
-
-//   // -----------------------------
-//   // EMPLOYEE
-//   // -----------------------------
-//   const matchesEmployee =
-//     !employeeFilter || client.assignedTo === employeeFilter;
-
-//   // -----------------------------
-//   // ✅ FILTER MONTHLY RECORDS TOGETHER
-//   // -----------------------------
-//   const filteredMonths = (client.monthlyCompliances || []).filter((m) => {
-//     const matchData =
-//       !dataStatusFilter ||
-//       m.dataReceiveStatus.toLowerCase() === dataStatusFilter.toLowerCase();
-
-//     const matchWork =
-//       !workProgressFilter || m.workProgress === workProgressFilter;
-
-//     const matchBill =
-//       !billStatusFilter ||
-//       (billStatusFilter === "Bill Generated"
-//         ? m.billStatus === "Generated"
-//         : m.billStatus === "Pending" && m.workProgress === "Completed");
-
-//     const matchMonth =
-//       !monthFilter || monthNames[parseInt(m.month, 10) - 1] === monthFilter;
-
-//     const matchYear = !yearFilter || String(m.year) === String(yearFilter);
-
-//     return matchData && matchWork && matchBill && matchMonth && matchYear;
-//   });
-
-//   // -----------------------------
-//   // FINAL CLIENT MATCH
-//   // -----------------------------
-//   return (
-//     matchesSearch && matchesEmployee && filteredMonths.length > 0 // 🔥 IMPORTANT
-//   );
-// });
-
 
 const handleClientClick = (id) => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -420,13 +391,27 @@ const handleClientClick = (id) => {
       {/* Filters */}
       <div className="bg-white p-5 rounded-xl shadow-sm flex flex-wrap gap-3 items-center mb-6">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Search by client, status, or month..."
-            className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search client, business unit, or company..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="
+      w-full
+      bg-gray-50
+      border border-gray-200
+      rounded-xl
+      pl-10 pr-4 py-2.5
+      text-sm text-gray-700
+      placeholder:text-gray-400
+      shadow-sm
+      transition-all duration-200
+      focus:bg-white
+      focus:border-blue-500
+      focus:ring-2 focus:ring-blue-100
+      hover:border-gray-300
+      outline-none
+    "
           />
         </div>
 
@@ -489,12 +474,11 @@ const handleClientClick = (id) => {
         />
 
         <button
-        onClick={resetFilters}
-        className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200"
-      >
-        Reset Filters
-      </button>
-      
+          onClick={resetFilters}
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200"
+        >
+          Reset Filters
+        </button>
       </div>
 
       {/* Clients Table */}
