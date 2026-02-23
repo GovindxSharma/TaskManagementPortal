@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   const [overdueClients, setOverdueClients] = useState([]);
   const [clientStats, setClientStats] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
+  const currentYear = new Date().getFullYear();
+const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const fetchUnreadCount = async () => {
     await loadDashboardStats();
@@ -111,14 +113,17 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchRevenueData = async () => {
+  const fetchRevenueData = async (year = selectedYear) => {
     try {
       await loadDashboardStats();
   
-      const res = await axios.get("/auth/revenue-monthly");
+      const res = await axios.get(
+        `/auth/revenue-monthly?year=${year}`
+      );
+  
       const rawData = res.data?.data || [];
   
-      // 🔥 ensure months 01–12 and sorted
+      // ensure months Jan–Dec always present
       const normalizedData = Array.from({ length: 12 }, (_, i) => {
         const month = String(i + 1).padStart(2, "0");
         const found = rawData.find(
@@ -134,6 +139,11 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleYearChange = (e) => {
+    const year = Number(e.target.value);
+    setSelectedYear(year);
+    fetchRevenueData(year);
+  };
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -147,7 +157,7 @@ export default function AdminDashboard() {
     fetchExpiringLicenses();
     fetchOverdueClients();
     fetchClientStats();
-    fetchRevenueData();
+    fetchRevenueData(selectedYear);
   }, []);
 
   const stats = dashboardStats.admin;
@@ -428,21 +438,37 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Monthly Revenue
-          </h2>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-xl font-semibold text-gray-800">
+      Monthly Revenue
+    </h2>
+
+    {/* Year Dropdown */}
+    <select
+      value={selectedYear}
+      onChange={handleYearChange}
+      className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    >
+      {[currentYear - 2, currentYear - 1, currentYear].map((year) => (
+        <option key={year} value={year}>
+          {year}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  <ResponsiveContainer width="100%" height={280}>
+    <BarChart data={revenueData}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="month" />
+      <YAxis />
+      <Tooltip />
+      <Legend />
+      <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
       </div>
     </div>
   );
