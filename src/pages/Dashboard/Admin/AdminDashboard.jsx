@@ -114,8 +114,21 @@ export default function AdminDashboard() {
   const fetchRevenueData = async () => {
     try {
       await loadDashboardStats();
+  
       const res = await axios.get("/auth/revenue-monthly");
-      setRevenueData(res.data.data || []);
+      const rawData = res.data?.data || [];
+  
+      // 🔥 ensure months 01–12 and sorted
+      const normalizedData = Array.from({ length: 12 }, (_, i) => {
+        const month = String(i + 1).padStart(2, "0");
+        const found = rawData.find(
+          (d) => String(d.month).padStart(2, "0") === month
+        );
+  
+        return found || { month, revenue: 0 };
+      });
+  
+      setRevenueData(normalizedData);
     } catch (err) {
       console.error("Failed to fetch revenue stats", err);
     }
