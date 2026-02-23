@@ -8,14 +8,22 @@ import { loadDashboardStats } from "../../data/dashboardStats";
 
 export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const brandName =
+    import.meta.env.VITE_APP_NAME?.trim() || "Compliance Portal";
+
+  const baseUrl =
+    import.meta.env.VITE_API_BASE_URL?.trim() ||
+    "https://customercompliance.onrender.com";
+
   const [formData, setFormData] = useState({
     identifier: "",
     password: "",
   });
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,10 +34,6 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL?.trim() ||
-        "https://customercompliance.onrender.com";
-
       console.log("Using API base URL:", baseUrl);
 
       const { data } = await axios.post(`${baseUrl}/auth/login`, formData);
@@ -42,6 +46,7 @@ export default function Login() {
 
       // Role-based navigation
       const role = data.user.role.toLowerCase();
+
       if (role === "admin") navigate("/admin/dashboard");
       else if (role === "accountant") navigate("/accountant/dashboard");
       else navigate("/employee/dashboard");
@@ -66,12 +71,10 @@ export default function Login() {
           <div className="flex justify-center mb-3">
             <LogIn className="text-[#016DB6]" size={40} />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Contractor Compliance Services
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Login to your account
-          </p>
+
+          <h1 className="text-2xl font-semibold text-gray-800">{brandName}</h1>
+
+          <p className="text-gray-500 text-sm mt-1">Login to your account</p>
         </div>
 
         {/* Form */}
@@ -81,9 +84,11 @@ export default function Login() {
             <label className="block text-gray-600 mb-1 text-sm font-medium">
               Email
             </label>
+
             <input
               type="text"
               name="identifier"
+              value={formData.identifier}
               onChange={handleChange}
               required
               className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#016DB6]"
@@ -91,7 +96,7 @@ export default function Login() {
             />
           </div>
 
-          {/* Password with Eye Toggle */}
+          {/* Password */}
           <div>
             <label className="block text-gray-600 mb-1 text-sm font-medium">
               Password
@@ -101,6 +106,7 @@ export default function Login() {
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
+                value={formData.password}
                 onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-lg p-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[#016DB6]"
@@ -128,50 +134,50 @@ export default function Login() {
           </button>
         </form>
 
-       {/* Footer */}
-<div className="text-center text-sm text-gray-500 mt-6 space-y-2">
-<p>
-  © {new Date().getFullYear()} Contractor Compliance Services. All rights
-  reserved.
-</p>
+        {/* Footer */}
+        <div className="text-center text-sm text-gray-500 mt-6 space-y-2">
+          <p>
+            © {new Date().getFullYear()} {brandName}. All rights reserved.
+          </p>
 
-<p className="text-xs text-gray-400">
-  Crafted with precision by{" "}
-  <span className="font-medium text-gray-600">
-    Vision Infotech
-  </span>
-</p>
+          <p className="text-xs text-gray-400">
+            Crafted with precision by{" "}
+            <span className="font-medium text-gray-600">Vision Infotech</span>
+          </p>
 
-<div className="flex justify-center gap-2 text-xs">
-  <a
-    href="https://trusha-jadeja.onrender.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-[#016DB6] hover:underline"
-  >
-    Trusha Jadeja
-  </a>
-  <span className="text-gray-400">•</span>
-  <a
-    href="https://govind-sharma.onrender.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-[#016DB6] hover:underline"
-  >
-    Govind Sharma
-  </a>
-  <span className="text-gray-400">•</span>
-  <a
-    href="https://www.linkedin.com/in/saim-khoja/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-[#016DB6] hover:underline"
-  >
-    Saim Khoja
-  </a>
-</div>
-</div>
+          <div className="flex justify-center gap-2 text-xs">
+            <a
+              href="https://trusha-jadeja.onrender.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#016DB6] hover:underline"
+            >
+              Trusha Jadeja
+            </a>
 
+            <span className="text-gray-400">•</span>
+
+            <a
+              href="https://govind-sharma.onrender.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#016DB6] hover:underline"
+            >
+              Govind Sharma
+            </a>
+
+            <span className="text-gray-400">•</span>
+
+            <a
+              href="https://www.linkedin.com/in/saim-khoja/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#016DB6] hover:underline"
+            >
+              Saim Khoja
+            </a>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
