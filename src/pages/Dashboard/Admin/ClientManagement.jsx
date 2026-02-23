@@ -64,6 +64,7 @@ const Clients = () => {
     startYear: "",
     assignedTo: "",
     assignedToName: "",
+    status: "Active",  
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
@@ -118,6 +119,7 @@ const resetForm = () => {
     startYear: "",
     assignedTo: "",
     assignedToName: "",
+    status: "Active",
   });
   setAttachments([]);
   setSendWelcomeEmail(true);
@@ -161,7 +163,7 @@ const resetForm = () => {
         startYear: form.startYear.toString(),
         company_id: user.company_id,
         assignedTo: form.assignedTo,
-        status: "Active",
+        status: form.status,
       };
 
       let clientData;
@@ -218,6 +220,7 @@ const resetForm = () => {
       ...client,
       startMonth: Number(client.startMonth) - 1,
       assignedToName: assignedEmp?.name || "",
+      status: client.status || "Active",
     });
     setEditingId(client._id);
     setShowModal(true);
@@ -341,7 +344,7 @@ const resetForm = () => {
             {filteredClients.length > 0 ? (
               filteredClients.map((c) => {
                 const assignedEmp = employees.find(
-                  (e) => e._id === c.assignedTo
+                  (e) => e._id === c.assignedTo,
                 );
                 return (
                   <tr
@@ -408,21 +411,20 @@ const resetForm = () => {
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {fields.map((f) => (
-  <InputField
-    key={f.key}
-    label={f.label}
-    value={form[f.key]}
-    type={f.type}
-    placeholder={`Enter ${f.label.toLowerCase()}`}
-    required={f.required}
-    error={errors[f.key]}
-    onChange={(e) => {
-      setForm({ ...form, [f.key]: e.target.value });
-      setErrors((prev) => ({ ...prev, [f.key]: "" }));
-    }}
-  />
-))}
-
+                  <InputField
+                    key={f.key}
+                    label={f.label}
+                    value={form[f.key]}
+                    type={f.type}
+                    placeholder={`Enter ${f.label.toLowerCase()}`}
+                    required={f.required}
+                    error={errors[f.key]}
+                    onChange={(e) => {
+                      setForm({ ...form, [f.key]: e.target.value });
+                      setErrors((prev) => ({ ...prev, [f.key]: "" }));
+                    }}
+                  />
+                ))}
 
                 {/* Assign To */}
                 <div className="flex flex-col relative">
@@ -487,6 +489,47 @@ const resetForm = () => {
                   </select>
                 </div>
 
+                {/* Status Toggle - Only in Edit Mode */}
+                {editingId && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Client Status
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          status:
+                            prev.status === "Active" ? "Inactive" : "Active",
+                        }))
+                      }
+                      className={`relative w-14 h-7 rounded-full transition ${
+                        form.status === "Active"
+                          ? "bg-green-600"
+                          : "bg-gray-400"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition ${
+                          form.status === "Active" ? "translate-x-7" : ""
+                        }`}
+                      />
+                    </button>
+
+                    <span
+                      className={`text-xs font-medium ${
+                        form.status === "Active"
+                          ? "text-green-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {form.status}
+                    </span>
+                  </div>
+                )}
+
                 {/* Send Welcome Email Toggle */}
                 <div className="flex items-center gap-3 mt-2">
                   <label className="text-sm font-medium text-gray-700">
@@ -530,19 +573,18 @@ const resetForm = () => {
 
               <div className="flex justify-end border-t pt-4">
                 <button
-  type="submit"
-  disabled={!form.name || !form.email}
-  className={`px-6 py-2 rounded-lg font-medium transition
+                  type="submit"
+                  disabled={!form.name || !form.email}
+                  className={`px-6 py-2 rounded-lg font-medium transition
     ${
       !form.name || !form.email
         ? "bg-gray-300 cursor-not-allowed"
         : "bg-blue-600 hover:bg-blue-700 text-white"
     }
   `}
->
-  {editingId ? "Update Client" : "Add Client"}
-</button>
-
+                >
+                  {editingId ? "Update Client" : "Add Client"}
+                </button>
               </div>
             </form>
           </div>
