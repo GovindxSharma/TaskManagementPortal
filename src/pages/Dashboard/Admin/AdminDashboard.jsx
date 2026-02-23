@@ -123,14 +123,24 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
   
       const rawData = res.data?.data || [];
   
-      // ensure months Jan–Dec always present
+      // Month labels
+      const monthNames = [
+        "Jan","Feb","Mar","Apr","May","Jun",
+        "Jul","Aug","Sep","Oct","Nov","Dec"
+      ];
+  
+      // Normalize + sort months
       const normalizedData = Array.from({ length: 12 }, (_, i) => {
-        const month = String(i + 1).padStart(2, "0");
+        const monthNum = String(i + 1).padStart(2, "0");
+  
         const found = rawData.find(
-          (d) => String(d.month).padStart(2, "0") === month
+          (d) => String(d.month).padStart(2, "0") === monthNum
         );
   
-        return found || { month, revenue: 0 };
+        return {
+          month: monthNames[i],
+          revenue: found?.revenue || 0,
+        };
       });
   
       setRevenueData(normalizedData);
@@ -140,9 +150,7 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
   };
 
   const handleYearChange = (e) => {
-    const year = Number(e.target.value);
-    setSelectedYear(year);
-    fetchRevenueData(year);
+    setSelectedYear(Number(e.target.value));
   };
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -157,8 +165,11 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
     fetchExpiringLicenses();
     fetchOverdueClients();
     fetchClientStats();
-    fetchRevenueData(selectedYear);
   }, []);
+  
+  useEffect(() => {
+    fetchRevenueData(selectedYear);
+  }, [selectedYear]);
 
   const stats = dashboardStats.admin;
 
@@ -438,13 +449,12 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
           </ResponsiveContainer>
         </div>
 
-       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
   <div className="flex justify-between items-center mb-4">
     <h2 className="text-xl font-semibold text-gray-800">
-      Monthly Revenue
+      Monthly Revenue ({selectedYear})
     </h2>
 
-    {/* Year Dropdown */}
     <select
       value={selectedYear}
       onChange={handleYearChange}
