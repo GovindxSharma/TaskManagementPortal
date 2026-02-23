@@ -285,8 +285,8 @@ const handleClientClick = (id) => {
     const data = clients.map((c, i) => ({
       "#": i + 1,
       "Client Name": c.name,
-      "Business Unit": c.businessUnit || "-",
-      "Company Name": c.site || "-",
+      "Business Unit": c.site || "-",
+      "Company Name": c.businessUnit || "-",
       "Assigned To": c.assignedTo || "-",
       "Last Update": parseStatus(c.lastDataStatus),
       "Last Update Month": formatMonth(c.lastDataStatus),
@@ -326,8 +326,8 @@ const handleClientClick = (id) => {
     const tableRows = clients.map((c, i) => [
       i + 1,
       c.name,
-      c.businessUnit || "-",
       c.site || "-",
+      c.businessUnit || "-",
       c.assignedTo || "-",
       parseStatus(c.lastDataStatus),
       formatMonth(c.lastDataStatus),
