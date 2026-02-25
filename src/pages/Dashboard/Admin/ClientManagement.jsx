@@ -12,6 +12,9 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../../api/axiosInstance";
 import { clientWelcomeEmail } from "../../../commons/emailContent";
 import { useToast } from "../../../components/layout/ToastProvider.jsx"; // ⭐ CENTRAL TOAST
+import { useQuill } from "react-quilljs";
+import "quill/dist/quill.snow.css";
+import WelcomeEmailEditor from "../../../commons/WelcomeEmailEditor.jsx";
 
 const InputField = ({
   label,
@@ -47,8 +50,13 @@ const InputField = ({
 const Clients = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const { quill, quillRef } = useQuill({ theme: "snow" });
+
 
   const [clients, setClients] = useState([]);
+  const [emailSubject, setEmailSubject] = useState("Welcome to Our Services");
+  const [editorKey, setEditorKey] = useState(0);
+  
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
@@ -68,6 +76,7 @@ const Clients = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
+  const [emailBody, setEmailBody] = useState("");
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [attachments, setAttachments] = useState([]);
@@ -123,6 +132,10 @@ const resetForm = () => {
   });
   setAttachments([]);
   setSendWelcomeEmail(true);
+  setEmailSubject("Welcome to Our Services");
+  setEmailBody(""); // 👈 reset body
+  setEditorKey((prev) => prev + 1); // 👈 force remount
+  if (quill) quill.setText("");
 };
 
 
@@ -185,13 +198,12 @@ const resetForm = () => {
         // ✅ Send email ONLY if toggle is ON
         if (sendWelcomeEmail) {
           const formData = new FormData();
-          formData.append("contactPerson", clientData.contactPerson);
-          formData.append("companyName", clientData.name);
-          formData.append("email", clientData.email);
-          formData.append(
-            "html",
-            clientWelcomeEmail(clientData.contactPerson, clientData.name)
-          );
+
+          const emailHtml = emailBody; // 👈 ONLY manual content
+
+          formData.append("to", clientData.email);
+          formData.append("subject", emailSubject);
+          formData.append("html", emailHtml);
 
           attachments.forEach((file) => formData.append("attachments", file));
 
@@ -311,6 +323,7 @@ const resetForm = () => {
             onClick={() => {
               resetForm();
               setEditingId(null);
+              setEditorKey((prev) => prev + 1); // 🔥 force remount
               setShowModal(true);
             }}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
@@ -395,193 +408,186 @@ const resetForm = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
+          {/* Modal Container */}
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl h-[90vh] flex flex-col">
+            {/* Header */}
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-semibold">
                 {editingId ? "Edit Client" : "Add Client"}
               </h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
                 className="text-gray-500 hover:text-red-500"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {fields.map((f) => (
-                  <InputField
-                    key={f.key}
-                    label={f.label}
-                    value={form[f.key]}
-                    type={f.type}
-                    placeholder={`Enter ${f.label.toLowerCase()}`}
-                    required={f.required}
-                    error={errors[f.key]}
-                    onChange={(e) => {
-                      setForm({ ...form, [f.key]: e.target.value });
-                      setErrors((prev) => ({ ...prev, [f.key]: "" }));
-                    }}
-                  />
-                ))}
+            {/* Form */}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Grid Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {fields.map((f) => (
+                    <InputField
+                      key={f.key}
+                      label={f.label}
+                      value={form[f.key]}
+                      type={f.type}
+                      placeholder={`Enter ${f.label.toLowerCase()}`}
+                      required={f.required}
+                      error={errors[f.key]}
+                      onChange={(e) => {
+                        setForm({ ...form, [f.key]: e.target.value });
+                        setErrors((prev) => ({ ...prev, [f.key]: "" }));
+                      }}
+                    />
+                  ))}
 
-                {/* Assign To */}
-                <div className="flex flex-col relative">
-                  <label className="text-sm font-medium text-gray-700 mb-1">
-                    Assign To
-                  </label>
-                  <select
-                    value={form.assignedTo}
-                    onChange={(e) =>
-                      setForm({ ...form, assignedTo: e.target.value })
-                    }
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Assign To */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Assign To
+                    </label>
+                    <select
+                      value={form.assignedTo}
+                      onChange={(e) =>
+                        setForm({ ...form, assignedTo: e.target.value })
+                      }
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="">Select Employee</option>
+                      {employees.map((emp) => (
+                        <option key={emp._id} value={emp._id}>
+                          {emp.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Start Year */}
-                <div className="flex flex-col relative">
-                  <label className="text-sm font-medium text-gray-700 mb-1">
-                    Start Year
-                  </label>
-                  <input
-                    type="number"
-                    // min={years[0]}
-                    max={years[1]}
-                    value={form.startYear}
-                    onChange={(e) =>
-                      setForm({ ...form, startYear: e.target.value })
-                    }
-                    placeholder={`Enter year (e.g., ${years[0]} or ${years[1]})`}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
-                  />
-                  <small className="text-gray-400 text-xs mt-1">
-                    Can type custom numeric year
-                  </small>
-                </div>
+                  {/* Start Year */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Start Year
+                    </label>
+                    <input
+                      type="number"
+                      value={form.startYear}
+                      onChange={(e) =>
+                        setForm({ ...form, startYear: e.target.value })
+                      }
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
 
-                {/* Start Month */}
-                <div className="flex flex-col relative">
-                  <label className="text-sm font-medium text-gray-700 mb-1">
-                    Start Month
-                  </label>
-                  <select
-                    value={form.startMonth}
-                    onChange={(e) =>
-                      setForm({ ...form, startMonth: e.target.value })
-                    }
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm hover:shadow-md"
-                  >
-                    <option value="">Select Month</option>
-                    {months.map((m, i) => (
-                      <option key={i} value={i}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Start Month */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Start Month
+                    </label>
+                    <select
+                      value={form.startMonth}
+                      onChange={(e) =>
+                        setForm({ ...form, startMonth: e.target.value })
+                      }
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="">Select Month</option>
+                      {months.map((m, i) => (
+                        <option key={i} value={i}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Status Toggle - Only in Edit Mode */}
-                {editingId && (
-                  <div className="flex items-center gap-3 mt-2">
+                  {/* Status Toggle (Edit Mode) */}
+                  {editingId && (
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-medium text-gray-700">
+                        Client Status
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            status:
+                              prev.status === "Active" ? "Inactive" : "Active",
+                          }))
+                        }
+                        className={`relative w-14 h-7 rounded-full transition ${
+                          form.status === "Active"
+                            ? "bg-green-600"
+                            : "bg-gray-400"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition ${
+                            form.status === "Active" ? "translate-x-7" : ""
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs font-medium">{form.status}</span>
+                    </div>
+                  )}
+
+                  {/* Welcome Email Toggle */}
+                  <div className="flex items-center gap-3">
                     <label className="text-sm font-medium text-gray-700">
-                      Client Status
+                      Send Welcome Email
                     </label>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          status:
-                            prev.status === "Active" ? "Inactive" : "Active",
-                        }))
-                      }
-                      className={`relative w-14 h-7 rounded-full transition ${
-                        form.status === "Active"
-                          ? "bg-green-600"
-                          : "bg-gray-400"
+                      onClick={() => setSendWelcomeEmail((prev) => !prev)}
+                      className={`relative w-12 h-6 rounded-full transition ${
+                        sendWelcomeEmail ? "bg-blue-600" : "bg-gray-300"
                       }`}
                     >
                       <span
-                        className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition ${
-                          form.status === "Active" ? "translate-x-7" : ""
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${
+                          sendWelcomeEmail ? "translate-x-6" : ""
                         }`}
                       />
                     </button>
-
-                    <span
-                      className={`text-xs font-medium ${
-                        form.status === "Active"
-                          ? "text-green-600"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {form.status}
-                    </span>
                   </div>
-                )}
-
-                {/* Send Welcome Email Toggle */}
-                <div className="flex items-center gap-3 mt-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Send Welcome Email
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => setSendWelcomeEmail((prev) => !prev)}
-                    className={`relative w-12 h-6 rounded-full transition ${
-                      sendWelcomeEmail ? "bg-blue-600" : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${
-                        sendWelcomeEmail ? "translate-x-6" : ""
-                      }`}
-                    />
-                  </button>
-
-                  <span className="text-xs text-gray-500">
-                    {sendWelcomeEmail ? "ON" : "OFF"}
-                  </span>
                 </div>
 
-                {/* Attachments – ONLY when email is ON */}
+                {/* ✅ Welcome Email Editor FULL WIDTH */}
                 {sendWelcomeEmail && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <label className="text-sm text-gray-600 flex items-center gap-1">
-                      <Paperclip size={14} /> Attach Files
-                    </label>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleFileChange}
-                      className="text-sm text-gray-600"
+                  <div className="w-full">
+                    <WelcomeEmailEditor
+                        key={editorKey}   // 👈 IMPORTANT
+                      visible={sendWelcomeEmail}
+                      subject={emailSubject}
+                      setSubject={setEmailSubject}
+                      attachments={attachments}
+                      setAttachments={setAttachments}
+                      emailBody={emailBody}
+                      setEmailBody={setEmailBody}
                     />
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end border-t pt-4">
+              {/* Footer Buttons (Sticky Bottom) */}
+              <div className="border-t p-4 flex justify-end bg-white">
                 <button
                   type="submit"
                   disabled={!form.name || !form.email}
-                  className={`px-6 py-2 rounded-lg font-medium transition
-    ${
-      !form.name || !form.email
-        ? "bg-gray-300 cursor-not-allowed"
-        : "bg-blue-600 hover:bg-blue-700 text-white"
-    }
-  `}
+                  className={`px-6 py-2 rounded-lg font-medium transition ${
+                    !form.name || !form.email
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
                 >
                   {editingId ? "Update Client" : "Add Client"}
                 </button>
