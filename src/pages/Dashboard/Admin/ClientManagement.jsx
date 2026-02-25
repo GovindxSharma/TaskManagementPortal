@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../../api/axiosInstance";
-import { clientWelcomeEmail } from "../../../commons/emailContent";
 import { useToast } from "../../../components/layout/ToastProvider.jsx"; // ⭐ CENTRAL TOAST
 import { useQuill } from "react-quilljs";
 import "quill/dist/quill.snow.css";
