@@ -13,6 +13,7 @@ import axiosInstance from "../../../api/axiosInstance";
 import { useToast } from "../../../components/layout/ToastProvider.jsx"; // ⭐ CENTRAL TOAST
 import { useQuill } from "react-quilljs";
 import "quill/dist/quill.snow.css";
+import { clientWelcomeEmail } from "../../../commons/emailContent.js";
 import WelcomeEmailEditor from "../../../commons/WelcomeEmailEditor.jsx";
 
 const InputField = ({
@@ -49,12 +50,12 @@ const InputField = ({
 const Clients = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const { quill, quillRef } = useQuill({ theme: "snow" });
+  // const { quill, quillRef } = useQuill({ theme: "snow" });
 
 
   const [clients, setClients] = useState([]);
-  const [emailSubject, setEmailSubject] = useState("Welcome to Our Services");
-  const [editorKey, setEditorKey] = useState(0);
+  // const [emailSubject, setEmailSubject] = useState("Welcome to Our Services");
+  // const [editorKey, setEditorKey] = useState(0);
   
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -75,10 +76,17 @@ const Clients = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
-  const [emailBody, setEmailBody] = useState("");
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  // const [emailBody, setEmailBody] = useState("");
+  // const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [attachments, setAttachments] = useState([]);
+  // const [attachments, setAttachments] = useState([]);
+const [showEmailModal, setShowEmailModal] = useState(false);
+const [selectedClientId, setSelectedClientId] = useState("");
+const [emailSubject, setEmailSubject] = useState(
+  "Welcome to CCS - Contractor Compliance Services"
+);
+const [emailBody, setEmailBody] = useState("");
+const [attachments, setAttachments] = useState([]);
 
   const fetchClients = useCallback(async () => {
     try {
@@ -129,12 +137,12 @@ const resetForm = () => {
     assignedToName: "",
     status: "Active",
   });
-  setAttachments([]);
-  setSendWelcomeEmail(true);
-  setEmailSubject("Welcome to Our Services");
-  setEmailBody(""); // 👈 reset body
-  setEditorKey((prev) => prev + 1); // 👈 force remount
-  if (quill) quill.setText("");
+  // setAttachments([]);
+  // setSendWelcomeEmail(true);
+  // setEmailSubject("Welcome to Our Services");
+  // setEmailBody(""); // 👈 reset body
+  // setEditorKey((prev) => prev + 1); // 👈 force remount
+  // if (quill) quill.setText("");
 };
 
 
@@ -194,26 +202,8 @@ const resetForm = () => {
         clientData = data.client;
         setClients((prev) => [...prev, clientData]);
 
-        // ✅ Send email ONLY if toggle is ON
-        if (sendWelcomeEmail) {
-          const formData = new FormData();
-
-          const emailHtml = emailBody; // 👈 ONLY manual content
-
-          formData.append("to", clientData.email);
-          formData.append("subject", emailSubject);
-          formData.append("html", emailHtml);
-
-          attachments.forEach((file) => formData.append("attachments", file));
-
-          await axiosInstance.post("/email/send-welcome", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-          toast.success("Client added & welcome email sent!");
-        } else {
           toast.success("Client added successfully!");
-        }
+
       }
 
       resetForm();
@@ -224,6 +214,59 @@ const resetForm = () => {
       toast.error(err.response?.data?.message || "Something went wrong!");
     }
   };
+
+const openEmailModal = () => {
+  setSelectedClientId("");
+  setEmailSubject("Welcome to CCS - Contractor Compliance Services");
+  setEmailBody("");
+  setAttachments([]);
+  setShowEmailModal(true);
+  };
+  
+useEffect(() => {
+  if (!selectedClientId || clients.length === 0) return;
+
+  const client = clients.find((c) => c._id === selectedClientId);
+  if (!client) return;
+
+  const template = clientWelcomeEmail(client.contactPerson, client.name);
+
+  setEmailBody(template);
+}, [selectedClientId, clients]);
+
+const handleFileChange = (e) => {
+  if (e.target.files) {
+    setAttachments(Array.from(e.target.files));
+  }
+};
+
+const handleSendEmail = async () => {
+  if (!selectedClientId) {
+    toast.error("Please select a client");
+    return;
+  }
+
+  const client = clients.find((c) => c._id === selectedClientId);
+  if (!client) return;
+
+  const formData = new FormData();
+  formData.append("to", client.email);
+  formData.append("subject", emailSubject);
+  formData.append("html", emailBody);
+
+  attachments.forEach((file) => formData.append("attachments", file));
+
+  try {
+    await axiosInstance.post("/email/send-welcome", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    toast.success("Email sent successfully 🚀");
+    setShowEmailModal(false);
+  } catch (err) {
+    toast.error("Failed to send email");
+  }
+};
 
   const handleEdit = (client) => {
     const assignedEmp = employees.find((e) => e._id === client.assignedTo);
@@ -252,9 +295,9 @@ const resetForm = () => {
     });
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files) setAttachments(Array.from(e.target.files));
-  };
+  // const handleFileChange = (e) => {
+  //   if (e.target.files) setAttachments(Array.from(e.target.files));
+  // };
 
   const filteredClients = useMemo(
     () =>
@@ -322,12 +365,18 @@ const resetForm = () => {
             onClick={() => {
               resetForm();
               setEditingId(null);
-              setEditorKey((prev) => prev + 1); // 🔥 force remount
+              // setEditorKey((prev) => prev + 1); // 🔥 force remount
               setShowModal(true);
             }}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
           >
             <UserPlus size={18} /> Add Client
+          </button>
+          <button
+            onClick={openEmailModal}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition"
+          >
+            <Paperclip size={18} /> Send Welcome Email
           </button>
         </div>
       </div>
@@ -538,7 +587,7 @@ const resetForm = () => {
                     </div>
                   )}
 
-                  {/* Welcome Email Toggle */}
+                  {/* Welcome Email Toggle
                   <div className="flex items-center gap-3">
                     <label className="text-sm font-medium text-gray-700">
                       Send Welcome Email
@@ -557,10 +606,10 @@ const resetForm = () => {
                         }`}
                       />
                     </button>
-                  </div>
+                  </div> */}
                 </div>
 
-                {/* ✅ Welcome Email Editor FULL WIDTH */}
+                {/* ✅ Welcome Email Editor FULL WIDTH
                 {sendWelcomeEmail && (
                   <div className="w-full">
                     <WelcomeEmailEditor
@@ -574,7 +623,7 @@ const resetForm = () => {
                       setEmailBody={setEmailBody}
                     />
                   </div>
-                )}
+                )} */}
               </div>
 
               {/* Footer Buttons (Sticky Bottom) */}
@@ -592,6 +641,147 @@ const resetForm = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-5xl h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Send Welcome Email</h3>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="text-gray-500 hover:text-red-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Client Dropdown */}
+              <div>
+                <label className="block mb-1 font-medium">Select Client</label>
+
+                <div className="relative">
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="w-full border p-2 rounded-lg pr-10"
+                  >
+                    <option value="">-- Select Client --</option>
+                    {clients.map((client) => (
+                      <option key={client._id} value={client._id}>
+                        {client.name} ({client.email})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Clear Button */}
+                  {selectedClientId && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedClientId("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="block mb-1 font-medium">Subject</label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className="w-full border p-2 rounded-lg"
+                />
+              </div>
+
+              {/* Editor */}
+              <WelcomeEmailEditor
+                emailBody={emailBody}
+                setEmailBody={setEmailBody}
+              />
+
+              {/* Attachments */}
+              <div className="mt-4">
+                <label className="block mb-2 font-medium text-gray-700">
+                  Attach Files
+                </label>
+
+                {/* Upload Box */}
+                <label className="flex flex-col items-center justify-center w-full px-6 py-6 border-2 border-dashed border-blue-400 rounded-xl cursor-pointer hover:bg-blue-50 transition-all">
+                  <span className="text-sm text-gray-600">
+                    Click to upload or drag files here
+                  </span>
+                  <span className="text-xs text-gray-400 mt-1">
+                    Multiple files supported
+                  </span>
+
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (!files.length) return;
+
+                      setAttachments((prev) => [...prev, ...files]);
+                      e.target.value = null;
+                    }}
+                  />
+                </label>
+
+                {/* Selected Files List */}
+                {attachments.length > 0 && (
+                  <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
+                    {attachments.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center bg-gray-100 px-3 py-2 rounded-lg text-sm"
+                      >
+                        <div className="flex flex-col">
+                          <span className="truncate max-w-xs font-medium">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAttachments((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            )
+                          }
+                          className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t p-4 flex justify-end">
+              <button
+                onClick={handleSendEmail}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+              >
+                Send Email
+              </button>
+            </div>
           </div>
         </div>
       )}
