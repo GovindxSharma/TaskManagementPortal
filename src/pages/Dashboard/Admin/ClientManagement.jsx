@@ -15,6 +15,9 @@ import { useQuill } from "react-quilljs";
 import "quill/dist/quill.snow.css";
 import { clientWelcomeEmail } from "../../../commons/emailContent.js";
 import WelcomeEmailEditor from "../../../commons/WelcomeEmailEditor.jsx";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const InputField = ({
   label,
@@ -25,26 +28,25 @@ const InputField = ({
   required = false,
   error,
 }) => (
- <div className="flex flex-col">
-  <label className="text-sm font-medium text-gray-700 mb-1">
-    {label}
-    {required && <span className="text-red-500 ml-1">*</span>}
-  </label>
+  <div className="flex flex-col">
+    <label className="text-sm font-medium text-gray-700 mb-1">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
 
-  <input
-    type={type}
-    value={value}
-    placeholder={placeholder}
-    onChange={onChange}
-    required={required}
-    className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+    <input
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      required={required}
+      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
       ${error ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}
     `}
-  />
+    />
 
-  {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
-</div>
-
+    {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
+  </div>
 );
 
 const Clients = () => {
@@ -52,11 +54,10 @@ const Clients = () => {
   const toast = useToast();
   // const { quill, quillRef } = useQuill({ theme: "snow" });
 
-
   const [clients, setClients] = useState([]);
   // const [emailSubject, setEmailSubject] = useState("Welcome to Our Services");
   // const [editorKey, setEditorKey] = useState(0);
-  
+
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
@@ -72,7 +73,7 @@ const Clients = () => {
     startYear: "",
     assignedTo: "",
     assignedToName: "",
-    status: "Active",  
+    status: "Active",
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
@@ -80,19 +81,19 @@ const Clients = () => {
   // const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [showModal, setShowModal] = useState(false);
   // const [attachments, setAttachments] = useState([]);
-const [showEmailModal, setShowEmailModal] = useState(false);
-const [selectedClientId, setSelectedClientId] = useState("");
-const [emailSubject, setEmailSubject] = useState(
-  "Welcome to CCS - Contractor Compliance Services"
-);
-const [emailBody, setEmailBody] = useState("");
-const [attachments, setAttachments] = useState([]);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [emailSubject, setEmailSubject] = useState(
+    "Welcome to CCS - Contractor Compliance Services",
+  );
+  const [emailBody, setEmailBody] = useState("");
+  const [attachments, setAttachments] = useState([]);
 
   const fetchClients = useCallback(async () => {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       const { data } = await axiosInstance.get(
-        `/client?company_id=${user.company_id}`
+        `/client?company_id=${user.company_id}`,
       );
       setClients(data.clients);
     } catch (err) {
@@ -101,71 +102,70 @@ const [attachments, setAttachments] = useState([]);
     }
   }, [toast]);
 
-const fetchEmployees = useCallback(async () => {
-  try {
-    const { data } = await axiosInstance.get(`/user/employees`);
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get(`/user/employees`);
 
-    const onlyEmployees = data.employees.filter(
-      (user) => user.role === "Employee"
-    );
+      const onlyEmployees = data.employees.filter(
+        (user) => user.role === "Employee",
+      );
 
-    setEmployees(onlyEmployees);
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to fetch employees");
-  }
-}, [toast]);
+      setEmployees(onlyEmployees);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch employees");
+    }
+  }, [toast]);
 
   useEffect(() => {
     fetchClients();
     fetchEmployees();
   }, [fetchClients, fetchEmployees]);
 
-const resetForm = () => {
-  setForm({
-    name: "",
-    contactPerson: "",
-    contactNumber: "",
-    email: "",
-    gstNumber: "",
-    address: "",
-    businessUnit: "",
-    site: "",
-    startMonth: "",
-    startYear: "",
-    assignedTo: "",
-    assignedToName: "",
-    status: "Active",
-  });
-  // setAttachments([]);
-  // setSendWelcomeEmail(true);
-  // setEmailSubject("Welcome to Our Services");
-  // setEmailBody(""); // 👈 reset body
-  // setEditorKey((prev) => prev + 1); // 👈 force remount
-  // if (quill) quill.setText("");
-};
-
+  const resetForm = () => {
+    setForm({
+      name: "",
+      contactPerson: "",
+      contactNumber: "",
+      email: "",
+      gstNumber: "",
+      address: "",
+      businessUnit: "",
+      site: "",
+      startMonth: "",
+      startYear: "",
+      assignedTo: "",
+      assignedToName: "",
+      status: "Active",
+    });
+    // setAttachments([]);
+    // setSendWelcomeEmail(true);
+    // setEmailSubject("Welcome to Our Services");
+    // setEmailBody(""); // 👈 reset body
+    // setEditorKey((prev) => prev + 1); // 👈 force remount
+    // if (quill) quill.setText("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-  const newErrors = {};
+    const newErrors = {};
 
-  if (!form.name.trim()) {
-    newErrors.name = "Client name is required";
-  }
+    if (!form.name.trim()) {
+      newErrors.name = "Client name is required";
+    }
 
-  if (!form.email.trim()) {
-    newErrors.email = "Email is required";
-  } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-    newErrors.email = "Enter a valid email address";
-  }
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      newErrors.email = "Enter a valid email address";
+    }
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    toast.error("Please fix required fields");
-    return;
-  }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error("Please fix required fields");
+      return;
+    }
 
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -190,11 +190,11 @@ const resetForm = () => {
       if (editingId) {
         const { data } = await axiosInstance.put(
           `/client/${editingId}`,
-          payload
+          payload,
         );
         clientData = data.client;
         setClients((prev) =>
-          prev.map((c) => (c._id === editingId ? clientData : c))
+          prev.map((c) => (c._id === editingId ? clientData : c)),
         );
         toast.success("Client updated successfully!");
       } else {
@@ -202,8 +202,7 @@ const resetForm = () => {
         clientData = data.client;
         setClients((prev) => [...prev, clientData]);
 
-          toast.success("Client added successfully!");
-
+        toast.success("Client added successfully!");
       }
 
       resetForm();
@@ -215,58 +214,58 @@ const resetForm = () => {
     }
   };
 
-const openEmailModal = () => {
-  setSelectedClientId("");
-  setEmailSubject("Welcome to CCS - Contractor Compliance Services");
-  setEmailBody("");
-  setAttachments([]);
-  setShowEmailModal(true);
+  const openEmailModal = () => {
+    setSelectedClientId("");
+    setEmailSubject("Welcome to CCS - Contractor Compliance Services");
+    setEmailBody("");
+    setAttachments([]);
+    setShowEmailModal(true);
   };
-  
-useEffect(() => {
-  if (!selectedClientId || clients.length === 0) return;
 
-  const client = clients.find((c) => c._id === selectedClientId);
-  if (!client) return;
+  useEffect(() => {
+    if (!selectedClientId || clients.length === 0) return;
 
-  const template = clientWelcomeEmail(client.contactPerson, client.name);
+    const client = clients.find((c) => c._id === selectedClientId);
+    if (!client) return;
 
-  setEmailBody(template);
-}, [selectedClientId, clients]);
+    const template = clientWelcomeEmail(client.contactPerson, client.name);
 
-const handleFileChange = (e) => {
-  if (e.target.files) {
-    setAttachments(Array.from(e.target.files));
-  }
-};
+    setEmailBody(template);
+  }, [selectedClientId, clients]);
 
-const handleSendEmail = async () => {
-  if (!selectedClientId) {
-    toast.error("Please select a client");
-    return;
-  }
+  const handleFileChange = (e) => {
+    if (e.target.files) {
+      setAttachments(Array.from(e.target.files));
+    }
+  };
 
-  const client = clients.find((c) => c._id === selectedClientId);
-  if (!client) return;
+  const handleSendEmail = async () => {
+    if (!selectedClientId) {
+      toast.error("Please select a client");
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append("to", client.email);
-  formData.append("subject", emailSubject);
-  formData.append("html", emailBody);
+    const client = clients.find((c) => c._id === selectedClientId);
+    if (!client) return;
 
-  attachments.forEach((file) => formData.append("attachments", file));
+    const formData = new FormData();
+    formData.append("to", client.email);
+    formData.append("subject", emailSubject);
+    formData.append("html", emailBody);
 
-  try {
-    await axiosInstance.post("/email/send-welcome", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    attachments.forEach((file) => formData.append("attachments", file));
 
-    toast.success("Email sent successfully 🚀");
-    setShowEmailModal(false);
-  } catch (err) {
-    toast.error("Failed to send email");
-  }
-};
+    try {
+      await axiosInstance.post("/email/send-welcome", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success("Email sent successfully 🚀");
+      setShowEmailModal(false);
+    } catch (err) {
+      toast.error("Failed to send email");
+    }
+  };
 
   const handleEdit = (client) => {
     const assignedEmp = employees.find((e) => e._id === client.assignedTo);
@@ -302,9 +301,9 @@ const handleSendEmail = async () => {
   const filteredClients = useMemo(
     () =>
       clients.filter((c) =>
-        Object.values(c).join(" ").toLowerCase().includes(search.toLowerCase())
+        Object.values(c).join(" ").toLowerCase().includes(search.toLowerCase()),
       ),
-    [clients, search]
+    [clients, search],
   );
 
   const months = [
@@ -325,16 +324,88 @@ const handleSendEmail = async () => {
   const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
 
   const fields = [
-  { label: "Client Name", key: "name", required: true },
-  { label: "Contact Person", key: "contactPerson" },
-  { label: "Contact Number", key: "contactNumber" },
-  { label: "Email", key: "email", type: "email", required: true },
-  { label: "GST Number", key: "gstNumber" },
-  { label: "Address", key: "address" },
-  { label: "Company Name", key: "businessUnit" },
-  { label: "Business Unit", key: "site" },
-];
+    { label: "Client Name", key: "name", required: true },
+    { label: "Contact Person", key: "contactPerson" },
+    { label: "Contact Number", key: "contactNumber" },
+    { label: "Email", key: "email", type: "email", required: true },
+    { label: "GST Number", key: "gstNumber" },
+    { label: "Address", key: "address" },
+    { label: "Company Name", key: "businessUnit" },
+    { label: "Business Unit", key: "site" },
+  ];
 
+  const exportPDF = () => {
+    if (!filteredClients.length) {
+      toast.error("No clients to export");
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    doc.text("Client Management Report", 14, 15);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+
+    const tableColumn = [
+      "Name",
+      "Contact Person",
+      "Email",
+      "Phone",
+      "Assigned To",
+      "Start Period",
+    ];
+
+    const tableRows = filteredClients.map((c) => {
+      const assignedEmp = employees.find((e) => e._id === c.assignedTo);
+
+      return [
+        c.name || "-",
+        c.contactPerson || "-",
+        c.email || "-",
+        c.contactNumber || "-",
+        assignedEmp?.name || "-",
+        `${months[Number(c.startMonth) - 1] || "-"} ${c.startYear || ""}`,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 28,
+      head: [tableColumn],
+      body: tableRows,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [37, 99, 235] },
+    });
+
+    doc.save("Clients_Report.pdf");
+  };
+
+  const exportExcel = () => {
+    if (!filteredClients.length) {
+      toast.error("No clients to export");
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(
+      filteredClients.map((c) => {
+        const assignedEmp = employees.find((e) => e._id === c.assignedTo);
+
+        return {
+          Name: c.name || "-",
+          "Contact Person": c.contactPerson || "-",
+          Email: c.email || "-",
+          Phone: c.contactNumber || "-",
+          "Assigned To": assignedEmp?.name || "-",
+          "Start Period": `${months[Number(c.startMonth) - 1] || "-"} ${
+            c.startYear || ""
+          }`,
+          Status: c.status || "Active",
+        };
+      }),
+    );
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+    XLSX.writeFile(workbook, "Clients_Report.xlsx");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">
@@ -377,6 +448,33 @@ const handleSendEmail = async () => {
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition"
           >
             <Paperclip size={18} /> Send Welcome Email
+          </button>
+          <button
+            onClick={exportPDF}
+            disabled={!filteredClients.length}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition shadow-sm
+                ${
+                  !filteredClients.length
+                    ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-md"
+                }
+              `}
+          >
+            Export PDF
+          </button>
+
+          <button
+            onClick={exportExcel}
+            disabled={!filteredClients.length}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition shadow-sm
+                ${
+                  !filteredClients.length
+                    ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                    : "bg-teal-600 hover:bg-teal-700 text-white hover:shadow-md"
+                }
+              `}
+          >
+            Export Excel
           </button>
         </div>
       </div>
