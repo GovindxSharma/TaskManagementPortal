@@ -52,12 +52,7 @@ const InputField = ({
 const Clients = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  // const { quill, quillRef } = useQuill({ theme: "snow" });
-
   const [clients, setClients] = useState([]);
-  // const [emailSubject, setEmailSubject] = useState("Welcome to Our Services");
-  // const [editorKey, setEditorKey] = useState(0);
-
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
@@ -77,10 +72,7 @@ const Clients = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
-  // const [emailBody, setEmailBody] = useState("");
-  // const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  // const [attachments, setAttachments] = useState([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [emailSubject, setEmailSubject] = useState(
@@ -138,12 +130,6 @@ const Clients = () => {
       assignedToName: "",
       status: "Active",
     });
-    // setAttachments([]);
-    // setSendWelcomeEmail(true);
-    // setEmailSubject("Welcome to Our Services");
-    // setEmailBody(""); // 👈 reset body
-    // setEditorKey((prev) => prev + 1); // 👈 force remount
-    // if (quill) quill.setText("");
   };
 
   const handleSubmit = async (e) => {
@@ -293,10 +279,6 @@ const Clients = () => {
       },
     });
   };
-
-  // const handleFileChange = (e) => {
-  //   if (e.target.files) setAttachments(Array.from(e.target.files));
-  // };
 
   const filteredClients = useMemo(
     () =>
@@ -684,44 +666,7 @@ const Clients = () => {
                       <span className="text-xs font-medium">{form.status}</span>
                     </div>
                   )}
-
-                  {/* Welcome Email Toggle
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm font-medium text-gray-700">
-                      Send Welcome Email
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => setSendWelcomeEmail((prev) => !prev)}
-                      className={`relative w-12 h-6 rounded-full transition ${
-                        sendWelcomeEmail ? "bg-blue-600" : "bg-gray-300"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${
-                          sendWelcomeEmail ? "translate-x-6" : ""
-                        }`}
-                      />
-                    </button>
-                  </div> */}
                 </div>
-
-                {/* ✅ Welcome Email Editor FULL WIDTH
-                {sendWelcomeEmail && (
-                  <div className="w-full">
-                    <WelcomeEmailEditor
-                        key={editorKey}   // 👈 IMPORTANT
-                      visible={sendWelcomeEmail}
-                      subject={emailSubject}
-                      setSubject={setEmailSubject}
-                      attachments={attachments}
-                      setAttachments={setAttachments}
-                      emailBody={emailBody}
-                      setEmailBody={setEmailBody}
-                    />
-                  </div>
-                )} */}
               </div>
 
               {/* Footer Buttons (Sticky Bottom) */}
