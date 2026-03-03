@@ -110,8 +110,13 @@ export default function CustomerCompliance() {
              : "",
        );
 
-     if (monthFilter)
-       params.append("month", String(monthNames.indexOf(monthFilter) + 1));
+    if (monthFilter) {
+      const monthNumber = String(monthNames.indexOf(monthFilter) + 1).padStart(
+        2,
+        "0",
+      );
+      params.append("month", monthNumber);
+    }
 
      if (yearFilter) params.append("year", yearFilter);
 
