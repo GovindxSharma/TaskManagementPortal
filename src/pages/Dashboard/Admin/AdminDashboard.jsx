@@ -29,7 +29,24 @@ export default function AdminDashboard() {
   const [clientStats, setClientStats] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
   const currentYear = new Date().getFullYear();
-const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  // const [revenueData, setRevenueData] = useState([]);
+
+  const monthNames = {
+    "01": "Jan",
+    "02": "Feb",
+    "03": "Mar",
+    "04": "Apr",
+    "05": "May",
+    "06": "Jun",
+    "07": "Jul",
+    "08": "Aug",
+    "09": "Sep",
+    "10": "Oct",
+    "11": "Nov",
+    "12": "Dec",
+  };
 
   const fetchUnreadCount = async () => {
     await loadDashboardStats();
@@ -113,41 +130,20 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
     }
   };
 
-  const fetchRevenueData = async (year = selectedYear) => {
-    try {
-      await loadDashboardStats();
-  
-      const res = await axios.get(
-        `/auth/revenue-monthly?year=${year}`
-      );
-  
-      const rawData = res.data?.data || [];
-  
-      // Month labels
-      const monthNames = [
-        "Jan","Feb","Mar","Apr","May","Jun",
-        "Jul","Aug","Sep","Oct","Nov","Dec"
-      ];
-  
-      // Normalize + sort months
-      const normalizedData = Array.from({ length: 12 }, (_, i) => {
-        const monthNum = String(i + 1).padStart(2, "0");
-  
-        const found = rawData.find(
-          (d) => String(d.month).padStart(2, "0") === monthNum
-        );
-  
-        return {
-          month: monthNames[i],
-          revenue: found?.revenue || 0,
-        };
-      });
-  
-      setRevenueData(normalizedData);
-    } catch (err) {
-      console.error("Failed to fetch revenue stats", err);
-    }
-  };
+const fetchRevenueData = async (year) => {
+  try {
+    const res = await axios.get(`/auth/revenue-monthly?year=${year}`);
+
+    const formatted = (res.data.data || []).map((item) => ({
+      month: monthNames[item.month] || item.month,
+      revenue: item.revenue || 0,
+    }));
+
+    setRevenueData(formatted);
+  } catch (err) {
+    console.error("Failed to fetch revenue stats", err);
+  }
+};
 
   const handleYearChange = (e) => {
     setSelectedYear(Number(e.target.value));
@@ -170,6 +166,10 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
   useEffect(() => {
     fetchRevenueData(selectedYear);
   }, [selectedYear]);
+
+useEffect(() => {
+  fetchRevenueData(selectedYear);
+}, [selectedYear]);
 
   const stats = dashboardStats.admin;
 
@@ -449,36 +449,38 @@ const [selectedYear, setSelectedYear] = useState(currentYear);
           </ResponsiveContainer>
         </div>
 
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-  <div className="flex justify-between items-center mb-4">
-    <h2 className="text-xl font-semibold text-gray-800">
-      Monthly Revenue ({selectedYear})
-    </h2>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <div className="flex items-center gap-3 mb-4">
+            <label className="text-sm font-medium text-gray-600">
+              Select Year
+            </label>
 
-    <select
-      value={selectedYear}
-      onChange={handleYearChange}
-      className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-    >
-      {[currentYear - 2, currentYear - 1, currentYear].map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
-  </div>
-
-  <ResponsiveContainer width="100%" height={280}>
-    <BarChart data={revenueData}>
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="month" />
-      <YAxis />
-      <Tooltip />
-      <Legend />
-      <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
-    </BarChart>
-  </ResponsiveContainer>
-</div>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="border rounded-lg px-3 py-1.5 shadow-sm"
+            >
+              {[currentYear - 2, currentYear - 1, currentYear].map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Monthly Revenue
+          </h2>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
