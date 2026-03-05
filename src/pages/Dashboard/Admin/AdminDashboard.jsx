@@ -28,6 +28,25 @@ export default function AdminDashboard() {
   const [overdueClients, setOverdueClients] = useState([]);
   const [clientStats, setClientStats] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
+  const currentYear = new Date().getFullYear();
+
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  // const [revenueData, setRevenueData] = useState([]);
+
+  const monthNames = {
+    "01": "Jan",
+    "02": "Feb",
+    "03": "Mar",
+    "04": "Apr",
+    "05": "May",
+    "06": "Jun",
+    "07": "Jul",
+    "08": "Aug",
+    "09": "Sep",
+    "10": "Oct",
+    "11": "Nov",
+    "12": "Dec",
+  };
 
   const fetchUnreadCount = async () => {
     await loadDashboardStats();
@@ -111,15 +130,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchRevenueData = async () => {
-    try {
-      await loadDashboardStats();
-      const res = await axios.get("/auth/revenue-monthly");
-      setRevenueData(res.data.data || []);
-    } catch (err) {
-      console.error("Failed to fetch revenue stats", err);
-    }
-  };
+const fetchRevenueData = async (year) => {
+  try {
+    const res = await axios.get(`/auth/revenue-monthly?year=${year}`);
+
+    const formatted = (res.data.data || []).map((item) => ({
+      month: monthNames[item.month] || item.month,
+      revenue: item.revenue || 0,
+    }));
+
+    setRevenueData(formatted);
+  } catch (err) {
+    console.error("Failed to fetch revenue stats", err);
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -136,6 +160,10 @@ export default function AdminDashboard() {
     fetchClientStats();
     fetchRevenueData();
   }, []);
+
+useEffect(() => {
+  fetchRevenueData(selectedYear);
+}, [selectedYear]);
 
   const stats = dashboardStats.admin;
 
@@ -416,6 +444,23 @@ export default function AdminDashboard() {
         </div>
 
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <div className="flex items-center gap-3 mb-4">
+            <label className="text-sm font-medium text-gray-600">
+              Select Year
+            </label>
+
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="border rounded-lg px-3 py-1.5 shadow-sm"
+            >
+              {[currentYear - 2, currentYear - 1, currentYear].map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Monthly Revenue
           </h2>
