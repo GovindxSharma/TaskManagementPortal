@@ -145,6 +145,9 @@ const fetchRevenueData = async (year) => {
   }
 };
 
+  const handleYearChange = (e) => {
+    setSelectedYear(Number(e.target.value));
+  };
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -158,8 +161,11 @@ const fetchRevenueData = async (year) => {
     fetchExpiringLicenses();
     fetchOverdueClients();
     fetchClientStats();
-    fetchRevenueData();
   }, []);
+  
+  useEffect(() => {
+    fetchRevenueData(selectedYear);
+  }, [selectedYear]);
 
 useEffect(() => {
   fetchRevenueData(selectedYear);
