@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, ArrowRight, Settings, LogOut } from "lucide-react";
+import { Bell, ArrowRight, Settings, LogOut, BarChart3 } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -181,6 +181,13 @@ useEffect(() => {
           Admin Dashboard
         </h1>
         <div className="flex items-center">
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            onClick={() => navigate("/admin/reports")}
+            title="Reports"
+          >
+            <BarChart3 className="text-gray-600" />
+          </button>
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
             onClick={() => navigate("/admin/notifications")}
