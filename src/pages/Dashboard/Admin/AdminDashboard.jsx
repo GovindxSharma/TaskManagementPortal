@@ -189,7 +189,7 @@ useEffect(() => {
             <BarChart3 className="text-gray-600" />
           </button>
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
             onClick={() => navigate("/admin/notifications")}
           >
             <Bell className="text-gray-600" />
