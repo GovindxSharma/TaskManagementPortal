@@ -12,6 +12,10 @@ import NotificationsPage from "../components/Notifications/NotificationPage.jsx"
 import PendingBills from "../components/Pendingbills/PendingBills.jsx";
 import DataReceived from "../components/DataReceived/DataReceived.jsx";
 import DataComplete from "../components/DataComplete/DataComplete.jsx";
+import Reports from "../pages/Dashboard/Admin/Report.jsx";
+import NoOfWorkers from "../components/Reports/NoOfWorkerReport.jsx";
+import CategoryReport from "../components/Reports/CategoryWiseReport.jsx";
+import CategoryDetails from "../components/Reports/CategoryDetails.jsx";
 
 export const dashboardRoutes = {
   admin: [
@@ -26,6 +30,10 @@ export const dashboardRoutes = {
     { path: "/admin/notifications", element: <NotificationsPage /> },
     { path: "/admin/settings", element: <SettingsPage /> },
     { path: "/admin/bill-pending", element: <PendingBills /> },
+    { path: "/admin/reports", element: <Reports /> },
+    { path: "/admin/reports/workers", element: <NoOfWorkers /> },
+    { path: "/admin/reports/category", element: <CategoryReport /> },
+    { path: "/admin/reports/category/:id", element: <CategoryDetails /> },
   ],
 
   employee: [
