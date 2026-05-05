@@ -1,7 +1,6 @@
-export const clientWelcomeEmail = (contactPerson, companyName) => {
-  // const baseUrl = "https://ccscompliance.in"; // use absolute URL
+export const clientWelcomeEmail = () => {
   const baseUrl = "https://taskmanagementportal-jkm0.onrender.com";
-  
+
   return `
 <table width="100%" cellpadding="0" cellspacing="0" 
   style="font-family: Arial, sans-serif; background-color:#f8f8f8; padding:20px;">
@@ -14,12 +13,12 @@ export const clientWelcomeEmail = (contactPerson, companyName) => {
         <tr>
           <td style="text-align:left;">
 
-            <p>Dear ${contactPerson || "Sir/Madam"},</p>
+            <p>Dear {{contactPerson}},</p>
 
             <p>
               Welcome to <strong>CCS - Contractor Compliance Services</strong>! 
               We are thrilled to have you on board and look forward to assisting 
-              <strong>${companyName}</strong> with compliance documentation.
+              <strong>{{companyName}}</strong> with compliance documentation.
             </p>
 
             <p>

@@ -74,12 +74,13 @@ const Clients = () => {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedClientIds, setSelectedClientIds] = useState([]);
   const [emailSubject, setEmailSubject] = useState(
     "Welcome to CCS - Contractor Compliance Services",
   );
   const [emailBody, setEmailBody] = useState("");
   const [attachments, setAttachments] = useState([]);
+  const [clientSearch, setClientSearch] = useState("");
 
   const fetchClients = useCallback(async () => {
     try {
@@ -201,23 +202,18 @@ const Clients = () => {
   };
 
   const openEmailModal = () => {
-    setSelectedClientId("");
+    setSelectedClientIds([]);
     setEmailSubject("Welcome to CCS - Contractor Compliance Services");
     setEmailBody("");
     setAttachments([]);
     setShowEmailModal(true);
   };
 
-  useEffect(() => {
-    if (!selectedClientId || clients.length === 0) return;
-
-    const client = clients.find((c) => c._id === selectedClientId);
-    if (!client) return;
-
-    const template = clientWelcomeEmail(client.contactPerson, client.name);
-
-    setEmailBody(template);
-  }, [selectedClientId, clients]);
+useEffect(() => {
+  if (showEmailModal) {
+    setEmailBody(clientWelcomeEmail()); // template with {{variables}}
+  }
+}, [showEmailModal]);
 
   const handleFileChange = (e) => {
     if (e.target.files) {
@@ -225,34 +221,57 @@ const Clients = () => {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!selectedClientId) {
-      toast.error("Please select a client");
-      return;
-    }
+  const replaceVariables = (template, client) => {
+    const variables = {
+      contactPerson: client.contactPerson || "Sir/Madam",
+      companyName: client.name,
+      email: client.email,
+      gstNumber: client.gstNumber,
+      businessUnit: client.businessUnit,
+    };
 
-    const client = clients.find((c) => c._id === selectedClientId);
-    if (!client) return;
+    return template.replace(/{{(.*?)}}/g, (_, key) => {
+      return variables[key.trim()] ?? "";
+    });
+  };
 
-    const formData = new FormData();
-    formData.append("to", client.email);
-    formData.append("subject", emailSubject);
-    formData.append("html", emailBody);
+const handleSendEmail = async () => {
+  if (!selectedClientIds.length) {
+    toast.error("Please select at least one client");
+    return;
+  }
 
-    attachments.forEach((file) => formData.append("attachments", file));
+  try {
+    for (const clientId of selectedClientIds) {
+      const client = clients.find((c) => c._id === clientId);
+      if (!client || !client.email) continue;
 
-    try {
+      const personalizedBody = replaceVariables(emailBody, client);
+
+      const formData = new FormData();
+      formData.append("to", client.email);
+      formData.append("subject", emailSubject);
+      formData.append("html", personalizedBody);
+
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+
       await axiosInstance.post("/email/send-welcome", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
-      toast.success("Email sent successfully 🚀");
-      setShowEmailModal(false);
-    } catch (err) {
-      toast.error("Failed to send email");
     }
-  };
 
+    toast.success(
+      `Welcome email sent to ${selectedClientIds.length} client(s) 🚀`,
+    );
+    setShowEmailModal(false);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to send one or more emails");
+  }
+};
+  
   const handleEdit = (client) => {
     const assignedEmp = employees.find((e) => e._id === client.assignedTo);
     setForm({
@@ -704,34 +723,125 @@ const Clients = () => {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Client Dropdown */}
+              {/* Client Selection */}
               <div>
-                <label className="block mb-1 font-medium">Select Client</label>
+                <label className="block mb-1 font-medium">Select Clients</label>
 
-                <div className="relative">
-                  <select
-                    value={selectedClientId}
-                    onChange={(e) => setSelectedClientId(e.target.value)}
-                    className="w-full border p-2 rounded-lg pr-10"
-                  >
-                    <option value="">-- Select Client --</option>
-                    {clients.map((client) => (
-                      <option key={client._id} value={client._id}>
-                        {client.name} ({client.email})
-                      </option>
-                    ))}
-                  </select>
+                {/* 🔍 Search */}
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="w-full border p-2 rounded-lg mb-2"
+                />
 
-                  {/* Clear Button */}
-                  {selectedClientId && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedClientId("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                    >
-                      ✕
-                    </button>
-                  )}
+                {/* 📋 List Container */}
+                <div className="border rounded-lg max-h-64 overflow-y-auto">
+                  {/* 🔁 Filtered Clients */}
+                  {(() => {
+                    const filteredClients = clients.filter((c) =>
+                      `${c.name} ${c.email}`
+                        .toLowerCase()
+                        .includes(clientSearch.toLowerCase()),
+                    );
+
+                    const allSelected =
+                      filteredClients.length > 0 &&
+                      filteredClients.every((c) =>
+                        selectedClientIds.includes(c._id),
+                      );
+
+                    return (
+                      <>
+                        {/* ✅ Select All */}
+                        <div className="flex items-center justify-between px-3 py-2 border-b bg-gray-50">
+                          <label className="flex items-center gap-2 text-sm font-medium">
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedClientIds((prev) => [
+                                    ...new Set([
+                                      ...prev,
+                                      ...filteredClients.map((c) => c._id),
+                                    ]),
+                                  ]);
+                                } else {
+                                  setSelectedClientIds((prev) =>
+                                    prev.filter(
+                                      (id) =>
+                                        !filteredClients.some(
+                                          (c) => c._id === id,
+                                        ),
+                                    ),
+                                  );
+                                }
+                              }}
+                            />
+                            Select All
+                          </label>
+
+                          {selectedClientIds.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedClientIds([])}
+                              className="text-xs text-red-500 hover:underline"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+
+                        {/* 👥 Client List */}
+                        {filteredClients.length === 0 ? (
+                          <div className="text-center py-4 text-gray-400 text-sm">
+                            No clients found
+                          </div>
+                        ) : (
+                          filteredClients.map((client) => {
+                            const isChecked = selectedClientIds.includes(
+                              client._id,
+                            );
+
+                            return (
+                              <label
+                                key={client._id}
+                                className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b last:border-0"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    if (isChecked) {
+                                      setSelectedClientIds((prev) =>
+                                        prev.filter((id) => id !== client._id),
+                                      );
+                                    } else {
+                                      setSelectedClientIds((prev) => [
+                                        ...prev,
+                                        client._id,
+                                      ]);
+                                    }
+                                  }}
+                                />
+
+                                <div className="flex flex-col text-sm">
+                                  <span className="font-medium text-gray-800">
+                                    {client.name}
+                                  </span>
+                                  <span className="text-gray-500 text-xs">
+                                    {client.email}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -781,7 +891,7 @@ const Clients = () => {
                   />
                 </label>
 
-                {/* Selected Files List */}
+                {/* Selected Files */}
                 {attachments.length > 0 && (
                   <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
                     {attachments.map((file, index) => (
