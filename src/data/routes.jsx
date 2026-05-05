@@ -16,6 +16,7 @@ import Reports from "../pages/Dashboard/Admin/Report.jsx";
 import NoOfWorkers from "../components/Reports/NoOfWorkerReport.jsx";
 import CategoryReport from "../components/Reports/CategoryWiseReport.jsx";
 import CategoryDetails from "../components/Reports/CategoryDetails.jsx";
+import SendEmail from "../pages/Dashboard/Admin/SendEmail.jsx";
 
 export const dashboardRoutes = {
   admin: [
@@ -34,6 +35,7 @@ export const dashboardRoutes = {
     { path: "/admin/reports/workers", element: <NoOfWorkers /> },
     { path: "/admin/reports/category", element: <CategoryReport /> },
     { path: "/admin/reports/category/:id", element: <CategoryDetails /> },
+    { path: "/admin/send-email", element: <SendEmail /> },
   ],
 
   employee: [
