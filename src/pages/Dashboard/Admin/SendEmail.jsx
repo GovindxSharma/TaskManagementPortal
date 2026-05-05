@@ -3,6 +3,9 @@ import axiosInstance from "../../../api/axiosInstance";
 import { useToast } from "../../../components/layout/ToastProvider.jsx";
 import WelcomeEmailEditor from "../../../commons/WelcomeEmailEditor.jsx";
 import { dynamicClientEmail } from "../../../commons/dynamicEmailTemplate";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { text } from "framer-motion/client";
 
 const SendEmail = () => {
   const toast = useToast();
@@ -15,6 +18,7 @@ const SendEmail = () => {
   const [emailBody, setEmailBody] = useState("");
 
   const [attachments, setAttachments] = useState([]);
+  const navigate = useNavigate();
 
   // Fetch Clients
   const fetchClients = useCallback(async () => {
@@ -86,6 +90,7 @@ const SendEmail = () => {
       toast.success("Emails sent 🚀");
       setSelectedClientIds([]);
       setAttachments([]);
+      navigate("/admin/dashboard");
     } catch (err) {
       toast.error("Failed to send emails");
     }
@@ -97,7 +102,38 @@ const SendEmail = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Send Email</h2>
+      <div style={{ position: "relative", width: "100%" }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            position: "absolute",
+            right: "120%",
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            color: "#4B5563",
+            cursor: "pointer",
+            fontSize: "18px",
+          }}
+        >
+          <ArrowLeft size={20} />
+          Back
+        </button>
+
+        <h2
+          style={{
+            // textAlign: "center",
+            right: "100%",
+            fontSize: "26px",
+            fontWeight: "bold",
+            color: "#1F2937",
+          }}
+        >
+          Send Email
+        </h2>
+      </div>
 
       {/* ================= CLIENT SELECT ================= */}
       <div className="bg-white rounded-xl shadow p-4 space-y-3">
@@ -221,7 +257,9 @@ const SendEmail = () => {
       {/* ================= EDITOR ================= */}
       <div className="bg-white rounded-xl shadow p-4 space-y-2">
         <p className="text-xs text-gray-500">
-          Use variables like <b>{"{{companyName}}"}</b> for Company Name and <b>{"{{contactPerson}}"}</b> for Contact Person. They will be replaced with actual values for each client.
+          Use variables like <b>{"{{companyName}}"}</b> for Company Name and{" "}
+          <b>{"{{contactPerson}}"}</b> for Contact Person. They will be replaced
+          with actual values for each client.
         </p>
 
         <WelcomeEmailEditor emailBody={emailBody} setEmailBody={setEmailBody} />
