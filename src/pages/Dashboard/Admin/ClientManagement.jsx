@@ -196,7 +196,45 @@ const Clients = () => {
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Something went wrong!");
+
+      const responseData = err.response?.data;
+
+      
+      if (responseData?.field) {
+        const fieldMap = {
+          email: "email",
+          contactNumber: "contactNumber",
+          gstNumber: "gstNumber",
+        };
+        const fieldKey = fieldMap[responseData.field];
+        if (fieldKey) {
+          setErrors((prev) => ({ ...prev, [fieldKey]: responseData.message }));
+        }
+        toast.warning(responseData.message);
+        return;
+      }
+
+      
+      if (responseData?.error?.code === 11000) {
+        const duplicateField = Object.keys(
+          responseData.error.keyPattern || {},
+        )[0];
+
+        const fieldMessages = {
+          email: "Email already exists",
+          contactNumber: "Phone number already exists",
+          gstNumber: "GST number already exists",
+        };
+
+        const message = fieldMessages[duplicateField] || "Duplicate value already exists";
+        if (fieldMessages[duplicateField]) {
+          setErrors((prev) => ({ ...prev, [duplicateField]: message }));
+        }
+        toast.warning(message);
+        return;
+      }
+
+      toast.error(responseData?.message || "Something went wrong!");
     }
   };
 
