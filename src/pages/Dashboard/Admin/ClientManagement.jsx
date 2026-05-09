@@ -139,17 +139,44 @@ const Clients = () => {
 
     if (!form.name.trim()) {
       newErrors.name = "Client name is required";
+    } else if (!/^[A-Za-z\s]+$/.test(form.name.trim())) {
+      newErrors.name = "Client name must contain only alphabetic characters";
+    } else if (!editingId) {
+      const duplicate = clients.find(
+        (c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase()
+      );
+      if (duplicate) newErrors.name = "Client name already exists";
     }
 
     if (!form.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       newErrors.email = "Enter a valid email address";
+    }
+
+    if (form.contactNumber && !/^\d{10}$/.test(form.contactNumber.trim())) {
+      newErrors.contactNumber = "Contact number must be exactly 10 digits";
+    }
+
+    if (form.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.gstNumber.trim())) {
+      newErrors.gstNumber = "Enter a valid 15-character GST number (e.g. 22AAAAA0000A1Z5)";
+    }
+
+    if (form.businessUnit && !/^[A-Za-z\s]+$/.test(form.businessUnit.trim())) {
+      newErrors.businessUnit = "Company Name must contain only alphabetic characters";
+    }
+
+    if (form.site && !/^[A-Za-z\s]+$/.test(form.site.trim())) {
+      newErrors.site = "Business Unit must contain only alphabetic characters";
+    }
+
+    if (form.address && /^[^A-Za-z0-9]+$/.test(form.address.trim())) {
+      newErrors.address = "Address cannot contain only special characters";
     }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.error("Please fix required fields");
+      toast.error("Please fix the highlighted fields");
       return;
     }
 
@@ -157,14 +184,14 @@ const Clients = () => {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
 
       const payload = {
-        name: form.name,
-        contactPerson: form.contactPerson,
-        contactNumber: form.contactNumber,
-        email: form.email,
-        gstNumber: form.gstNumber,
-        address: form.address,
-        businessUnit: form.businessUnit,
-        site: form.site,
+        name: form.name.trim(),
+        contactPerson: form.contactPerson.trim(),
+        contactNumber: form.contactNumber.trim(),
+        email: form.email.trim().toLowerCase(),
+        gstNumber: form.gstNumber.trim(),
+        address: form.address.trim(),
+        businessUnit: form.businessUnit.trim(),
+        site: form.site.trim(),
         startMonth: (Number(form.startMonth) + 1).toString(),
         startYear: form.startYear.toString(),
         company_id: user.company_id,
@@ -199,12 +226,12 @@ const Clients = () => {
 
       const responseData = err.response?.data;
 
-      
       if (responseData?.field) {
         const fieldMap = {
           email: "email",
           contactNumber: "contactNumber",
           gstNumber: "gstNumber",
+          name: "name",
         };
         const fieldKey = fieldMap[responseData.field];
         if (fieldKey) {
@@ -214,18 +241,37 @@ const Clients = () => {
         return;
       }
 
-      
+      if (responseData?.message) {
+        const msgLower = responseData.message.toLowerCase();
+        if (msgLower.includes("client name already exists") || msgLower.includes("client already exists")) {
+          setErrors((prev) => ({ ...prev, name: "Client name already exists" }));
+          toast.warning("Client name already exists");
+          return;
+        }
+        if (msgLower.includes("email")) {
+          setErrors((prev) => ({ ...prev, email: responseData.message }));
+          toast.warning(responseData.message);
+          return;
+        }
+        if (msgLower.includes("phone") || msgLower.includes("contact")) {
+          setErrors((prev) => ({ ...prev, contactNumber: responseData.message }));
+          toast.warning(responseData.message);
+          return;
+        }
+        if (msgLower.includes("gst")) {
+          setErrors((prev) => ({ ...prev, gstNumber: responseData.message }));
+          toast.warning(responseData.message);
+          return;
+        }
+      }
+
       if (responseData?.error?.code === 11000) {
-        const duplicateField = Object.keys(
-          responseData.error.keyPattern || {},
-        )[0];
-
+        const duplicateField = Object.keys(responseData.error.keyPattern || {})[0];
         const fieldMessages = {
-          email: "Email already exists",
-          contactNumber: "Phone number already exists",
-          gstNumber: "GST number already exists",
+          email: "A client with this email already exists",
+          contactNumber: "A client with this phone number already exists",
+          gstNumber: "A client with this GST number already exists",
         };
-
         const message = fieldMessages[duplicateField] || "Duplicate value already exists";
         if (fieldMessages[duplicateField]) {
           setErrors((prev) => ({ ...prev, [duplicateField]: message }));
@@ -272,9 +318,20 @@ const Clients = () => {
     const client = clients.find((c) => c._id === selectedClientId);
     if (!client) return;
 
+    const recipientEmail = client.email?.trim();
+    if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+      toast.error("Client has an invalid email address. Cannot send email.");
+      return;
+    }
+
+    if (!emailSubject.trim()) {
+      toast.error("Email subject cannot be blank");
+      return;
+    }
+
     const formData = new FormData();
-    formData.append("to", client.email);
-    formData.append("subject", emailSubject);
+    formData.append("to", recipientEmail);
+    formData.append("subject", emailSubject.trim());
     formData.append("html", emailBody);
 
     attachments.forEach((file) => formData.append("attachments", file));
@@ -433,7 +490,7 @@ const Clients = () => {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 bg-white shadow px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700 transition"
+          className="flex items-center gap-2 bg-white shadow px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700 transition cursor-pointer"
         >
           <ArrowLeft size={18} /> Back
         </button>
@@ -456,16 +513,15 @@ const Clients = () => {
             onClick={() => {
               resetForm();
               setEditingId(null);
-              // setEditorKey((prev) => prev + 1); // 🔥 force remount
               setShowModal(true);
             }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer"
           >
             <UserPlus size={18} /> Add Client
           </button>
           <button
             onClick={openEmailModal}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer"
           >
             <Paperclip size={18} /> Send Welcome Email
           </button>
@@ -476,7 +532,7 @@ const Clients = () => {
                 ${
                   !filteredClients.length
                     ? "bg-gray-300 cursor-not-allowed text-gray-500"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-md"
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-md cursor-pointer"
                 }
               `}
           >
@@ -490,7 +546,7 @@ const Clients = () => {
                 ${
                   !filteredClients.length
                     ? "bg-gray-300 cursor-not-allowed text-gray-500"
-                    : "bg-teal-600 hover:bg-teal-700 text-white hover:shadow-md"
+                    : "bg-teal-600 hover:bg-teal-700 text-white hover:shadow-md cursor-pointer"
                 }
               `}
           >
@@ -543,13 +599,13 @@ const Clients = () => {
                     <td className="p-3 flex justify-center gap-2">
                       <button
                         onClick={() => handleEdit(c)}
-                        className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
+                        className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition cursor-pointer"
                       >
                         <Pencil size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(c._id)}
-                        className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
+                        className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition cursor-pointer"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -586,7 +642,7 @@ const Clients = () => {
                   setShowModal(false);
                   resetForm();
                 }}
-                className="text-gray-500 hover:text-red-500"
+                className="text-gray-500 hover:text-red-500 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -689,7 +745,7 @@ const Clients = () => {
                               prev.status === "Active" ? "Inactive" : "Active",
                           }))
                         }
-                        className={`relative w-14 h-7 rounded-full transition ${
+                        className={`relative w-14 h-7 rounded-full transition cursor-pointer ${
                           form.status === "Active"
                             ? "bg-green-600"
                             : "bg-gray-400"
@@ -715,7 +771,7 @@ const Clients = () => {
                   className={`px-6 py-2 rounded-lg font-medium transition ${
                     !form.name || !form.email
                       ? "bg-gray-300 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                   }`}
                 >
                   {editingId ? "Update Client" : "Add Client"}
@@ -734,7 +790,7 @@ const Clients = () => {
               <h3 className="text-lg font-semibold">Send Welcome Email</h3>
               <button
                 onClick={() => setShowEmailModal(false)}
-                className="text-gray-500 hover:text-red-500"
+                className="text-gray-500 hover:text-red-500 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -765,7 +821,7 @@ const Clients = () => {
                     <button
                       type="button"
                       onClick={() => setSelectedClientId("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 cursor-pointer"
                     >
                       ✕
                     </button>
@@ -843,7 +899,7 @@ const Clients = () => {
                               prev.filter((_, i) => i !== index),
                             )
                           }
-                          className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                          className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
                         >
                           Remove
                         </button>
@@ -858,7 +914,7 @@ const Clients = () => {
             <div className="border-t p-4 flex justify-end">
               <button
                 onClick={handleSendEmail}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg cursor-pointer"
               >
                 Send Email
               </button>
