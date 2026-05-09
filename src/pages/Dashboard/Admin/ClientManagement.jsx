@@ -150,7 +150,7 @@ const Clients = () => {
 
     if (!form.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/.test(form.email.trim())) {
       newErrors.email = "Enter a valid email address";
     }
 
@@ -209,18 +209,19 @@ const Clients = () => {
         setClients((prev) =>
           prev.map((c) => (c._id === editingId ? clientData : c)),
         );
+        resetForm();
+        setEditingId(null);
+        setShowModal(false);
         toast.success("Client updated successfully!");
       } else {
         const { data } = await axiosInstance.post("/client", payload);
         clientData = data.client;
         setClients((prev) => [...prev, clientData]);
-
+        resetForm();
+        setEditingId(null);
+        setShowModal(false);
         toast.success("Client added successfully!");
       }
-
-      resetForm();
-      setEditingId(null);
-      setShowModal(false);
     } catch (err) {
       console.error(err);
 
@@ -319,7 +320,7 @@ const Clients = () => {
     if (!client) return;
 
     const recipientEmail = client.email?.trim();
-    if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+    if (!recipientEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/.test(recipientEmail)) {
       toast.error("Client has an invalid email address. Cannot send email.");
       return;
     }
@@ -806,7 +807,9 @@ const Clients = () => {
                   <select
                     value={selectedClientId}
                     onChange={(e) => setSelectedClientId(e.target.value)}
-                    className="w-full border p-2 rounded-lg pr-10"
+                    className={`w-full border p-2 rounded-lg ${
+                      selectedClientId ? "appearance-none pr-8" : "pr-10"
+                    }`}
                   >
                     <option value="">-- Select Client --</option>
                     {clients.map((client) => (
@@ -836,6 +839,7 @@ const Clients = () => {
                   type="text"
                   value={emailSubject}
                   onChange={(e) => setEmailSubject(e.target.value)}
+                  onBlur={(e) => setEmailSubject(e.target.value.trim())}
                   className="w-full border p-2 rounded-lg"
                 />
               </div>
