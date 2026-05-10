@@ -1,233 +1,249 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import { Search, X, FileText, File } from "lucide-react";
 import Dropdown from "../layout/Dropdown";
 import Loader from "../layout/Loader";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const SEARCH_MAX_LENGTH = 30;
+
+const DATA_STATUS_OPTIONS = [
+  "Data Received",
+  "Data Incomplete",
+  "Not Received",
+  "Inactive",
+];
+const WORK_PROGRESS_OPTIONS = [
+  "Not Started",
+  "In Progress",
+  "Completed",
+  "Payment Overdue",
+];
+const BILL_STATUS_OPTIONS = ["Bill Generated", "Bill Pending"];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const formatMonth = (str) => {
+  if (!str || str === "-") return "-";
+  const parts = str.trim().split(" ");
+  const monthYear = parts[parts.length - 1];
+  const [m, y] = (monthYear || "").split("-");
+  if (!m || !y || isNaN(Number(m)) || isNaN(Number(y))) return "-";
+  const monthIndex = parseInt(m, 10) - 1;
+  if (monthIndex < 0 || monthIndex > 11) return "-";
+  return `${MONTH_NAMES[monthIndex]} ${y}`;
+};
+
+const parseStatus = (str) => {
+  if (!str || str === "-") return "-";
+  const parts = str.trim().split(" ");
+  if (parts.length <= 1) return str;
+  parts.pop();
+  return parts.join(" ");
+};
+
+const normalizeBillStatus = (value) => {
+  if (value === "Bill Generated") return "Generated";
+  if (value === "Bill Pending") return "Pending";
+  return "";
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function CustomerCompliance() {
   const navigate = useNavigate();
 
-  const loadFilter = (key, defaultValue = "") => {
-    return localStorage.getItem(key) || defaultValue;
-  };
-
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
+  // ── State ──────────────────────────────────────────────────────────────────
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  
 
-  // Filters
-  const [searchQuery, setSearchQuery] = useState(loadFilter("searchQuery"));
+  // Filters — live only in component state, never persisted to localStorage
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [employeeFilter, setEmployeeFilter] = useState(loadFilter("employeeFilter"));
-  const [dataStatusFilter, setDataStatusFilter] = useState(loadFilter("dataStatusFilter"));
-  const [workProgressFilter, setWorkProgressFilter] = useState(loadFilter("workProgressFilter"));
-  const [billStatusFilter, setBillStatusFilter] = useState(loadFilter("billStatusFilter"));
-   const [monthFilter, setMonthFilter] = useState(() =>
-     loadFilter("monthFilter"),
-   );
-   const [yearFilter, setYearFilter] = useState(() =>
-     loadFilter("yearFilter"),
-   );
+  const [employeeFilter, setEmployeeFilter] = useState("");
+  const [dataStatusFilter, setDataStatusFilter] = useState("");
+  const [workProgressFilter, setWorkProgressFilter] = useState("");
+  const [billStatusFilter, setBillStatusFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
 
-  
+  // Static option lists — populated once on first (unfiltered) fetch, never overwritten
+  const [allEmployeeOptions, setAllEmployeeOptions] = useState([]);
+  const [allMonthOptions, setAllMonthOptions] = useState([]);
+  const [allYearOptions, setAllYearOptions] = useState([]);
+
+  // Refs
+  const abortRef = useRef(null);
+  const searchInputRef = useRef(null); // to restore focus after fetch
+  const isFirstFetch = useRef(true); // guard so option lists are set only once
+
+  // ── Debounce search — trim so whitespace-only never fires ──────────────────
   useEffect(() => {
-    localStorage.setItem("searchQuery", searchQuery);
-    localStorage.setItem("employeeFilter", employeeFilter);
-    localStorage.setItem("dataStatusFilter", dataStatusFilter);
-    localStorage.setItem("workProgressFilter", workProgressFilter);
-    localStorage.setItem("billStatusFilter", billStatusFilter);
-    localStorage.setItem("monthFilter", monthFilter);
-    localStorage.setItem("yearFilter", yearFilter);
+    const trimmed = searchText.trim();
+    const timer = setTimeout(() => {
+      setDebouncedSearch(trimmed);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // ── Fetch clients ──────────────────────────────────────────────────────────
+  const fetchClients = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      setLoading(true);
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+      const params = new URLSearchParams();
+      params.append("company_id", user.company_id);
+
+      if (employeeFilter) params.append("employee", employeeFilter);
+      if (dataStatusFilter) params.append("dataStatus", dataStatusFilter);
+      if (workProgressFilter) params.append("workProgress", workProgressFilter);
+      if (billStatusFilter) {
+        const normalized = normalizeBillStatus(billStatusFilter);
+        if (normalized) params.append("billStatus", normalized);
+      }
+      if (monthFilter) {
+        const monthNumber = String(
+          MONTH_NAMES.indexOf(monthFilter) + 1,
+        ).padStart(2, "0");
+        params.append("month", monthNumber);
+      }
+      if (yearFilter) params.append("year", yearFilter);
+      if (debouncedSearch) params.append("searchText", debouncedSearch);
+
+      const { data } = await axios.get(
+        `/client/clients-with-compliance?${params.toString()}`,
+        { signal: controller.signal },
+      );
+
+      const fetched = data.clients || [];
+      setClients(fetched);
+
+      // ── Populate static option lists ONLY on the very first (unfiltered) fetch
+      if (isFirstFetch.current) {
+        isFirstFetch.current = false;
+
+        setAllEmployeeOptions([
+          ...new Set(fetched.map((c) => c.assignedTo).filter(Boolean)),
+        ]);
+
+setAllMonthOptions(
+  [
+    ...new Set(
+      fetched
+        .flatMap((c) =>
+          (c.monthlyCompliances || []).map(
+            (m) => MONTH_NAMES[parseInt(m.month, 10) - 1],
+          ),
+        )
+        .filter(Boolean),
+    ),
+  ].sort((a, b) => MONTH_NAMES.indexOf(a) - MONTH_NAMES.indexOf(b)),
+);
+
+       setAllYearOptions(
+         [
+           ...new Set(
+             fetched
+               .flatMap((c) =>
+                 (c.monthlyCompliances || []).map((m) => String(m.year)),
+               )
+               .filter(Boolean),
+           ),
+         ].sort((a, b) => Number(b) - Number(a)), // latest first
+       );
+      }
+    } catch (err) {
+      if (err.name === "CanceledError" || err.name === "AbortError") return;
+      console.error(err);
+      alert("Failed to fetch clients");
+    } finally {
+      setLoading(false);
+      // Restore cursor to search input after every fetch so typing isn't interrupted.
+      // rAF ensures this runs after React commits the DOM update.
+      requestAnimationFrame(() => {
+        if (
+          searchInputRef.current &&
+          document.activeElement !== searchInputRef.current
+        ) {
+          const len = searchInputRef.current.value.length;
+          searchInputRef.current.focus({ preventScroll: true });
+          searchInputRef.current.setSelectionRange(len, len);
+        }
+      });
+    }
   }, [
-    searchQuery,
     employeeFilter,
     dataStatusFilter,
     workProgressFilter,
     billStatusFilter,
     monthFilter,
     yearFilter,
+    debouncedSearch,
   ]);
-
-  const formatMonth = (str) => {
-    if (!str || str === "-") return "-";
-    const parts = str.split(" ");
-    const monthYear = parts.pop();
-    const [m, y] = monthYear?.split("-") || [];
-    if (!m || !y) return "-";
-    const monthIndex = parseInt(m, 10) - 1;
-    return monthNames[monthIndex] + " " + y;
-  };
-
-  const parseStatus = (str) => {
-    if (!str || str === "-") return "-";
-    const parts = str.split(" ");
-    if (parts.length <= 1) return str;
-    parts.pop();
-    return parts.join(" ");
-  };
-
-
-
- const fetchClients = useCallback(async () => {
-   try {
-     setLoading(true);
-     const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-     const params = new URLSearchParams();
-
-     params.append("company_id", user.company_id);
-
-     if (employeeFilter) params.append("employee", employeeFilter);
-     if (dataStatusFilter) params.append("dataStatus", dataStatusFilter);
-     if (workProgressFilter) params.append("workProgress", workProgressFilter);
-     if (billStatusFilter)
-       params.append(
-         "billStatus",
-         billStatusFilter === "Bill Generated"
-           ? "Generated"
-           : billStatusFilter === "Bill Pending"
-             ? "Pending"
-             : "",
-       );
-
-    if (monthFilter) {
-      const monthNumber = String(monthNames.indexOf(monthFilter) + 1).padStart(
-        2,
-        "0",
-      );
-      params.append("month", monthNumber);
-    }
-
-     if (yearFilter) params.append("year", yearFilter);
-
-     if (debouncedSearch) params.append("searchText", debouncedSearch);
-
-     const { data } = await axios.get(
-       `/client/clients-with-compliance?${params.toString()}`,
-     );
-
-     setClients(data.clients || []);
-   } catch (err) {
-     console.error(err);
-     alert("Failed to fetch clients");
-   } finally {
-     setLoading(false);
-   }
- }, [
-   searchQuery,
-   employeeFilter,
-   dataStatusFilter,
-   workProgressFilter,
-   billStatusFilter,
-   monthFilter,
-   yearFilter,
-   debouncedSearch, // 👈 MUST be here
- ]);
-
 
   useEffect(() => {
     fetchClients();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [fetchClients]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchText);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchText]);
-
-  const monthOptions = [
-    ...new Set(
-      clients.flatMap((c) =>
-        (c.monthlyCompliances || []).map(
-          (m) => monthNames[parseInt(m.month, 10) - 1]
-        )
-      )
-    ),
-  ];
-
-  const yearOptions = [
-    ...new Set(
-      clients.flatMap((c) =>
-        (c.monthlyCompliances || []).map((m) => String(m.year))
-      )
-    ),
-  ];
-
+  // ── Reset all filters ──────────────────────────────────────────────────────
   const resetFilters = () => {
-    setSearchQuery("");
+    setSearchText("");
+    setDebouncedSearch("");
     setEmployeeFilter("");
     setDataStatusFilter("");
     setWorkProgressFilter("");
     setBillStatusFilter("");
-setMonthFilter("");
+    setMonthFilter("");
     setYearFilter("");
-    setSearchText("");
-  
-    localStorage.removeItem("searchQuery");
-    localStorage.removeItem("employeeFilter");
-    localStorage.removeItem("dataStatusFilter");
-    localStorage.removeItem("workProgressFilter");
-    localStorage.removeItem("billStatusFilter");
-    localStorage.removeItem("monthFilter");
-    localStorage.removeItem("yearFilter");
-    localStorage.removeItem("setSearchText");
-  };
-  
-
-  const employeeList = [
-    ...new Set(clients.map((c) => c.assignedTo).filter(Boolean)),
-  ];
-
-const handleClientClick = (id) => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-  const filters = {
-    month: monthFilter
-      ? String(monthNames.indexOf(monthFilter) + 1).padStart(2, "0")
-      : "",
-    year: yearFilter || "",
-    dataStatus: dataStatusFilter || "",
-    workProgress: workProgressFilter || "",
-    billStatus:
-      billStatusFilter === "Bill Generated"
-        ? "Generated"
-        : billStatusFilter === "Bill Pending"
-          ? "Pending"
-          : "",
+    isFirstFetch.current = true; // allow option lists to refresh on next fetch
   };
 
-  const state = { filters };
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  const handleClientClick = (id) => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  if (user.role === "Admin") navigate(`/admin/customer/${id}`, { state });
-  else if (user.role === "Employee")
-    navigate(`/employee/customer/${id}`, { state });
-  else if (user.role === "Accountant")
-    navigate(`/accountant/customer/${id}`, { state });
-};
+    const filters = {
+      month: monthFilter
+        ? String(MONTH_NAMES.indexOf(monthFilter) + 1).padStart(2, "0")
+        : "",
+      year: yearFilter || "",
+      dataStatus: dataStatusFilter || "",
+      workProgress: workProgressFilter || "",
+      billStatus: normalizeBillStatus(billStatusFilter),
+    };
 
+    if (user.role === "Admin")
+      navigate(`/admin/customer/${id}`, { state: { filters } });
+    else if (user.role === "Employee")
+      navigate(`/employee/customer/${id}`, { state: { filters } });
+    else if (user.role === "Accountant")
+      navigate(`/accountant/customer/${id}`, { state: { filters } });
+  };
 
+  // ── Badge renderers ────────────────────────────────────────────────────────
   const getLastUpdate = (client) => {
     const statusText = parseStatus(client.lastDataStatus);
     const monthText = formatMonth(client.lastDataStatus);
@@ -235,10 +251,10 @@ const handleClientClick = (id) => {
     const bgClass = statusText.toLowerCase().includes("received")
       ? "bg-green-100 text-green-700"
       : statusText.toLowerCase().includes("in progress")
-      ? "bg-yellow-100 text-yellow-700"
-      : statusText.toLowerCase().includes("complete")
-      ? "bg-blue-100 text-blue-700"
-      : "bg-gray-100 text-gray-700";
+        ? "bg-yellow-100 text-yellow-700"
+        : statusText.toLowerCase().includes("complete")
+          ? "bg-blue-100 text-blue-700"
+          : "bg-gray-100 text-gray-700";
 
     return (
       <div className="flex items-center gap-2 flex-wrap">
@@ -247,9 +263,11 @@ const handleClientClick = (id) => {
         >
           {statusText}
         </span>
-        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-          {monthText}
-        </span>
+        {monthText !== "-" && (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+            {monthText}
+          </span>
+        )}
       </div>
     );
   };
@@ -264,10 +282,10 @@ const handleClientClick = (id) => {
     const bgClass = billStatusText.toLowerCase().includes("generated")
       ? "bg-green-100 text-green-700"
       : billStatusText.toLowerCase().includes("pending")
-      ? "bg-yellow-100 text-yellow-700"
-      : billStatusText.toLowerCase().includes("overdue")
-      ? "bg-red-100 text-red-700"
-      : "bg-gray-100 text-gray-700";
+        ? "bg-yellow-100 text-yellow-700"
+        : billStatusText.toLowerCase().includes("overdue")
+          ? "bg-red-100 text-red-700"
+          : "bg-gray-100 text-gray-700";
 
     return (
       <div className="flex items-center gap-2 flex-wrap">
@@ -276,14 +294,16 @@ const handleClientClick = (id) => {
         >
           {billStatusText}
         </span>
-        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-          {billMonth}
-        </span>
+        {billMonth !== "-" && (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+            {billMonth}
+          </span>
+        )}
       </div>
     );
   };
 
-  // ✅ EXPORT FUNCTIONS (use only filteredClients)
+  // ── Export helpers ─────────────────────────────────────────────────────────
   const exportExcel = () => {
     if (!clients.length) return alert("No records to export");
 
@@ -309,10 +329,8 @@ const handleClientClick = (id) => {
   const exportPDF = async () => {
     if (!clients.length) return alert("No records to export");
 
-    // Dynamic import to avoid Vite caching issues
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
-
     const doc = new jsPDF();
 
     const tableColumn = [
@@ -341,7 +359,6 @@ const handleClientClick = (id) => {
       c.clientStatus,
     ]);
 
-    // ✅ Use autoTable plugin correctly
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -353,6 +370,7 @@ const handleClientClick = (id) => {
     doc.save("ClientCompliance.pdf");
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -376,7 +394,7 @@ const handleClientClick = (id) => {
           </h1>
         </div>
 
-        {/* EXPORT BUTTONS */}
+        {/* Export Buttons */}
         <div className="flex gap-3">
           <button
             onClick={exportExcel}
@@ -395,34 +413,49 @@ const handleClientClick = (id) => {
 
       {/* Filters */}
       <div className="bg-white p-5 rounded-xl shadow-sm flex flex-wrap gap-3 items-center mb-6">
+        {/* Search — ref keeps focus alive across re-renders */}
         <div className="relative flex-1 min-w-[220px]">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search client, business unit, or company..."
             value={searchText}
+            maxLength={SEARCH_MAX_LENGTH}
             onChange={(e) => setSearchText(e.target.value)}
             className="
-      w-full
-      bg-gray-50
-      border border-gray-200
-      rounded-xl
-      pl-10 pr-4 py-2.5
-      text-sm text-gray-700
-      placeholder:text-gray-400
-      shadow-sm
-      transition-all duration-200
-      focus:bg-white
-      focus:border-blue-500
-      focus:ring-2 focus:ring-blue-100
-      hover:border-gray-300
-      outline-none
-    "
+              w-full bg-gray-50 border border-gray-200 rounded-xl
+              pl-10 pr-8 py-2.5 text-sm text-gray-700 placeholder:text-gray-400
+              shadow-sm transition-all duration-200
+              focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100
+              hover:border-gray-300 outline-none
+            "
           />
+          {searchText && (
+            <button
+              onMouseDown={(e) => e.preventDefault()} // prevent blur before onClick fires
+              onClick={() => {
+                setSearchText("");
+                searchInputRef.current?.focus();
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
+        {/*
+          All dropdowns use STATIC option lists captured on first page load.
+          They never shrink or change when filters are applied — the user can
+          always switch or clear any individual filter independently.
+        */}
         <Dropdown
           label="Select Employee"
-          options={employeeList}
+          options={allEmployeeOptions}
           value={employeeFilter}
           onChange={setEmployeeFilter}
           placeholder="Select Employee"
@@ -430,12 +463,7 @@ const handleClientClick = (id) => {
 
         <Dropdown
           label="Data Status"
-          options={[
-            "Data Received",
-            "Data Incomplete",
-            "Not Received",
-            "Inactive",
-          ]}
+          options={DATA_STATUS_OPTIONS}
           value={dataStatusFilter}
           onChange={setDataStatusFilter}
           placeholder="Data Status"
@@ -443,12 +471,7 @@ const handleClientClick = (id) => {
 
         <Dropdown
           label="Work Progress"
-          options={[
-            "Not Started",
-            "In Progress",
-            "Completed",
-            "Payment Overdue",
-          ]}
+          options={WORK_PROGRESS_OPTIONS}
           value={workProgressFilter}
           onChange={setWorkProgressFilter}
           placeholder="Work Progress"
@@ -456,7 +479,7 @@ const handleClientClick = (id) => {
 
         <Dropdown
           label="Bill Status"
-          options={["Bill Generated", "Bill Pending"]}
+          options={BILL_STATUS_OPTIONS}
           value={billStatusFilter}
           onChange={setBillStatusFilter}
           placeholder="Bill Status"
@@ -464,7 +487,7 @@ const handleClientClick = (id) => {
 
         <Dropdown
           label="Month"
-          options={monthOptions}
+          options={allMonthOptions}
           value={monthFilter}
           onChange={setMonthFilter}
           placeholder="Select Month"
@@ -472,7 +495,7 @@ const handleClientClick = (id) => {
 
         <Dropdown
           label="Year"
-          options={yearOptions}
+          options={allYearOptions}
           value={yearFilter}
           onChange={setYearFilter}
           placeholder="Select Year"
