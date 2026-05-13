@@ -3,8 +3,65 @@ import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import { Search, X, FileText, File } from "lucide-react";
 import Dropdown from "../layout/Dropdown";
-import Loader from "../layout/Loader";
 import * as XLSX from "xlsx";
+
+// ─── Skeleton — pure CSS, no Tailwind keyframes needed ───────────────────────
+const SKELETON_CSS = `
+@keyframes cc-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.cc-skel {
+  position: relative;
+  overflow: hidden;
+  background: #edf0f2;
+  border-radius: 6px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.cc-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.65) 50%,
+    transparent 100%
+  );
+  animation: cc-shimmer 1.5s ease-in-out infinite;
+}
+`;
+
+const COL_CONFIGS = [
+  [[20]], // #
+  [[110], [90], [130]], // Client Name
+  [[95], [75], [115]], // Company Name
+  [[80], [60], [100]], // Business Unit
+  [[80], [60], [100]], // Assigned To
+  [[64, 56]], // Last Update  (badge + month pill)
+  [[64, 56]], // Bill Update
+  [[58]], // Client Status
+];
+
+function SkeletonRow({ index }) {
+  return (
+    <tr style={{ borderBottom: "1px solid #f0f0f0" }}>
+      {COL_CONFIGS.map((variants, col) => {
+        const pills = variants[index % variants.length];
+        return (
+          <td key={col} style={{ padding: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {pills.map((w, pi) => (
+                <div key={pi} className="cc-skel" style={{ width: w }} />
+              ))}
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MONTH_NAMES = [
@@ -38,6 +95,9 @@ const WORK_PROGRESS_OPTIONS = [
 ];
 const BILL_STATUS_OPTIONS = ["Bill Generated", "Bill Pending"];
 
+// ─── sessionStorage key ───────────────────────────────────────────────────────
+const SS_KEY = "customerComplianceFilters";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatMonth = (str) => {
   if (!str || str === "-") return "-";
@@ -64,40 +124,112 @@ const normalizeBillStatus = (value) => {
   return "";
 };
 
+const readFilters = () => {
+  try {
+    const raw = sessionStorage.getItem(SS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return null;
+};
+
+const saveFilters = (filters) => {
+  try {
+    sessionStorage.setItem(SS_KEY, JSON.stringify(filters));
+  } catch (_) {}
+};
+
+const clearFilters = () => {
+  try {
+    sessionStorage.removeItem(SS_KEY);
+  } catch (_) {}
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CustomerCompliance() {
   const navigate = useNavigate();
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  const saved = readFilters();
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters — live only in component state, never persisted to localStorage
-  const [searchText, setSearchText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [employeeFilter, setEmployeeFilter] = useState("");
-  const [dataStatusFilter, setDataStatusFilter] = useState("");
-  const [workProgressFilter, setWorkProgressFilter] = useState("");
-  const [billStatusFilter, setBillStatusFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
+  const [searchText, setSearchText] = useState(saved?.searchText || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    saved?.searchText || "",
+  );
+  const [employeeFilter, setEmployeeFilter] = useState(
+    saved?.employeeFilter || "",
+  );
+  const [dataStatusFilter, setDataStatusFilter] = useState(
+    saved?.dataStatusFilter || "",
+  );
+  const [workProgressFilter, setWorkProgressFilter] = useState(
+    saved?.workProgressFilter || "",
+  );
+  const [billStatusFilter, setBillStatusFilter] = useState(
+    saved?.billStatusFilter || "",
+  );
+  const [monthFilter, setMonthFilter] = useState(saved?.monthFilter || "");
+  const [yearFilter, setYearFilter] = useState(saved?.yearFilter || "");
 
-  // Static option lists — populated once on first (unfiltered) fetch, never overwritten
   const [allEmployeeOptions, setAllEmployeeOptions] = useState([]);
   const [allMonthOptions, setAllMonthOptions] = useState([]);
   const [allYearOptions, setAllYearOptions] = useState([]);
 
-  // Refs
   const abortRef = useRef(null);
-  const searchInputRef = useRef(null); // to restore focus after fetch
-  const isFirstFetch = useRef(true); // guard so option lists are set only once
+  const searchInputRef = useRef(null);
+  const isFirstFetch = useRef(true);
 
-  // ── Debounce search — trim so whitespace-only never fires ──────────────────
+  /**
+   * Guard flag — set to true immediately before navigating into ANY record
+   * (client row or monthly card). The unmount cleanup checks this flag and
+   * skips clearFilters() so the filters survive the round-trip back.
+   *
+   * Any other navigation (← Back, sidebar, browser back from THIS page)
+   * leaves the flag false, so filters are wiped on unmount as intended.
+   */
+  const navigatingIntoRecord = useRef(false);
+
+  // ── Inject skeleton CSS once ───────────────────────────────────────────────
+  useEffect(() => {
+    const id = "cc-skeleton-style";
+    if (!document.getElementById(id)) {
+      const tag = document.createElement("style");
+      tag.id = id;
+      tag.textContent = SKELETON_CSS;
+      document.head.appendChild(tag);
+    }
+    return () => {
+      if (!navigatingIntoRecord.current) clearFilters();
+      navigatingIntoRecord.current = false;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Keep sessionStorage in sync ────────────────────────────────────────────
+  useEffect(() => {
+    saveFilters({
+      searchText,
+      employeeFilter,
+      dataStatusFilter,
+      workProgressFilter,
+      billStatusFilter,
+      monthFilter,
+      yearFilter,
+    });
+  }, [
+    searchText,
+    employeeFilter,
+    dataStatusFilter,
+    workProgressFilter,
+    billStatusFilter,
+    monthFilter,
+    yearFilter,
+  ]);
+
+  // ── Debounce search ────────────────────────────────────────────────────────
   useEffect(() => {
     const trimmed = searchText.trim();
-    const timer = setTimeout(() => {
-      setDebouncedSearch(trimmed);
-    }, 500);
+    const timer = setTimeout(() => setDebouncedSearch(trimmed), 500);
     return () => clearTimeout(timer);
   }, [searchText]);
 
@@ -138,7 +270,6 @@ export default function CustomerCompliance() {
       const fetched = data.clients || [];
       setClients(fetched);
 
-      // ── Populate static option lists ONLY on the very first (unfiltered) fetch
       if (isFirstFetch.current) {
         isFirstFetch.current = false;
 
@@ -146,31 +277,31 @@ export default function CustomerCompliance() {
           ...new Set(fetched.map((c) => c.assignedTo).filter(Boolean)),
         ]);
 
-setAllMonthOptions(
-  [
-    ...new Set(
-      fetched
-        .flatMap((c) =>
-          (c.monthlyCompliances || []).map(
-            (m) => MONTH_NAMES[parseInt(m.month, 10) - 1],
-          ),
-        )
-        .filter(Boolean),
-    ),
-  ].sort((a, b) => MONTH_NAMES.indexOf(a) - MONTH_NAMES.indexOf(b)),
-);
+        setAllMonthOptions(
+          [
+            ...new Set(
+              fetched
+                .flatMap((c) =>
+                  (c.monthlyCompliances || []).map(
+                    (m) => MONTH_NAMES[parseInt(m.month, 10) - 1],
+                  ),
+                )
+                .filter(Boolean),
+            ),
+          ].sort((a, b) => MONTH_NAMES.indexOf(a) - MONTH_NAMES.indexOf(b)),
+        );
 
-       setAllYearOptions(
-         [
-           ...new Set(
-             fetched
-               .flatMap((c) =>
-                 (c.monthlyCompliances || []).map((m) => String(m.year)),
-               )
-               .filter(Boolean),
-           ),
-         ].sort((a, b) => Number(b) - Number(a)), // latest first
-       );
+        setAllYearOptions(
+          [
+            ...new Set(
+              fetched
+                .flatMap((c) =>
+                  (c.monthlyCompliances || []).map((m) => String(m.year)),
+                )
+                .filter(Boolean),
+            ),
+          ].sort((a, b) => Number(b) - Number(a)),
+        );
       }
     } catch (err) {
       if (err.name === "CanceledError" || err.name === "AbortError") return;
@@ -178,8 +309,6 @@ setAllMonthOptions(
       alert("Failed to fetch clients");
     } finally {
       setLoading(false);
-      // Restore cursor to search input after every fetch so typing isn't interrupted.
-      // rAF ensures this runs after React commits the DOM update.
       requestAnimationFrame(() => {
         if (
           searchInputRef.current &&
@@ -208,8 +337,9 @@ setAllMonthOptions(
     };
   }, [fetchClients]);
 
-  // ── Reset all filters ──────────────────────────────────────────────────────
+  // ── Reset filters ──────────────────────────────────────────────────────────
   const resetFilters = () => {
+    clearFilters();
     setSearchText("");
     setDebouncedSearch("");
     setEmployeeFilter("");
@@ -218,10 +348,26 @@ setAllMonthOptions(
     setBillStatusFilter("");
     setMonthFilter("");
     setYearFilter("");
-    isFirstFetch.current = true; // allow option lists to refresh on next fetch
+    isFirstFetch.current = true;
   };
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  // ── drillInto — use for ALL navigations into detail records ───────────────
+  // Sets the guard flag so unmount cleanup preserves filters, then navigates.
+  const drillInto = (path, state = {}) => {
+    navigatingIntoRecord.current = true;
+    saveFilters({
+      searchText,
+      employeeFilter,
+      dataStatusFilter,
+      workProgressFilter,
+      billStatusFilter,
+      monthFilter,
+      yearFilter,
+    });
+    navigate(path, { state });
+  };
+
+  // ── Client row click ───────────────────────────────────────────────────────
   const handleClientClick = (id) => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -235,12 +381,11 @@ setAllMonthOptions(
       billStatus: normalizeBillStatus(billStatusFilter),
     };
 
-    if (user.role === "Admin")
-      navigate(`/admin/customer/${id}`, { state: { filters } });
+    if (user.role === "Admin") drillInto(`/admin/customer/${id}`, { filters });
     else if (user.role === "Employee")
-      navigate(`/employee/customer/${id}`, { state: { filters } });
+      drillInto(`/employee/customer/${id}`, { filters });
     else if (user.role === "Accountant")
-      navigate(`/accountant/customer/${id}`, { state: { filters } });
+      drillInto(`/accountant/customer/${id}`, { filters });
   };
 
   // ── Badge renderers ────────────────────────────────────────────────────────
@@ -303,10 +448,9 @@ setAllMonthOptions(
     );
   };
 
-  // ── Export helpers ─────────────────────────────────────────────────────────
+  // ── Exports ────────────────────────────────────────────────────────────────
   const exportExcel = () => {
     if (!clients.length) return alert("No records to export");
-
     const data = clients.map((c, i) => ({
       "#": i + 1,
       "Client Name": c.name,
@@ -319,7 +463,6 @@ setAllMonthOptions(
       "Bill Update Month": formatMonth(c.lastBillStatus),
       "Client Status": c.clientStatus,
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
@@ -328,11 +471,9 @@ setAllMonthOptions(
 
   const exportPDF = async () => {
     if (!clients.length) return alert("No records to export");
-
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
     const doc = new jsPDF();
-
     const tableColumn = [
       "#",
       "Client Name",
@@ -345,7 +486,6 @@ setAllMonthOptions(
       "Bill Update Month",
       "Client Status",
     ];
-
     const tableRows = clients.map((c, i) => [
       i + 1,
       c.name,
@@ -358,7 +498,6 @@ setAllMonthOptions(
       formatMonth(c.lastBillStatus),
       c.clientStatus,
     ]);
-
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -366,25 +505,21 @@ setAllMonthOptions(
       styles: { fontSize: 8 },
       headStyles: { fillColor: [30, 144, 255], textColor: 255 },
     });
-
     doc.save("ClientCompliance.pdf");
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (loading)
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader />
-      </div>
-    );
-
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
+          {/* Back — navigatingIntoRecord stays false, so unmount clears filters */}
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              clearFilters();
+              navigate(-1);
+            }}
             className="px-3 py-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600"
           >
             ← Back
@@ -394,7 +529,6 @@ setAllMonthOptions(
           </h1>
         </div>
 
-        {/* Export Buttons */}
         <div className="flex gap-3">
           <button
             onClick={exportExcel}
@@ -413,7 +547,6 @@ setAllMonthOptions(
 
       {/* Filters */}
       <div className="bg-white p-5 rounded-xl shadow-sm flex flex-wrap gap-3 items-center mb-6">
-        {/* Search — ref keeps focus alive across re-renders */}
         <div className="relative flex-1 min-w-[220px]">
           <Search
             size={16}
@@ -426,17 +559,11 @@ setAllMonthOptions(
             value={searchText}
             maxLength={SEARCH_MAX_LENGTH}
             onChange={(e) => setSearchText(e.target.value)}
-            className="
-              w-full bg-gray-50 border border-gray-200 rounded-xl
-              pl-10 pr-8 py-2.5 text-sm text-gray-700 placeholder:text-gray-400
-              shadow-sm transition-all duration-200
-              focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100
-              hover:border-gray-300 outline-none
-            "
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-8 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 shadow-sm transition-all duration-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:border-gray-300 outline-none"
           />
           {searchText && (
             <button
-              onMouseDown={(e) => e.preventDefault()} // prevent blur before onClick fires
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setSearchText("");
                 searchInputRef.current?.focus();
@@ -448,11 +575,6 @@ setAllMonthOptions(
           )}
         </div>
 
-        {/*
-          All dropdowns use STATIC option lists captured on first page load.
-          They never shrink or change when filters are applied — the user can
-          always switch or clear any individual filter independently.
-        */}
         <Dropdown
           label="Select Employee"
           options={allEmployeeOptions}
@@ -460,7 +582,6 @@ setAllMonthOptions(
           onChange={setEmployeeFilter}
           placeholder="Select Employee"
         />
-
         <Dropdown
           label="Data Status"
           options={DATA_STATUS_OPTIONS}
@@ -468,7 +589,6 @@ setAllMonthOptions(
           onChange={setDataStatusFilter}
           placeholder="Data Status"
         />
-
         <Dropdown
           label="Work Progress"
           options={WORK_PROGRESS_OPTIONS}
@@ -476,7 +596,6 @@ setAllMonthOptions(
           onChange={setWorkProgressFilter}
           placeholder="Work Progress"
         />
-
         <Dropdown
           label="Bill Status"
           options={BILL_STATUS_OPTIONS}
@@ -484,7 +603,6 @@ setAllMonthOptions(
           onChange={setBillStatusFilter}
           placeholder="Bill Status"
         />
-
         <Dropdown
           label="Month"
           options={allMonthOptions}
@@ -492,7 +610,6 @@ setAllMonthOptions(
           onChange={setMonthFilter}
           placeholder="Select Month"
         />
-
         <Dropdown
           label="Year"
           options={allYearOptions}
@@ -525,7 +642,11 @@ setAllMonthOptions(
             </tr>
           </thead>
           <tbody>
-            {clients.length > 0 ? (
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonRow key={i} index={i} />
+              ))
+            ) : clients.length > 0 ? (
               clients.map((c, i) => (
                 <tr
                   key={c.id}
@@ -541,11 +662,7 @@ setAllMonthOptions(
                   <td className="p-3">{getBillUpdate(c)}</td>
                   <td className="p-3">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        c.clientStatus === "Active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${c.clientStatus === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                     >
                       {c.clientStatus}
                     </span>
