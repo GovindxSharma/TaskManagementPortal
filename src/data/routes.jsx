@@ -49,6 +49,7 @@ export const dashboardRoutes = {
     { path: "/employee/settings", element: <SettingsPage /> },
     { path: "/employee/data-received", element: <DataReceived /> },
     { path: "/employee/data-complete", element: <DataComplete /> },
+    { path: "/employee/send-email", element: <SendEmail /> },
   ],
 
   accountant: [
