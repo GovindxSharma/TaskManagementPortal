@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ArrowRight, Settings, LogOut } from "lucide-react";
+import { Bell, ArrowRight, Settings, LogOut, Mail } from "lucide-react";
 import { dashboardStats } from "../../../data/dashboardStats";
 import Loader from "../../../components/layout/Loader";
 import axiosInstance from "../../../api/axiosInstance";
@@ -133,6 +133,13 @@ useEffect(() => {
         <div className="flex items-center">
           <button
             className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            onClick={() => navigate("/employee/send-email")}
+            title="Send Email"
+          >
+            <Mail className="text-gray-600" />
+          </button>
+          <button
+            className=" ml-3 relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
             onClick={() => navigate("/employee/notifications")}
           >
             <Bell className="text-gray-600" />
@@ -158,29 +165,29 @@ useEffect(() => {
         </div>
       </div>
 
-       {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-              {stats.map((s, i) => (
-                <div
-                  key={i}
-                  onClick={() => navigate(s.link)}
-                  className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer p-6 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-4 bg-gray-50 rounded-xl group-hover:bg-gray-100 transition">
-                      {s.icon}
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-sm">{s.title}</p>
-                      <p className="text-3xl font-semibold text-gray-800">
-                        {s.value}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="text-gray-300 group-hover:text-gray-500 transition" />
-                </div>
-              ))}
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {stats.map((s, i) => (
+          <div
+            key={i}
+            onClick={() => navigate(s.link)}
+            className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer p-6 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-gray-50 rounded-xl group-hover:bg-gray-100 transition">
+                {s.icon}
+              </div>
+              <div>
+                <p className="text-gray-500 text-sm">{s.title}</p>
+                <p className="text-3xl font-semibold text-gray-800">
+                  {s.value}
+                </p>
+              </div>
             </div>
+            <ArrowRight className="text-gray-300 group-hover:text-gray-500 transition" />
+          </div>
+        ))}
+      </div>
 
       {/* Panels */}
       <div className="grid md:grid-cols-2 gap-6">

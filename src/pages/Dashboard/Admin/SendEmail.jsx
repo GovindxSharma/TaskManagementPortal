@@ -21,17 +21,22 @@ const SendEmail = () => {
   const navigate = useNavigate();
 
   // Fetch Clients
-  const fetchClients = useCallback(async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const { data } = await axiosInstance.get(
-        `/client?company_id=${user.company_id}`,
-      );
-      setClients(data.clients);
-    } catch (err) {
-      toast.error("Failed to fetch clients");
-    }
-  }, [toast]);
+const fetchClients = useCallback(async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    console.log(JSON.parse(localStorage.getItem("user") || "{}").role);
+    
+const endpoint =
+  user.role === "Admin"
+    ? `/client?company_id=${user.company_id}`
+    : `/client?company_id=${user.company_id}&assignedTo=${user._id}`;
+    
+    const { data } = await axiosInstance.get(endpoint);
+    setClients(data.clients || data.data || []);
+  } catch (err) {
+    toast.error("Failed to fetch clients");
+  }
+}, [toast]);
 
   useEffect(() => {
     fetchClients();
