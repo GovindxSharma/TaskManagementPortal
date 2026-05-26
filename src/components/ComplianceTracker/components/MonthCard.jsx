@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "../../../api/axiosInstance";
 import StatusBadge from "./StatusBadge";
@@ -6,7 +6,8 @@ import Loader from "../../layout/Loader";
 import { Pencil, Check, X } from "lucide-react";
 import { useToast } from "../../layout/ToastProvider.jsx";
 
-const monthNames = [
+// ─── Constants ────────────────────────────────────────────────────────────────
+const MONTH_NAMES = [
   "January",
   "February",
   "March",
@@ -21,34 +22,71 @@ const monthNames = [
   "December",
 ];
 
-const dataOptions = [
+const DATA_OPTIONS = [
   "Data Incomplete",
   "Data Received",
   "Not Received",
   "Inactive",
 ];
-const workOptions = [
+const WORK_OPTIONS = [
   "Not Started",
   "Payment Overdue",
   "Completed",
   "In Progress",
 ];
-const billOptions = ["Pending", "Generated"];
+const BILL_OPTIONS = ["Pending", "Generated"];
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Extract a clean per-record state snapshot from a raw API record */
+const recordToState = (m) => ({
+  dataStatus: m.dataReceiveStatus,
+  workProgress: m.workProgress,
+  billStatus: m.billStatus,
+  expectedBill: m.expectedBill ?? 0,
+  actualBill: m.actualBill ?? 0,
+  workers: m.workersAsPerData ?? 0,
+  remarks: m.remarks || "",
+});
+
+/** Clamp a numeric string to ≥ 0; returns "" for empty input */
+const clampNonNeg = (val) => {
+  if (val === "" || val === null || val === undefined) return "";
+  const n = Number(val);
+  return isNaN(n) ? "" : String(Math.max(0, Math.floor(n)));
+};
+
+/** Clamp a decimal numeric string to ≥ 0; returns "" for empty input */
+const clampNonNegDecimal = (val) => {
+  if (val === "" || val === null || val === undefined) return "";
+  const n = parseFloat(val);
+  return isNaN(n) ? "" : String(Math.max(0, n));
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 const MonthCard = ({ clientId }) => {
   const location = useLocation();
+  // Memoize filters ref so useEffect dependency is stable
   const filters = location.state?.filters || {};
 
   const toast = useToast();
+
   const [monthlyData, setMonthlyData] = useState([]);
-  const [monthStates, setMonthStates] = useState({});
+  // committedStates = last-saved (or initially fetched) state per record
+  // used as the source of truth for display and cancel rollback
+  const [committedStates, setCommittedStates] = useState({});
+  // draftStates = in-flight edits; only exists while a card is being edited
+  const [draftStates, setDraftStates] = useState({});
   const [editingMonthId, setEditingMonthId] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Local display filters (not sent to API)
   const [filterMonth, setFilterMonth] = useState("");
   const [filterYear, setFilterYear] = useState("");
 
+  // Add-new-month modal
   const [modalOpen, setModalOpen] = useState(false);
   const [newMonth, setNewMonth] = useState("");
   const [newYear, setNewYear] = useState(new Date().getFullYear());
@@ -57,7 +95,8 @@ const MonthCard = ({ clientId }) => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const role = user?.role?.toUpperCase() || "";
 
-  const fetchMonthlyCompliance = async () => {
+  // ── Fetch ────────────────────────────────────────────────────────────────
+  const fetchMonthlyCompliance = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await axios.get(
@@ -66,41 +105,67 @@ const MonthCard = ({ clientId }) => {
       );
       setMonthlyData(data);
 
-      const initialStates = {};
+      const initial = {};
       data.forEach((m) => {
-        initialStates[m._id] = {
-          dataStatus: m.dataReceiveStatus,
-          workProgress: m.workProgress,
-          billStatus: m.billStatus,
-          expectedBill: m.expectedBill,
-          actualBill: m.actualBill,
-          workers: m.workersAsPerData,
-          remarks: m.remarks || "",
-        };
+        initial[m._id] = recordToState(m);
       });
-      setMonthStates(initialStates);
+      setCommittedStates(initial);
+      setDraftStates({}); // clear any stale drafts
+      setEditingMonthId(null); // close any open editor
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch monthly compliance data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, JSON.stringify(filters)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (clientId) fetchMonthlyCompliance();
-  }, [clientId, JSON.stringify(filters)]);
+  }, [fetchMonthlyCompliance]);
 
+  // ── Edit lifecycle ────────────────────────────────────────────────────────
+
+  /** Open editor — copy committed state into draft so edits are isolated */
+  const startEditing = (id) => {
+    setDraftStates((prev) => ({
+      ...prev,
+      [id]: { ...committedStates[id] },
+    }));
+    setEditingMonthId(id);
+  };
+
+  /** Cancel — discard draft, revert to committed state, close editor */
+  const cancelEditing = () => {
+    setDraftStates((prev) => {
+      const next = { ...prev };
+      delete next[editingMonthId];
+      return next;
+    });
+    setEditingMonthId(null);
+  };
+
+  /** Update a single field inside the draft for the currently edited card */
+  const updateDraft = (id, field, value) => {
+    setDraftStates((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
+  };
+
+  // ── Save ─────────────────────────────────────────────────────────────────
   const saveChanges = async (monthRecord) => {
-    const state = monthStates[monthRecord._id];
+    const draft = draftStates[monthRecord._id];
+    if (!draft) return;
+
     const payload = {
-      dataReceiveStatus: state.dataStatus,
-      workProgress: state.workProgress,
-      billStatus: state.billStatus,
-      expectedBill: Number(state.expectedBill) || 0,
-      actualBill: Number(state.actualBill) || 0,
-      workersAsPerData: Number(state.workers) || 0,
-      remarks: state.remarks,
+      dataReceiveStatus: draft.dataStatus,
+      workProgress: draft.workProgress,
+      billStatus: draft.billStatus,
+      expectedBill: Number(draft.expectedBill) || 0,
+      actualBill: Math.max(0, Number(draft.actualBill) || 0),
+      workersAsPerData: Math.max(0, Math.floor(Number(draft.workers) || 0)),
+      remarks: draft.remarks,
     };
 
     try {
@@ -109,11 +174,25 @@ const MonthCard = ({ clientId }) => {
         `/monthly-compliance/${monthRecord._id}`,
         payload,
       );
-      setMonthlyData(
-        monthlyData.map((m) =>
+
+      const updated = {
+        ...committedStates[monthRecord._id],
+        ...recordToState({ ...monthRecord, ...data.record }),
+      };
+
+      // Commit the saved state and tear down the draft
+      setCommittedStates((prev) => ({ ...prev, [monthRecord._id]: updated }));
+      setMonthlyData((prev) =>
+        prev.map((m) =>
           m._id === monthRecord._id ? { ...m, ...data.record } : m,
         ),
       );
+      setDraftStates((prev) => {
+        const next = { ...prev };
+        delete next[monthRecord._id];
+        return next;
+      });
+
       toast.success("Month data saved successfully");
       setEditingMonthId(null);
     } catch (err) {
@@ -124,23 +203,26 @@ const MonthCard = ({ clientId }) => {
     }
   };
 
+  // ── Permissions ───────────────────────────────────────────────────────────
   const canEdit = (field) => {
-    if (role === "ADMIN")
-      return [
-        "data",
-        "work",
-        "bill",
-        "workers",
-        "actualBill",
-        "remarks",
-      ].includes(field);
-    if (role === "EMPLOYEE")
-      return ["data", "work", "workers", "remarks"].includes(field);
-    if (role === "ACCOUNTANT")
-      return ["bill", "actualBill", "remarks"].includes(field);
+    const adminFields = [
+      "data",
+      "work",
+      "bill",
+      "workers",
+      "actualBill",
+      "remarks",
+    ];
+    const employeeFields = ["data", "work", "workers", "remarks"];
+    const accountantFields = ["bill", "actualBill", "remarks"];
+
+    if (role === "ADMIN") return adminFields.includes(field);
+    if (role === "EMPLOYEE") return employeeFields.includes(field);
+    if (role === "ACCOUNTANT") return accountantFields.includes(field);
     return false;
   };
 
+  // ── Create new month ──────────────────────────────────────────────────────
   const handleCreateMonth = async () => {
     if (!newMonth || !newYear) {
       toast.error("Please select month and year");
@@ -155,6 +237,8 @@ const MonthCard = ({ clientId }) => {
       });
       toast.success("Monthly compliance created");
       setModalOpen(false);
+      setNewMonth("");
+      setNewYear(new Date().getFullYear());
       fetchMonthlyCompliance();
     } catch (err) {
       console.error(err);
@@ -164,18 +248,15 @@ const MonthCard = ({ clientId }) => {
     }
   };
 
-  const resetFilters = () => {
-    setFilterMonth("");
-    setFilterYear("");
-  };
+  // ── Filtered view ─────────────────────────────────────────────────────────
+  const filteredData = monthlyData.filter((m) => {
+    const monthMatch = filterMonth ? m.month === filterMonth : true;
+    const yearMatch = filterYear ? m.year === Number(filterYear) : true;
+    return monthMatch && yearMatch;
+  });
 
+  // ── Render ────────────────────────────────────────────────────────────────
   if (loading) return <Loader message="Loading monthly data..." />;
-
-const filteredData = monthlyData.filter((m) => {
-  const monthMatch = filterMonth ? m.month === filterMonth : true;
-  const yearMatch = filterYear ? m.year === Number(filterYear) : true;
-  return monthMatch && yearMatch;
-});
 
   return (
     <>
@@ -188,7 +269,7 @@ const filteredData = monthlyData.filter((m) => {
             className="border rounded px-3 py-2 text-sm"
           >
             <option value="">All Months</option>
-            {monthNames.map((m, i) => (
+            {MONTH_NAMES.map((m, i) => (
               <option key={i} value={String(i + 1).padStart(2, "0")}>
                 {m}
               </option>
@@ -199,12 +280,17 @@ const filteredData = monthlyData.filter((m) => {
             type="number"
             placeholder="Year"
             value={filterYear}
+            min="2000"
+            max="2100"
             onChange={(e) => setFilterYear(e.target.value)}
             className="border rounded px-3 py-2 text-sm w-28"
           />
 
           <button
-            onClick={resetFilters}
+            onClick={() => {
+              setFilterMonth("");
+              setFilterYear("");
+            }}
             className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded transition text-sm"
           >
             Reset
@@ -221,39 +307,49 @@ const filteredData = monthlyData.filter((m) => {
         )}
       </div>
 
+      {/* Empty state */}
+      {filteredData.length === 0 && (
+        <p className="text-center text-gray-500 py-10">No records found.</p>
+      )}
+
       {/* Month Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredData.map((monthRecord) => {
-          const isEditing = editingMonthId === monthRecord._id;
-          const state = monthStates[monthRecord._id] || {};
-          const monthTitle = `${monthNames[parseInt(monthRecord.month) - 1]} ${
-            monthRecord.year
-          }`;
+          const id = monthRecord._id;
+          const isEditing = editingMonthId === id;
+          // While editing, show draft values; otherwise show committed values
+          const state = isEditing ? draftStates[id] : committedStates[id];
+          if (!state) return null; // guard against missing state
+
+          const monthTitle = `${MONTH_NAMES[parseInt(monthRecord.month, 10) - 1]} ${monthRecord.year}`;
 
           return (
             <div
-              key={monthRecord._id}
+              key={id}
               className="border rounded-xl p-5 bg-white shadow hover:shadow-md transition flex flex-col gap-4 relative"
             >
+              {/* Edit / Save / Cancel controls */}
               {!isEditing ? (
                 <button
                   className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition"
-                  onClick={() => setEditingMonthId(monthRecord._id)}
+                  onClick={() => startEditing(id)}
                 >
                   <Pencil className="text-gray-500" size={18} />
                 </button>
               ) : (
                 <div className="absolute top-3 right-3 flex gap-2">
                   <button
-                    className="p-1 rounded-full hover:bg-green-100 transition"
+                    className="p-1 rounded-full hover:bg-green-100 transition disabled:opacity-50"
                     onClick={() => saveChanges(monthRecord)}
                     disabled={saving}
+                    title="Save changes"
                   >
                     <Check className="text-green-500" size={18} />
                   </button>
                   <button
                     className="p-1 rounded-full hover:bg-red-100 transition"
-                    onClick={() => setEditingMonthId(null)}
+                    onClick={cancelEditing}
+                    title="Discard changes"
                   >
                     <X className="text-red-500" size={18} />
                   </button>
@@ -273,21 +369,19 @@ const filteredData = monthlyData.filter((m) => {
                   <input
                     type="number"
                     min="0"
+                    step="1"
                     value={state.workers ?? ""}
                     onChange={(e) =>
-                      setMonthStates({
-                        ...monthStates,
-                        [monthRecord._id]: {
-                          ...state,
-                          workers: e.target.value, // 👈 keep string
-                        },
-                      })
+                      updateDraft(id, "workers", clampNonNeg(e.target.value))
+                    }
+                    onBlur={(e) =>
+                      updateDraft(id, "workers", clampNonNeg(e.target.value))
                     }
                     className="border rounded px-2 py-1 text-sm w-24"
                   />
                 ) : (
                   <span className="text-gray-800 font-semibold">
-                    {state.workers || 0}
+                    {committedStates[id]?.workers || 0}
                   </span>
                 )}
               </div>
@@ -299,22 +393,19 @@ const filteredData = monthlyData.filter((m) => {
                   <select
                     value={state.dataStatus}
                     onChange={(e) =>
-                      setMonthStates({
-                        ...monthStates,
-                        [monthRecord._id]: {
-                          ...state,
-                          dataStatus: e.target.value,
-                        },
-                      })
+                      updateDraft(id, "dataStatus", e.target.value)
                     }
                     className="border rounded px-2 py-1 text-sm"
                   >
-                    {dataOptions.map((opt) => (
+                    {DATA_OPTIONS.map((opt) => (
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
                 ) : (
-                  <StatusBadge status={state.dataStatus} type="data" />
+                  <StatusBadge
+                    status={committedStates[id]?.dataStatus}
+                    type="data"
+                  />
                 )}
               </div>
 
@@ -327,26 +418,23 @@ const filteredData = monthlyData.filter((m) => {
                   <select
                     value={state.workProgress}
                     onChange={(e) =>
-                      setMonthStates({
-                        ...monthStates,
-                        [monthRecord._id]: {
-                          ...state,
-                          workProgress: e.target.value,
-                        },
-                      })
+                      updateDraft(id, "workProgress", e.target.value)
                     }
                     className="border rounded px-2 py-1 text-sm"
                   >
-                    {workOptions.map((opt) => (
+                    {WORK_OPTIONS.map((opt) => (
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
                 ) : (
-                  <StatusBadge status={state.workProgress} type="work" />
+                  <StatusBadge
+                    status={committedStates[id]?.workProgress}
+                    type="work"
+                  />
                 )}
               </div>
 
-              {/* Expected & Final Amount */}
+              {/* Expected Amount — always read-only */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 font-medium">
                   Expected Amount:
@@ -355,26 +443,35 @@ const filteredData = monthlyData.filter((m) => {
                   ₹{monthRecord?.expectedBill || 0}
                 </span>
               </div>
+
+              {/* Final Amount */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 font-medium">Final Amount:</span>
                 {isEditing && canEdit("actualBill") ? (
                   <input
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={state.actualBill ?? ""}
                     onChange={(e) =>
-                      setMonthStates({
-                        ...monthStates,
-                        [monthRecord._id]: {
-                          ...state,
-                          actualBill: e.target.value, // 👈 string
-                        },
-                      })
+                      updateDraft(
+                        id,
+                        "actualBill",
+                        clampNonNegDecimal(e.target.value),
+                      )
+                    }
+                    onBlur={(e) =>
+                      updateDraft(
+                        id,
+                        "actualBill",
+                        clampNonNegDecimal(e.target.value),
+                      )
                     }
                     className="border rounded px-2 py-1 text-sm w-24"
                   />
                 ) : (
                   <span className="text-gray-800 font-semibold">
-                    ₹{state.actualBill || 0}
+                    ₹{committedStates[id]?.actualBill || 0}
                   </span>
                 )}
               </div>
@@ -386,22 +483,19 @@ const filteredData = monthlyData.filter((m) => {
                   <select
                     value={state.billStatus}
                     onChange={(e) =>
-                      setMonthStates({
-                        ...monthStates,
-                        [monthRecord._id]: {
-                          ...state,
-                          billStatus: e.target.value,
-                        },
-                      })
+                      updateDraft(id, "billStatus", e.target.value)
                     }
                     className="border rounded px-2 py-1 text-sm"
                   >
-                    {billOptions.map((opt) => (
+                    {BILL_OPTIONS.map((opt) => (
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
                 ) : (
-                  <StatusBadge status={state.billStatus} type="bill" />
+                  <StatusBadge
+                    status={committedStates[id]?.billStatus}
+                    type="bill"
+                  />
                 )}
               </div>
 
@@ -411,20 +505,14 @@ const filteredData = monthlyData.filter((m) => {
                 {isEditing && canEdit("remarks") ? (
                   <textarea
                     value={state.remarks}
-                    onChange={(e) =>
-                      setMonthStates({
-                        ...monthStates,
-                        [monthRecord._id]: {
-                          ...state,
-                          remarks: e.target.value,
-                        },
-                      })
-                    }
+                    onChange={(e) => updateDraft(id, "remarks", e.target.value)}
                     className="border rounded px-2 py-1 text-sm"
                     rows={3}
                   />
                 ) : (
-                  <p className="text-gray-800">{state.remarks || "—"}</p>
+                  <p className="text-gray-800">
+                    {committedStates[id]?.remarks || "—"}
+                  </p>
                 )}
               </div>
             </div>
@@ -432,16 +520,13 @@ const filteredData = monthlyData.filter((m) => {
         })}
       </div>
 
-      {/* Modal */}
+      {/* Add Monthly Compliance Modal */}
       {modalOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
-          {/* Blur background */}
           <div
             className="absolute inset-0 backdrop-blur-sm"
             onClick={() => setModalOpen(false)}
-          ></div>
-
-          {/* Modal content */}
+          />
           <div className="bg-white rounded-lg shadow-lg p-6 z-10 w-full max-w-sm">
             <h3 className="text-lg font-semibold mb-4">
               Add Monthly Compliance
@@ -456,7 +541,7 @@ const filteredData = monthlyData.filter((m) => {
               className="border rounded px-3 py-2 w-full mb-4"
             >
               <option value="">Select Month</option>
-              {monthNames.map((m, i) => (
+              {MONTH_NAMES.map((m, i) => (
                 <option key={i} value={String(i + 1).padStart(2, "0")}>
                   {m}
                 </option>
@@ -467,6 +552,8 @@ const filteredData = monthlyData.filter((m) => {
             <input
               type="number"
               value={newYear}
+              min="2000"
+              max="2100"
               onChange={(e) => setNewYear(e.target.value)}
               className="border rounded px-3 py-2 w-full mb-4"
             />
@@ -481,9 +568,9 @@ const filteredData = monthlyData.filter((m) => {
               <button
                 onClick={handleCreateMonth}
                 disabled={creating}
-                className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition"
+                className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-60"
               >
-                Add
+                {creating ? "Adding…" : "Add"}
               </button>
             </div>
           </div>

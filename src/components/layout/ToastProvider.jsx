@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Trash2 } from "lucide-react";
 
 const ToastContext = createContext();
@@ -17,7 +17,7 @@ export const ToastProvider = ({ children }) => {
     }, 2500);
   }, []);
 
-  const toast = useMemo(() => ({
+  const toast = {
     success: (msg) => addToast("success", msg),
     error: (msg) => addToast("error", msg),
     warning: (msg) => addToast("warning", msg),
@@ -27,7 +27,7 @@ export const ToastProvider = ({ children }) => {
 
     confirmDelete: ({ message, onConfirm }) =>
       setConfirmData({ message, onConfirm, type: "delete" }),
-  }), [addToast]);
+  };
 
   const handleConfirm = () => {
     const { onConfirm, type } = confirmData || {};
