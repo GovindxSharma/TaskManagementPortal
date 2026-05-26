@@ -58,9 +58,7 @@ const PendingBills = () => {
       setLoading(true);
 
       try {
-        const res = await axios.get(
-          "/monthly-compliance/bill-pending"
-        );
+        const res = await axios.get("/monthly-compliance/bill-pending");
 
         const data = res.data.clients || [];
 
@@ -82,16 +80,11 @@ const PendingBills = () => {
     return clients.filter((c) => {
       const matchesFilters =
         (!filters.month || c.month === filters.month) &&
-        (!filters.year ||
-          String(c.year) === filters.year) &&
-        (!filters.category ||
-          c.category === filters.category);
+        (!filters.year || String(c.year) === filters.year) &&
+        (!filters.category || c.category === filters.category);
 
       const matchesSearch =
-        !search ||
-        c.clientName
-          ?.toLowerCase()
-          .includes(search.toLowerCase());
+        !search || c.clientName?.toLowerCase().includes(search.toLowerCase());
 
       return matchesFilters && matchesSearch;
     });
@@ -114,20 +107,12 @@ const PendingBills = () => {
     }, {});
   }, [filteredClients]);
 
-  const monthOptions = [
-    ...new Set(clients.map((c) => c.month)),
-  ];
+  const monthOptions = [...new Set(clients.map((c) => c.month))];
 
-  const yearOptions = [
-    ...new Set(clients.map((c) => String(c.year))),
-  ];
+  const yearOptions = [...new Set(clients.map((c) => String(c.year)))];
 
   const categoryOptions = [
-    ...new Set(
-      clients
-        .map((c) => c.category)
-        .filter(Boolean)
-    ),
+    ...new Set(clients.map((c) => c.category).filter(Boolean)),
   ];
 
   const resetFilters = () => {
@@ -158,33 +143,20 @@ const PendingBills = () => {
     const data = filteredClients.map((c, i) => ({
       "#": i + 1,
       "Client Name": c.clientName || "-",
-      Contact:
-        c.contactPerson ||
-        c.contactNumber ||
-        c.email ||
-        "-",
+      Contact: c.contactPerson || c.contactNumber || c.email || "-",
       Month: getMonthName(c.month),
       Year: c.year,
       Category: c.category || "-",
       Status: "Pending",
     }));
 
-    const worksheet =
-      XLSX.utils.json_to_sheet(data);
+    const worksheet = XLSX.utils.json_to_sheet(data);
 
-    const workbook =
-      XLSX.utils.book_new();
+    const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      "Pending Bills"
-    );
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Pending Bills");
 
-    XLSX.writeFile(
-      workbook,
-      "PendingBills.xlsx"
-    );
+    XLSX.writeFile(workbook, "PendingBills.xlsx");
   };
 
   // ===========================
@@ -196,31 +168,20 @@ const PendingBills = () => {
     }
 
     const { jsPDF } = await import("jspdf");
-    const autoTable = (
-      await import("jspdf-autotable")
-    ).default;
+    const autoTable = (await import("jspdf-autotable")).default;
 
     const doc = new jsPDF();
 
-    const columns = [
-      "#",
-      "Client Name",
-      "Month",
-      "Year",
-      "Category",
-      "Status",
-    ];
+    const columns = ["#", "Client Name", "Month", "Year", "Category", "Status"];
 
-    const rows = filteredClients.map(
-      (c, i) => [
-        i + 1,
-        c.clientName || "-",
-        getMonthName(c.month),
-        c.year,
-        c.category || "-",
-        "Pending",
-      ]
-    );
+    const rows = filteredClients.map((c, i) => [
+      i + 1,
+      c.clientName || "-",
+      getMonthName(c.month),
+      c.year,
+      c.category || "-",
+      "Pending",
+    ]);
 
     autoTable(doc, {
       head: [columns],
@@ -276,18 +237,13 @@ const PendingBills = () => {
       {/* FILTERS */}
       <div className="bg-white p-4 rounded-xl shadow mb-5 flex flex-wrap gap-3">
         <div className="relative">
-          <Search
-            className="absolute left-3 top-3 text-gray-400"
-            size={18}
-          />
+          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
 
           <input
             type="text"
             placeholder="Search client..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
+            onChange={(e) => setSearch(e.target.value)}
             className="border rounded-lg pl-10 pr-3 py-2"
           />
         </div>
@@ -302,9 +258,7 @@ const PendingBills = () => {
             })
           }
         >
-          <option value="">
-            All Months
-          </option>
+          <option value="">All Months</option>
 
           {monthOptions.map((m) => (
             <option key={m} value={m}>
@@ -323,9 +277,7 @@ const PendingBills = () => {
             })
           }
         >
-          <option value="">
-            All Years
-          </option>
+          <option value="">All Years</option>
 
           {yearOptions.map((y) => (
             <option key={y} value={y}>
@@ -344,9 +296,7 @@ const PendingBills = () => {
             })
           }
         >
-          <option value="">
-            All Categories
-          </option>
+          <option value="">All Categories</option>
 
           {categoryOptions.map((c) => (
             <option key={c} value={c}>
@@ -368,116 +318,104 @@ const PendingBills = () => {
       <div className="space-y-4">
         {loading ? (
           <Loader fullscreen size={250} />
-        ) : Object.keys(groupedClients)
-            .length === 0 ? (
+        ) : Object.keys(groupedClients).length === 0 ? (
           <div className="bg-white rounded-xl shadow p-10 text-center text-gray-500">
             🎉 No pending bills found!
           </div>
         ) : (
-          Object.entries(groupedClients).map(
-            ([clientName, records]) => (
-              <div
-                key={clientName}
-                className="bg-white rounded-2xl shadow overflow-hidden border"
+          Object.entries(groupedClients).map(([clientName, records]) => (
+            <div
+              key={clientName}
+              className="bg-white rounded-2xl shadow overflow-hidden border"
+            >
+              <button
+                onClick={() => toggleClient(clientName)}
+                className="w-full flex justify-between items-center p-5 hover:bg-yellow-50 transition"
               >
-                <button
-                  onClick={() =>
-                    toggleClient(clientName)
-                  }
-                  className="w-full flex justify-between items-center p-5 hover:bg-yellow-50 transition"
-                >
-                  <div className="text-left">
-                    <h3 className="font-semibold text-lg text-gray-800">
-                      {clientName}
-                    </h3>
+                <div className="text-left">
+                  <h3 className="font-semibold text-lg text-gray-800">
+                    {clientName}
+                  </h3>
 
-                    <p className="text-sm text-gray-500">
-                      {
-                        records.length
-                      }{" "}
-                      Pending Bill
-                      {records.length > 1
-                        ? "s"
-                        : ""}
-                    </p>
-                  </div>
+                  <p className="text-sm text-gray-500">
+                    {records.length} Pending Bill
+                    {records.length > 1 ? "s" : ""}
+                  </p>
+                </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
-                      Pending
-                    </span>
+                <div className="flex items-center gap-3">
+                  <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
+                    Pending
+                  </span>
 
-                    {expandedClients[
-                      clientName
-                    ] ? (
-                      <ChevronDown />
-                    ) : (
-                      <ChevronRight />
-                    )}
-                  </div>
-                </button>
+                  {expandedClients[clientName] ? (
+                    <ChevronDown />
+                  ) : (
+                    <ChevronRight />
+                  )}
+                </div>
+              </button>
 
-                {expandedClients[
-                  clientName
-                ] && (
-                  <div className="border-t overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="p-3 text-left">
-                            Month
-                          </th>
-                          <th className="p-3 text-left">
-                            Year
-                          </th>
-                          <th className="p-3 text-left">
-                            Category
-                          </th>
-                          <th className="p-3 text-center">
-                            Status
-                          </th>
+              {expandedClients[clientName] && (
+                <div className="border-t overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="p-3 text-left">Month</th>
+                        <th className="p-3 text-left">Year</th>
+                        <th className="p-3 text-left">Category</th>
+                        <th className="p-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {records.map((record, idx) => (
+                        <tr
+                          key={idx}
+                          onClick={() =>
+                            navigate(
+                              `/admin/customer/${
+                                typeof record.clientId === "object"
+                                  ? record.clientId._id
+                                  : record.clientId
+                              }`,
+                              {
+                                state: {
+                                  selectedMonthRecordId: record._id,
+                                  autoOpenMonthlyRecord: true,
+                                },
+                              },
+                            )
+                          }
+                          className="border-t hover:bg-yellow-50 cursor-pointer transition duration-200"
+                        >
+                          <td className="p-3 font-medium text-indigo-600">
+                            {getMonthName(record.month)}
+                          </td>
+
+                          <td className="p-3">{record.year}</td>
+
+                          <td className="p-3">{record.category || "-"}</td>
+
+                          <td className="p-3 text-center">
+                            <div className="flex justify-center items-center gap-2">
+                              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+                                Pending
+                              </span>
+
+                              <span className="text-xs text-gray-500">
+                                Click to Edit →
+                              </span>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-
-                      <tbody>
-                        {records.map(
-                          (record, idx) => (
-                            <tr
-                              key={idx}
-                              className="border-t hover:bg-gray-50"
-                            >
-                              <td className="p-3">
-                                {getMonthName(
-                                  record.month
-                                )}
-                              </td>
-
-                              <td className="p-3">
-                                {
-                                  record.year
-                                }
-                              </td>
-
-                              <td className="p-3">
-                                {record.category ||
-                                  "-"}
-                              </td>
-
-                              <td className="p-3 text-center">
-                                <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
-                                  Pending
-                                </span>
-                              </td>
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )
-          )
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))
         )}
       </div>
     </div>
