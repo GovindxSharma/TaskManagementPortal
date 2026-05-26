@@ -51,7 +51,7 @@ const InputField = ({
 
 const Clients = () => {
   const navigate = useNavigate();
-  const toast = useToast();
+  const { success, error, warning, confirmDelete } = useToast();
   const [clients, setClients] = useState([]);
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -81,6 +81,105 @@ const Clients = () => {
   const [emailBody, setEmailBody] = useState("");
   const [attachments, setAttachments] = useState([]);
 
+  const validateField = (name, value) => {
+    let errorMsg = "";
+
+    switch (name) {
+      case "name":
+        if (!value.trim()) {
+          errorMsg = "Client name is required";
+        } else if (!/^[A-Za-z0-9\s]+$/.test(value.trim())) {
+          errorMsg = "Client name must contain only alphanumeric characters and spaces";
+        } else {
+          const duplicate = clients.find(
+            (c) => c.name.trim().toLowerCase() === value.trim().toLowerCase() && c._id !== editingId
+          );
+          if (duplicate) errorMsg = "Client name already exists";
+        }
+        break;
+
+      case "email":
+        if (!value.trim()) {
+          errorMsg = "Email is required";
+        } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/.test(value.trim())) {
+          errorMsg = "Enter a valid email address";
+        } else {
+          const duplicateEmail = clients.find(
+            (c) => c.email.trim().toLowerCase() === value.trim().toLowerCase() && c._id !== editingId
+          );
+          if (duplicateEmail) errorMsg = "A client with this email already exists";
+        }
+        break;
+
+      case "contactNumber":
+        if (value.trim()) {
+          if (!/^\d{10}$/.test(value.trim())) {
+            errorMsg = "Contact number must be exactly 10 digits";
+          } else {
+            const duplicatePhone = clients.find(
+              (c) => c.contactNumber?.trim() === value.trim() && c._id !== editingId
+            );
+            if (duplicatePhone) errorMsg = "A client with this phone number already exists";
+          }
+        }
+        break;
+
+      case "gstNumber":
+        if (value.trim()) {
+          if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value.trim())) {
+            errorMsg = "Enter a valid 15-character GST number (e.g. 22AAAAA0000A1Z5)";
+          } else {
+            const duplicateGST = clients.find(
+              (c) => c.gstNumber?.trim().toUpperCase() === value.trim().toUpperCase() && c._id !== editingId
+            );
+            if (duplicateGST) errorMsg = "A client with this GST number already exists";
+          }
+        }
+        break;
+
+      case "businessUnit":
+        if (value.trim() && !/^[A-Za-z0-9\s]+$/.test(value.trim())) {
+          errorMsg = "Company Name must contain only alphanumeric characters and spaces";
+        }
+        break;
+
+      case "site":
+        if (value.trim() && !/^[A-Za-z\s]+$/.test(value.trim())) {
+          errorMsg = "Business Unit must contain only alphabetic characters";
+        }
+        break;
+
+      case "address":
+        if (value.trim() && /^[^A-Za-z0-9]+$/.test(value.trim())) {
+          errorMsg = "Address cannot contain only special characters";
+        }
+        break;
+
+      case "assignedTo":
+        if (!value) {
+          errorMsg = "Assign To is required";
+        }
+        break;
+
+      case "startYear":
+        if (!value) {
+          errorMsg = "Start Year is required";
+        }
+        break;
+
+      case "startMonth":
+        if (value === "" || value === undefined) {
+          errorMsg = "Start Month is required";
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: errorMsg }));
+  };
+
   const fetchClients = useCallback(async () => {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -90,9 +189,9 @@ const Clients = () => {
       setClients(data.clients);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch clients");
+      error("Failed to fetch clients");
     }
-  }, [toast]);
+  }, [error]);
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -105,9 +204,9 @@ const Clients = () => {
       setEmployees(onlyEmployees);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch employees");
+      error("Failed to fetch employees");
     }
-  }, [toast]);
+  }, [error]);
 
   useEffect(() => {
     fetchClients();
@@ -130,6 +229,7 @@ const Clients = () => {
       assignedToName: "",
       status: "Active",
     });
+    setErrors({});
   };
 
   const handleSubmit = async (e) => {
@@ -139,11 +239,11 @@ const Clients = () => {
 
     if (!form.name.trim()) {
       newErrors.name = "Client name is required";
-    } else if (!/^[A-Za-z\s]+$/.test(form.name.trim())) {
-      newErrors.name = "Client name must contain only alphabetic characters";
-    } else if (!editingId) {
+    } else if (!/^[A-Za-z0-9\s]+$/.test(form.name.trim())) {
+      newErrors.name = "Client name must contain only alphanumeric characters and spaces";
+    } else {
       const duplicate = clients.find(
-        (c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase()
+        (c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase() && c._id !== editingId
       );
       if (duplicate) newErrors.name = "Client name already exists";
     }
@@ -152,18 +252,33 @@ const Clients = () => {
       newErrors.email = "Email is required";
     } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/.test(form.email.trim())) {
       newErrors.email = "Enter a valid email address";
+    } else {
+      const duplicateEmail = clients.find(
+        (c) => c.email.trim().toLowerCase() === form.email.trim().toLowerCase() && c._id !== editingId
+      );
+      if (duplicateEmail) newErrors.email = "A client with this email already exists";
     }
 
     if (form.contactNumber && !/^\d{10}$/.test(form.contactNumber.trim())) {
       newErrors.contactNumber = "Contact number must be exactly 10 digits";
+    } else if (form.contactNumber) {
+      const duplicatePhone = clients.find(
+        (c) => c.contactNumber?.trim() === form.contactNumber.trim() && c._id !== editingId
+      );
+      if (duplicatePhone) newErrors.contactNumber = "A client with this phone number already exists";
     }
 
     if (form.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.gstNumber.trim())) {
       newErrors.gstNumber = "Enter a valid 15-character GST number (e.g. 22AAAAA0000A1Z5)";
+    } else if (form.gstNumber) {
+      const duplicateGST = clients.find(
+        (c) => c.gstNumber?.trim().toUpperCase() === form.gstNumber.trim().toUpperCase() && c._id !== editingId
+      );
+      if (duplicateGST) newErrors.gstNumber = "A client with this GST number already exists";
     }
 
-    if (form.businessUnit && !/^[A-Za-z\s]+$/.test(form.businessUnit.trim())) {
-      newErrors.businessUnit = "Company Name must contain only alphabetic characters";
+    if (form.businessUnit && !/^[A-Za-z0-9\s]+$/.test(form.businessUnit.trim())) {
+      newErrors.businessUnit = "Company Name must contain only alphanumeric characters and spaces";
     }
 
     if (form.site && !/^[A-Za-z\s]+$/.test(form.site.trim())) {
@@ -174,9 +289,21 @@ const Clients = () => {
       newErrors.address = "Address cannot contain only special characters";
     }
 
+    if (!form.assignedTo) {
+      newErrors.assignedTo = "Assign To is required";
+    }
+
+    if (!form.startYear) {
+      newErrors.startYear = "Start Year is required";
+    }
+
+    if (form.startMonth === "") {
+      newErrors.startMonth = "Start Month is required";
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.error("Please fix the highlighted fields");
+      error("Please fix the highlighted fields");
       return;
     }
 
@@ -209,18 +336,18 @@ const Clients = () => {
         setClients((prev) =>
           prev.map((c) => (c._id === editingId ? clientData : c)),
         );
+        success("Client updated successfully!");
         resetForm();
         setEditingId(null);
         setShowModal(false);
-        toast.success("Client updated successfully!");
       } else {
         const { data } = await axiosInstance.post("/client", payload);
         clientData = data.client;
         setClients((prev) => [...prev, clientData]);
+        success("Client added successfully!");
         resetForm();
         setEditingId(null);
         setShowModal(false);
-        toast.success("Client added successfully!");
       }
     } catch (err) {
       console.error(err);
@@ -238,7 +365,7 @@ const Clients = () => {
         if (fieldKey) {
           setErrors((prev) => ({ ...prev, [fieldKey]: responseData.message }));
         }
-        toast.warning(responseData.message);
+        warning(responseData.message);
         return;
       }
 
@@ -246,22 +373,22 @@ const Clients = () => {
         const msgLower = responseData.message.toLowerCase();
         if (msgLower.includes("client name already exists") || msgLower.includes("client already exists")) {
           setErrors((prev) => ({ ...prev, name: "Client name already exists" }));
-          toast.warning("Client name already exists");
+          warning("Client name already exists");
           return;
         }
         if (msgLower.includes("email")) {
           setErrors((prev) => ({ ...prev, email: responseData.message }));
-          toast.warning(responseData.message);
+          warning(responseData.message);
           return;
         }
         if (msgLower.includes("phone") || msgLower.includes("contact")) {
           setErrors((prev) => ({ ...prev, contactNumber: responseData.message }));
-          toast.warning(responseData.message);
+          warning(responseData.message);
           return;
         }
         if (msgLower.includes("gst")) {
           setErrors((prev) => ({ ...prev, gstNumber: responseData.message }));
-          toast.warning(responseData.message);
+          warning(responseData.message);
           return;
         }
       }
@@ -277,11 +404,11 @@ const Clients = () => {
         if (fieldMessages[duplicateField]) {
           setErrors((prev) => ({ ...prev, [duplicateField]: message }));
         }
-        toast.warning(message);
+        warning(message);
         return;
       }
 
-      toast.error(responseData?.message || "Something went wrong!");
+      error(responseData?.message || "Something went wrong!");
     }
   };
 
@@ -312,7 +439,7 @@ const Clients = () => {
 
   const handleSendEmail = async () => {
     if (!selectedClientId) {
-      toast.error("Please select a client");
+      error("Please select a client");
       return;
     }
 
@@ -321,12 +448,12 @@ const Clients = () => {
 
     const recipientEmail = client.email?.trim();
     if (!recipientEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/.test(recipientEmail)) {
-      toast.error("Client has an invalid email address. Cannot send email.");
+      error("Client has an invalid email address. Cannot send email.");
       return;
     }
 
     if (!emailSubject.trim()) {
-      toast.error("Email subject cannot be blank");
+      error("Email subject cannot be blank");
       return;
     }
 
@@ -342,10 +469,10 @@ const Clients = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      toast.success("Email sent successfully 🚀");
+      success("Email sent successfully 🚀");
       setShowEmailModal(false);
     } catch (err) {
-      toast.error("Failed to send email");
+      error("Failed to send email");
     }
   };
 
@@ -358,11 +485,12 @@ const Clients = () => {
       status: client.status || "Active",
     });
     setEditingId(client._id);
+    setErrors({});
     setShowModal(true);
   };
 
   const handleDelete = (id) => {
-    toast.confirmDelete({
+    confirmDelete({
       message: "Are you sure you want to delete this client?",
       onConfirm: async () => {
         try {
@@ -370,19 +498,30 @@ const Clients = () => {
           setClients((prev) => prev.filter((c) => c._id !== id));
         } catch (err) {
           console.error(err);
-          toast.error("Failed to delete client");
+          error("Failed to delete client");
         }
       },
     });
   };
 
-  const filteredClients = useMemo(
-    () =>
-      clients.filter((c) =>
-        Object.values(c).join(" ").toLowerCase().includes(search.toLowerCase()),
-      ),
-    [clients, search],
-  );
+  const filteredClients = useMemo(() => {
+    const trimmed = search.trim().replace(/\s+/g, " ").toLowerCase();
+    if (!trimmed) return clients;
+    return clients.filter((c) => {
+      const searchableText = [
+        c.name,
+        c.contactPerson,
+        c.email,
+        c.contactNumber,
+        c.businessUnit,
+        c.site,
+      ]
+        .filter(Boolean)
+        .map((v) => v.toString().trim().replace(/\s+/g, " ").toLowerCase())
+        .join(" ");
+      return searchableText.includes(trimmed);
+    });
+  }, [clients, search]);
 
   const months = [
     "January",
@@ -414,7 +553,7 @@ const Clients = () => {
 
   const exportPDF = () => {
     if (!filteredClients.length) {
-      toast.error("No clients to export");
+      error("No clients to export");
       return;
     }
 
@@ -458,7 +597,7 @@ const Clients = () => {
 
   const exportExcel = () => {
     if (!filteredClients.length) {
-      toast.error("No clients to export");
+      error("No clients to export");
       return;
     }
 
@@ -668,8 +807,9 @@ const Clients = () => {
                       required={f.required}
                       error={errors[f.key]}
                       onChange={(e) => {
-                        setForm({ ...form, [f.key]: e.target.value });
-                        setErrors((prev) => ({ ...prev, [f.key]: "" }));
+                        const val = e.target.value;
+                        setForm({ ...form, [f.key]: val });
+                        validateField(f.key, val);
                       }}
                     />
                   ))}
@@ -677,14 +817,17 @@ const Clients = () => {
                   {/* Assign To */}
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">
-                      Assign To
+                      Assign To <span className="text-red-500 ml-1">*</span>
                     </label>
                     <select
                       value={form.assignedTo}
-                      onChange={(e) =>
-                        setForm({ ...form, assignedTo: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm({ ...form, assignedTo: val });
+                        validateField("assignedTo", val);
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+                      ${errors.assignedTo ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`}
                     >
                       <option value="">Select Employee</option>
                       {employees.map((emp) => (
@@ -693,34 +836,42 @@ const Clients = () => {
                         </option>
                       ))}
                     </select>
+                    {errors.assignedTo && <span className="text-xs text-red-500 mt-1">{errors.assignedTo}</span>}
                   </div>
 
                   {/* Start Year */}
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">
-                      Start Year
+                      Start Year <span className="text-red-500 ml-1">*</span>
                     </label>
                     <input
                       type="number"
                       value={form.startYear}
-                      onChange={(e) =>
-                        setForm({ ...form, startYear: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm({ ...form, startYear: val });
+                        validateField("startYear", val);
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+                      ${errors.startYear ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`}
                     />
+                    {errors.startYear && <span className="text-xs text-red-500 mt-1">{errors.startYear}</span>}
                   </div>
 
                   {/* Start Month */}
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">
-                      Start Month
+                      Start Month <span className="text-red-500 ml-1">*</span>
                     </label>
                     <select
                       value={form.startMonth}
-                      onChange={(e) =>
-                        setForm({ ...form, startMonth: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm({ ...form, startMonth: val });
+                        validateField("startMonth", val);
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+                      ${errors.startMonth ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`}
                     >
                       <option value="">Select Month</option>
                       {months.map((m, i) => (
@@ -729,6 +880,7 @@ const Clients = () => {
                         </option>
                       ))}
                     </select>
+                    {errors.startMonth && <span className="text-xs text-red-500 mt-1">{errors.startMonth}</span>}
                   </div>
 
                   {/* Status Toggle (Edit Mode) */}
@@ -768,12 +920,7 @@ const Clients = () => {
               <div className="border-t p-4 flex justify-end bg-white">
                 <button
                   type="submit"
-                  disabled={!form.name || !form.email}
-                  className={`px-6 py-2 rounded-lg font-medium transition ${
-                    !form.name || !form.email
-                      ? "bg-gray-300 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                  }`}
+                  className="px-6 py-2 rounded-lg font-medium transition bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                 >
                   {editingId ? "Update Client" : "Add Client"}
                 </button>
