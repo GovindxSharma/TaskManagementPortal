@@ -30,6 +30,9 @@ const PendingBills = () => {
 
   const navigate = useNavigate();
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = (user.role || "Admin").toLowerCase();
+
   const getMonthName = (month) => {
     const months = [
       "January",
@@ -374,7 +377,7 @@ const PendingBills = () => {
                           key={idx}
                           onClick={() =>
                             navigate(
-                              `/admin/customer/${
+                              `/${userRole}/customer/${
                                 typeof record.clientId === "object"
                                   ? record.clientId._id
                                   : record.clientId
