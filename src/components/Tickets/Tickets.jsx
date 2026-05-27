@@ -75,11 +75,13 @@ const [showEditModal, setShowEditModal] = useState(false);
   }, []);
 
   const filteredTickets = tickets.filter((t) => {
+    const s = search.trim().toLowerCase();
     const matchSearch =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      !s ||
+      t.title.toLowerCase().includes(s) ||
       (t.relatedClient?.name || "")
         .toLowerCase()
-        .includes(search.toLowerCase());
+        .includes(s);
     const matchStatus = !filters.status || t.status === filters.status;
     const matchPriority = !filters.priority || t.priority === filters.priority;
     const matchEmployee =
@@ -171,8 +173,24 @@ const [showEditModal, setShowEditModal] = useState(false);
   };
 
   const handleAddTicket = async () => {
-    if (!newTicket.clientId || !newTicket.title) {
-      toast.error("Client & Title required");
+    if (!newTicket.clientId) {
+      toast.error("Client is required");
+      return;
+    }
+    if (!newTicket.title || !newTicket.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!newTicket.description || !newTicket.description.trim()) {
+      toast.error("Description is required");
+      return;
+    }
+    if (!newTicket.priority) {
+      toast.error("Priority is required");
+      return;
+    }
+    if (isAdmin && !selectedEmp._id) {
+      toast.error("Assign To is required");
       return;
     }
     try {
@@ -219,7 +237,7 @@ const [showEditModal, setShowEditModal] = useState(false);
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 font-medium transition"
+            className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 font-medium transition cursor-pointer"
           >
             <ArrowLeft size={18} />
             <span className="hidden sm:block">Back</span>
@@ -231,13 +249,13 @@ const [showEditModal, setShowEditModal] = useState(false);
         <div className="flex gap-2">
           <button
             onClick={() => setShowResolvedModal(true)}
-            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer"
           >
             View Resolved Tickets
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700"
+            className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer"
           >
             Add Ticket
           </button>

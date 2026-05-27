@@ -22,7 +22,7 @@ const AddTicketModal = ({
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50 backdrop-blur-sm bg-black/30">
       <div className="bg-white p-6 rounded-xl w-full max-w-2xl h-[80vh] overflow-y-auto relative shadow-lg">
         <button
-          className="absolute top-3 right-3 p-2 bg-gray-200 rounded-full hover:bg-gray-300"
+          className="absolute top-3 right-3 p-2 bg-gray-200 rounded-full hover:bg-gray-300 cursor-pointer"
           onClick={() => setShow(false)}
         >
           <X size={18} />
@@ -32,7 +32,7 @@ const AddTicketModal = ({
 
         <div className="flex flex-col gap-3">
           {/* Client */}
-          <label className="text-sm text-gray-600">Client</label>
+          <label className="text-sm text-gray-600">Client <span className="text-red-500">*</span></label>
           <select
             value={newTicket.clientId}
             onChange={(e) =>
@@ -40,7 +40,7 @@ const AddTicketModal = ({
             }
             className="border px-3 py-2 rounded-lg"
           >
-            <option value="">Select Client</option>
+            <option value="">Select Client *</option>
             {clients.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
@@ -62,7 +62,7 @@ const AddTicketModal = ({
           {/* Title */}
           <input
             type="text"
-            placeholder="Title"
+            placeholder="Title *"
             value={newTicket.title}
             onChange={(e) =>
               setNewTicket({ ...newTicket, title: e.target.value })
@@ -72,7 +72,7 @@ const AddTicketModal = ({
 
           {/* Description */}
           <textarea
-            placeholder="Description"
+            placeholder="Description *"
             value={newTicket.description}
             onChange={(e) =>
               setNewTicket({ ...newTicket, description: e.target.value })
@@ -98,7 +98,7 @@ const AddTicketModal = ({
             }
             className="border px-3 py-2 rounded-lg"
           >
-            <option value="">Priority</option>
+            <option value="">Priority *</option>
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
             <option value="High">High</option>
@@ -107,11 +107,11 @@ const AddTicketModal = ({
           {/* Assign To (Admin Only) */}
           {isAdmin && (
             <>
-              <label className="text-sm text-gray-600">Assign To</label>
+              <label className="text-sm text-gray-600">Assign To <span className="text-red-500">*</span></label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Type employee name..."
+                  placeholder="Type employee name... *"
                   value={selectedEmp.name}
                   onChange={(e) => {
                     setSelectedEmp({ _id: null, name: e.target.value });
@@ -149,13 +149,13 @@ const AddTicketModal = ({
 
         <div className="flex justify-end mt-5 gap-3">
           <button
-            className="px-4 py-2 bg-gray-200 rounded-lg"
+            className="px-4 py-2 bg-gray-200 rounded-lg cursor-pointer"
             onClick={() => setShow(false)}
           >
             Cancel
           </button>
           <button
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer"
             onClick={handleAddTicket}
           >
             Add Ticket

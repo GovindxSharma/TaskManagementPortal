@@ -33,7 +33,6 @@ const TicketFilters = ({
           <option value="">Status</option>
           <option value="Open">Open</option>
           <option value="In Progress">In Progress</option>
-          <option value="Resolved">Resolved</option>
           <option value="Closed">Closed</option>
         </select>
 
@@ -93,7 +92,7 @@ const TicketFilters = ({
             // category: "",
           })
         }
-        className="mt-3 bg-red-500 text-white rounded-lg px-3 py-2 hover:bg-red-600"
+        className="mt-3 bg-red-500 text-white rounded-lg px-3 py-2 hover:bg-red-600 cursor-pointer"
       >
         Reset Filters
       </button>

@@ -32,7 +32,7 @@ const ResolvedTicketsModal = ({ show, setShow }) => {
       <div className="bg-white rounded-xl p-5 w-full max-w-4xl shadow-xl max-h-[85vh] overflow-y-auto relative">
         {/* Close Button */}
         <button
-          className="absolute top-3 right-3 p-2 bg-gray-200 rounded-full hover:bg-gray-300"
+          className="absolute top-3 right-3 p-2 bg-gray-200 rounded-full hover:bg-gray-300 cursor-pointer"
           onClick={() => setShow(false)}
         >
           <X size={18} />
@@ -88,7 +88,7 @@ const ResolvedTicketsModal = ({ show, setShow }) => {
         <div className="mt-5 flex justify-end">
           <button
             onClick={() => setShow(false)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer"
           >
             Close
           </button>
