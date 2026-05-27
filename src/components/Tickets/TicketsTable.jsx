@@ -60,7 +60,7 @@ const TicketsTable = ({
                         });
                         setShowAssignModal(true);
                       }}
-                      className="p-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition"
+                      className="p-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition cursor-pointer"
                     >
                       <UserCheck size={16} />
                     </button>
@@ -73,7 +73,7 @@ const TicketsTable = ({
                         t.status === "Resolved" ? "Open" : "Resolved"
                       )
                     }
-                    className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition"
+                    className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition cursor-pointer"
                   >
                     <CheckCircle2 size={16} />
                   </button>
@@ -83,7 +83,7 @@ const TicketsTable = ({
                       setSelectedTicket(t);
                       setShowEditModal(true);
                     }}
-                    className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
+                    className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition cursor-pointer"
                   >
                     <Pencil size={16} />
                   </button>
@@ -99,7 +99,7 @@ const TicketsTable = ({
                         setSelectedTicket(null);
                         setSelectedEmp({ _id: null, name: "" });
                       }}
-                      className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
+                      className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition cursor-pointer"
                     >
                       <Trash2 size={16} />
                     </button>
