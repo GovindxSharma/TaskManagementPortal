@@ -171,13 +171,13 @@ export async function loadDashboardStats() {
     }
 
     if (user.role === "Employee") {
-      dashboardStats.employee[0].value = data.complianceTracker || 0;
-      dashboardStats.employee[1].value = data.openTickets || 0;
-      dashboardStats.employee[2].value = data.overdueClients || 0;
-      dashboardStats.employee[3].value = data.licenses || 0;
-      dashboardStats.employee[4].value = data.passwords || 0;
-      dashboardStats.employee[5].value = data.dataReceived || 0;
-      dashboardStats.employee[6].value = data.dataComplete || 0;
+      dashboardStats.employee[0].value = data.dataReceived || 0;
+      dashboardStats.employee[1].value = data.dataComplete || 0;
+      dashboardStats.employee[2].value = data.complianceTracker || 0;
+      dashboardStats.employee[3].value = data.openTickets || 0;
+      dashboardStats.employee[4].value = data.overdueClients || 0;
+      dashboardStats.employee[5].value = data.licenses || 0;
+      dashboardStats.employee[6].value = data.passwords || 0;
     }
   } catch (err) {
     console.error("Failed to fetch dashboard stats:", err);
