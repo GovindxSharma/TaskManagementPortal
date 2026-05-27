@@ -68,12 +68,33 @@ const Employees = () => {
     try {
       const payload = { ...form };
 
+      payload.name = payload.name.trim();
+      if (!payload.name) {
+        return error("Full name is required");
+      }
+
       if (editingId) {
-        if (!payload.password) delete payload.password;
+        if (payload.password) {
+          if (/\s/.test(payload.password)) {
+            return error("Password cannot contain spaces");
+          }
+          if (payload.password.length < 6) {
+            return error("Password must be at least 6 characters long");
+          }
+        } else {
+          delete payload.password;
+        }
         await axiosInstance.put(`/user/${editingId}`, payload);
         success("Employee updated");
       } else {
         if (!payload.password) return error("Password is required");
+        
+        if (/\s/.test(payload.password)) {
+          return error("Password cannot contain spaces");
+        }
+        if (payload.password.length < 6) {
+          return error("Password must be at least 6 characters long");
+        }
         await axiosInstance.post(`/user`, payload);
         success("Employee added");
       }
@@ -142,7 +163,8 @@ const Employees = () => {
 
   // SEARCH
   const filteredEmployees = employees.filter((emp) => {
-    const s = search.toLowerCase();
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
     return (
       emp.name?.toLowerCase().includes(s) ||
       emp.email?.toLowerCase().includes(s) ||
@@ -159,7 +181,7 @@ const Employees = () => {
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition"
+            className="flex items-center gap-2 bg-white shadow px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 transition cursor-pointer"
           >
             <ArrowLeft size={18} />
             <span className="hidden sm:block">Back</span>
@@ -184,7 +206,7 @@ const Employees = () => {
 
           <button
             onClick={openAddModal}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition w-full sm:w-auto cursor-pointer"
           >
             <UserPlus size={18} />
             Add Employee
@@ -221,7 +243,7 @@ const Employees = () => {
                         success("Copied!");
                       }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100
-                        p-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                        p-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition cursor-pointer"
                     >
                       <ClipboardCopy size={16} />
                     </button>
@@ -235,14 +257,14 @@ const Employees = () => {
                 <td className="p-3 flex justify-center gap-3">
                   <button
                     onClick={() => handleEdit(emp)}
-                    className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition"
+                    className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition cursor-pointer"
                   >
                     <Pencil size={16} />
                   </button>
 
                   <button
                     onClick={() => handleDelete(emp._id)}
-                    className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
+                    className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition cursor-pointer"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -270,7 +292,7 @@ const Employees = () => {
           <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative">
             <button
               onClick={closeModal}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -298,7 +320,9 @@ const Employees = () => {
                   type="text"
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, name: e.target.value.replace(/[^a-zA-Z\s]/g, "") })
+                  }
                   required
                 />
               </div>
@@ -338,13 +362,13 @@ const Employees = () => {
                       className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
                       value={form.password}
                       onChange={(e) =>
-                        setForm({ ...form, password: e.target.value })
+                        setForm({ ...form, password: e.target.value.replace(/\s/g, "") })
                       }
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
                     >
                       {showPassword ? <EyeOff /> : <Eye />}
                     </button>
@@ -358,7 +382,7 @@ const Employees = () => {
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
                     value={form.password}
                     onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
+                      setForm({ ...form, password: e.target.value.replace(/\s/g, "") })
                     }
                     required
                   />
@@ -368,7 +392,7 @@ const Employees = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition cursor-pointer"
                 >
                   {editingId ? "Update Employee" : "Add Employee"}
                 </button>
