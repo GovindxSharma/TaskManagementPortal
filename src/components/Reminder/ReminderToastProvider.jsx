@@ -23,6 +23,7 @@ import {
 } from "../../api/reminderApi";
 import { useToast } from "../layout/ToastProvider";
 import { useAuth } from "../../hooks/useAuth";
+import { useLocation } from "react-router-dom";
 
 const ReminderToastContext = createContext();
 
@@ -42,6 +43,7 @@ export const ReminderToastProvider = ({ children }) => {
 
   const intervalRef = useRef(null);
   const snoozeDropdownRef = useRef(null);
+  const location = useLocation();
 
   // Fetch active reminders from API and sync firedReminders
   const fetchReminders = useCallback(async () => {
@@ -144,6 +146,19 @@ export const ReminderToastProvider = ({ children }) => {
 
     fetchReminders();
   }, [token, currentUserId, fetchReminders]);
+
+  // Immediately clear reminders when navigating to login page
+  // This handles the case where dashboards do direct localStorage.removeItem
+  // instead of calling useAuth().logout()
+  useEffect(() => {
+    if (location.pathname === "/") {
+      setReminders([]);
+      setFiredReminders([]);
+      setSnoozeDropdownId(null);
+      setCustomSnoozeId(null);
+      setCustomTime("");
+    }
+  }, [location.pathname]);
 
   // Reminder checking interval + fallback localStorage check
   // (dashboards use direct localStorage.removeItem instead of auth context logout)
