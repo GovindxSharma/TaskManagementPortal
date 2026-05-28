@@ -58,6 +58,16 @@ export default function ReminderPage() {
     fetchReminders();
   }, [fetchReminders]);
 
+  useEffect(() => {
+    const handleRemindersChanged = () => {
+      fetchReminders();
+    };
+    window.addEventListener("reminders-changed", handleRemindersChanged);
+    return () => {
+      window.removeEventListener("reminders-changed", handleRemindersChanged);
+    };
+  }, [fetchReminders]);
+
   // Get status for a reminder
   const getStatus = (r) => {
     if (r.isDismissed) return "dismissed";
@@ -68,14 +78,19 @@ export default function ReminderPage() {
   };
 
   // Filter reminders
+  const searchTerms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
   const filteredReminders = reminders
     .filter((r) => {
       if (filter === "all") return true;
       return getStatus(r) === filter;
     })
-    .filter((r) =>
-      r.message.toLowerCase().includes(search.toLowerCase())
-    );
+    .filter((r) => {
+      if (searchTerms.length === 0) return true;
+      return searchTerms.every((term) =>
+        r.message.toLowerCase().includes(term)
+      );
+    });
 
   // Open modal for create
   const handleCreate = () => {
@@ -109,6 +124,12 @@ export default function ReminderPage() {
 
     if (isNaN(reminderTime.getTime())) {
       toast.warning("Invalid date or time");
+      return;
+    }
+
+    const now = new Date();
+    if (reminderTime <= now) {
+      toast.warning("Reminder time must be in the future");
       return;
     }
 
@@ -207,7 +228,7 @@ export default function ReminderPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(`/${role}/dashboard`)}
-            className="p-2 bg-white rounded-xl shadow hover:shadow-md transition"
+            className="p-2 bg-white rounded-xl shadow hover:shadow-md transition cursor-pointer"
           >
             <ChevronLeft size={20} className="text-gray-600" />
           </button>
@@ -222,7 +243,7 @@ export default function ReminderPage() {
         </div>
         <button
           onClick={handleCreate}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all font-medium text-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all font-medium text-sm cursor-pointer"
         >
           <Plus size={18} />
           New Reminder
@@ -236,7 +257,7 @@ export default function ReminderPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all ${
+              className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all cursor-pointer ${
                 filter === f
                   ? "bg-indigo-600 text-white shadow-md"
                   : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
@@ -332,7 +353,7 @@ export default function ReminderPage() {
                           {!r.isDismissed && (
                             <button
                               onClick={() => handleEdit(r)}
-                              className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
+                              className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors cursor-pointer"
                               title="Edit"
                             >
                               <Pencil size={16} />
@@ -340,7 +361,7 @@ export default function ReminderPage() {
                           )}
                           <button
                             onClick={() => handleDelete(r)}
-                            className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                            className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
                             title="Delete"
                           >
                             <Trash2 size={16} />
@@ -368,7 +389,7 @@ export default function ReminderPage() {
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer"
               >
                 <X size={18} className="text-gray-400" />
               </button>
@@ -385,10 +406,11 @@ export default function ReminderPage() {
                   <input
                     type="date"
                     value={formData.date}
+                    min={new Date().toISOString().split("T")[0]}
                     onChange={(e) =>
                       setFormData({ ...formData, date: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition cursor-pointer"
                   />
                 </div>
                 <div>
@@ -427,14 +449,14 @@ export default function ReminderPage() {
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none"
+                className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
               >
                 {saving
                   ? "Saving..."

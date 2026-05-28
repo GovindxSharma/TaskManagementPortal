@@ -223,6 +223,7 @@ export const ReminderToastProvider = ({ children }) => {
       setCustomTime("");
 
       fetchReminders();
+      window.dispatchEvent(new CustomEvent("reminders-changed"));
     } catch (err) {
       console.error("Failed to snooze reminder:", err);
     }
@@ -249,7 +250,8 @@ export const ReminderToastProvider = ({ children }) => {
     target.setHours(hours, minutes, 0, 0);
     
     if (target.getTime() <= Date.now()) {
-      target.setDate(target.getDate() + 1);
+      toast.warning("Snooze time must be in the future");
+      return;
     }
     
     const diffMs = target.getTime() - Date.now();
@@ -266,6 +268,9 @@ export const ReminderToastProvider = ({ children }) => {
       setFiredReminders((prev) =>
         prev.filter((r) => r._id !== reminderId)
       );
+
+      fetchReminders();
+      window.dispatchEvent(new CustomEvent("reminders-changed"));
     } catch (err) {
       console.error("Failed to dismiss reminder:", err);
     }
@@ -301,14 +306,14 @@ export const ReminderToastProvider = ({ children }) => {
           {firedReminders.map((reminder) => (
             <div
               key={reminder._id}
-              className="bg-white rounded-2xl shadow-2xl border border-indigo-100 overflow-hidden animate-slide-in-left"
+              className="bg-white rounded-2xl shadow-2xl border border-indigo-100 animate-slide-in-left"
               style={{
                 animation:
                   "slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             >
               {/* Top Gradient */}
-              <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+              <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-t-2xl" />
 
               <div className="p-4">
                 {/* Header */}
@@ -355,7 +360,7 @@ export const ReminderToastProvider = ({ children }) => {
                           setCustomTime("");
                         }
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer"
                     >
                       <Timer size={14} />
                       Snooze
@@ -382,13 +387,13 @@ export const ReminderToastProvider = ({ children }) => {
                               <div className="flex gap-2 pt-1">
                                 <button
                                   onClick={() => setCustomSnoozeId(null)}
-                                  className="flex-1 py-1.5 px-2 border border-gray-200 hover:bg-gray-50 text-gray-500 text-xs font-semibold rounded-lg transition-colors active:scale-95 text-center"
+                                  className="flex-1 py-1.5 px-2 border border-gray-200 hover:bg-gray-50 text-gray-500 text-xs font-semibold rounded-lg transition-colors active:scale-95 text-center cursor-pointer"
                                 >
                                   Back
                                 </button>
                                 <button
                                   onClick={() => handleCustomTimeSnooze(reminder._id)}
-                                  className="flex-1 py-1.5 px-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg transition-all shadow-md shadow-indigo-100 active:scale-95 text-center"
+                                  className="flex-1 py-1.5 px-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg transition-all shadow-md shadow-indigo-100 active:scale-95 text-center cursor-pointer"
                                 >
                                   Snooze
                                 </button>
@@ -409,7 +414,7 @@ export const ReminderToastProvider = ({ children }) => {
                                     Math.max(1, prev > 5 ? prev - 5 : prev - 1)
                                   )
                                 }
-                                className="p-1 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-90"
+                                className="p-1 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-90 cursor-pointer"
                                 title="Decrease time"
                               >
                                 <Minus size={12} />
@@ -425,7 +430,7 @@ export const ReminderToastProvider = ({ children }) => {
                                     prev === 1 ? 5 : prev + 5
                                   )
                                 }
-                                className="p-1 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-90"
+                                className="p-1 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-90 cursor-pointer"
                                 title="Increase time"
                               >
                                 <Plus size={12} />
@@ -437,7 +442,7 @@ export const ReminderToastProvider = ({ children }) => {
                               onClick={() =>
                                 handleSnooze(reminder._id, snoozeCounter)
                               }
-                              className="w-full py-1.5 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-100 transition-all active:scale-[0.98] mb-1.5"
+                              className="w-full py-1.5 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-100 transition-all active:scale-[0.98] mb-1.5 cursor-pointer"
                             >
                               Snooze for {snoozeCounter}m
                             </button>
@@ -446,7 +451,7 @@ export const ReminderToastProvider = ({ children }) => {
 
                             <button
                               onClick={() => openCustomSnooze(reminder._id)}
-                              className="w-full text-left px-2 py-1.5 text-xs text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                              className="w-full text-left px-2 py-1.5 text-xs text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
                             >
                               <Timer size={12} />
                               Custom time...
@@ -462,7 +467,7 @@ export const ReminderToastProvider = ({ children }) => {
                     onClick={() =>
                       handleDismiss(reminder._id)
                     }
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
                   >
                     <AlarmClockOff size={14} />
                     Dismiss
