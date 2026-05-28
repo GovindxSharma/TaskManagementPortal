@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Bell, Settings, LogOut } from "lucide-react";
+import { ArrowRight, Bell, Settings, LogOut, Clock } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -115,7 +115,14 @@ const fetchRecentNotifications = async () => {
         </h1>
         <div className="flex items-center">
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition mr-3"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition mr-3 cursor-pointer"
+            onClick={() => navigate("/accountant/reminders")}
+            title="Reminders"
+          >
+            <Clock className="text-gray-600" />
+          </button>
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition mr-3 cursor-pointer"
             onClick={() => navigate("/accountant/notifications")}
           >
             <Bell className="text-gray-600" />
@@ -124,7 +131,7 @@ const fetchRecentNotifications = async () => {
             )}
           </button>
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition cursor-pointer"
             onClick={() => navigate("/accountant/settings")}
           >
             <Settings className="text-gray-600" />
@@ -132,7 +139,7 @@ const fetchRecentNotifications = async () => {
 
           {/* Logout */}
           <button
-            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
+            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition cursor-pointer"
             onClick={handleLogout}
             title="Logout"
           >

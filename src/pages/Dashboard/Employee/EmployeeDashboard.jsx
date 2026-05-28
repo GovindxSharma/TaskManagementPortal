@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ArrowRight, Settings, LogOut, Mail } from "lucide-react";
+import { Bell, ArrowRight, Settings, LogOut, Mail, Clock } from "lucide-react";
 import { dashboardStats } from "../../../data/dashboardStats";
 import Loader from "../../../components/layout/Loader";
 import axiosInstance from "../../../api/axiosInstance";
@@ -132,14 +132,21 @@ useEffect(() => {
         </h1>
         <div className="flex items-center">
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition cursor-pointer"
             onClick={() => navigate("/employee/send-email")}
             title="Send Email"
           >
             <Mail className="text-gray-600" />
           </button>
           <button
-            className=" ml-3 relative bg-white p-3 rounded-full shadow hover:shadow-md transition"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
+            onClick={() => navigate("/employee/reminders")}
+            title="Reminders"
+          >
+            <Clock className="text-gray-600" />
+          </button>
+          <button
+            className=" ml-3 relative bg-white p-3 rounded-full shadow hover:shadow-md transition cursor-pointer"
             onClick={() => navigate("/employee/notifications")}
           >
             <Bell className="text-gray-600" />
@@ -148,7 +155,7 @@ useEffect(() => {
             )}
           </button>
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
             onClick={() => navigate("/employee/settings")}
           >
             <Settings className="text-gray-600" />
@@ -156,7 +163,7 @@ useEffect(() => {
 
           {/* Logout */}
           <button
-            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
+            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition cursor-pointer"
             onClick={handleLogout}
             title="Logout"
           >
