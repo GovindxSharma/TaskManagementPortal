@@ -36,7 +36,9 @@ export const ReminderToastProvider = ({ children }) => {
   const [customSnoozeId, setCustomSnoozeId] = useState(null);
   const [customTime, setCustomTime] = useState("");
   const [snoozeCounter, setSnoozeCounter] = useState(10);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const currentUserId = user?._id || null;
+  const prevUserIdRef = useRef(currentUserId);
 
   const intervalRef = useRef(null);
   const snoozeDropdownRef = useRef(null);
@@ -116,24 +118,49 @@ export const ReminderToastProvider = ({ children }) => {
     });
   }, []);
 
-  // Clear reminders on logout, fetch on login
+  // Clear reminders when user changes or logs out
   useEffect(() => {
-    if (!token) {
+    const prevUserId = prevUserIdRef.current;
+    prevUserIdRef.current = currentUserId;
+
+    if (!token || !currentUserId) {
+      // User logged out — clear everything
       setReminders([]);
       setFiredReminders([]);
-    } else {
-      fetchReminders();
+      setSnoozeDropdownId(null);
+      setCustomSnoozeId(null);
+      setCustomTime("");
+      return;
     }
-  }, [token, fetchReminders]);
 
-  // Reminder checking interval
+    if (prevUserId !== currentUserId) {
+      // Different user logged in — clear old data, fetch fresh
+      setReminders([]);
+      setFiredReminders([]);
+      setSnoozeDropdownId(null);
+      setCustomSnoozeId(null);
+      setCustomTime("");
+    }
+
+    fetchReminders();
+  }, [token, currentUserId, fetchReminders]);
+
+  // Reminder checking interval + fallback localStorage check
+  // (dashboards use direct localStorage.removeItem instead of auth context logout)
   useEffect(() => {
-    if (!token) return;
+    if (!token || !currentUserId) return;
 
     // immediate check
     checkReminders();
 
     intervalRef.current = setInterval(() => {
+      // Fallback: check if token was removed directly from localStorage
+      const lsToken = localStorage.getItem("token");
+      if (!lsToken) {
+        setReminders([]);
+        setFiredReminders([]);
+        return;
+      }
       checkReminders();
     }, 30000);
 
@@ -142,7 +169,7 @@ export const ReminderToastProvider = ({ children }) => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [token, checkReminders]);
+  }, [token, currentUserId, checkReminders]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
