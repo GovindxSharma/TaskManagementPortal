@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, ArrowRight, Settings, LogOut, BarChart3, Mail } from "lucide-react";
+import { Bell, ArrowRight, Settings, LogOut, BarChart3, Mail, Clock } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -182,21 +182,28 @@ useEffect(() => {
         </h1>
         <div className="flex items-center">
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
             onClick={() => navigate("/admin/send-email")}
             title="Send Email"
           >
             <Mail className="text-gray-600" />
           </button>
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
+            onClick={() => navigate("/admin/reminders")}
+            title="Reminders"
+          >
+            <Clock className="text-gray-600" />
+          </button>
+          <button
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
             onClick={() => navigate("/admin/reports")}
             title="Reports"
           >
             <BarChart3 className="text-gray-600" />
           </button>
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
             onClick={() => navigate("/admin/notifications")}
           >
             <Bell className="text-gray-600" />
@@ -205,13 +212,13 @@ useEffect(() => {
             )}
           </button>
           <button
-            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3"
+            className="relative bg-white p-3 rounded-full shadow hover:shadow-md transition ml-3 cursor-pointer"
             onClick={() => navigate("/admin/settings")}
           >
             <Settings className="text-gray-600" />
           </button>
           <button
-            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition"
+            className="ml-3 bg-red-500 p-3 rounded-full shadow hover:shadow-md hover:bg-red-600 transition cursor-pointer"
             onClick={handleLogout}
             title="Logout"
           >
