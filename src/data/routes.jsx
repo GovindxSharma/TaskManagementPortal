@@ -17,6 +17,7 @@ import NoOfWorkers from "../components/Reports/NoOfWorkerReport.jsx";
 import CategoryReport from "../components/Reports/CategoryWiseReport.jsx";
 import CategoryDetails from "../components/Reports/CategoryDetails.jsx";
 import SendEmail from "../pages/Dashboard/Admin/SendEmail.jsx";
+import ReminderPage from "../components/Reminder/ReminderPage.jsx";
 
 export const dashboardRoutes = {
   admin: [
@@ -36,6 +37,7 @@ export const dashboardRoutes = {
     { path: "/admin/reports/category", element: <CategoryReport /> },
     { path: "/admin/reports/category/:id", element: <CategoryDetails /> },
     { path: "/admin/send-email", element: <SendEmail /> },
+    { path: "/admin/reminders", element: <ReminderPage /> },
   ],
 
   employee: [
@@ -50,6 +52,7 @@ export const dashboardRoutes = {
     { path: "/employee/data-received", element: <DataReceived /> },
     { path: "/employee/data-complete", element: <DataComplete /> },
     { path: "/employee/send-email", element: <SendEmail /> },
+    { path: "/employee/reminders", element: <ReminderPage /> },
   ],
 
   accountant: [
@@ -62,5 +65,6 @@ export const dashboardRoutes = {
     { path: "/accountant/notifications", element: <NotificationsPage /> },
     { path: "/accountant/settings", element: <SettingsPage /> },
     { path: "/accountant/bill-pending", element: <PendingBills /> },
+    { path: "/accountant/reminders", element: <ReminderPage /> },
   ],
 };
