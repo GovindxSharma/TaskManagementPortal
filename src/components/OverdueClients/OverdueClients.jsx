@@ -196,9 +196,10 @@ const exportPDF = () => {
   const availableClients = allClients.filter((c) => !c.isOverdue);
 
   const filteredOverdue = overdueClients
-    .filter((client) =>
-      client.name.toLowerCase().includes(tableSearch.toLowerCase())
-    )
+    .filter((client) => {
+      const query = tableSearch.trim();
+      return query === "" ? true : client.name.toLowerCase().includes(query.toLowerCase());
+    })
     .filter((c) =>
       filters.status === "All" ? true : c.status === filters.status
     )
@@ -220,7 +221,7 @@ const exportPDF = () => {
       <div className="flex justify-between items-center mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 bg-white shadow-md px-3 py-2 rounded-lg hover:bg-blue-50 transition"
+          className="flex items-center gap-2 bg-white shadow-md px-3 py-2 rounded-lg hover:bg-blue-50 transition cursor-pointer"
         >
           <ArrowLeft size={18} /> Back
         </button>
@@ -259,7 +260,7 @@ const exportPDF = () => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setAddOverdueOpen(!addOverdueOpen)}
-                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition shadow-md"
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition shadow-md cursor-pointer"
               >
                 <Plus size={16} /> Add Overdue Client
               </button>
@@ -277,9 +278,10 @@ const exportPDF = () => {
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {availableClients
-                      .filter((c) =>
-                        c.name.toLowerCase().includes(addSearch.toLowerCase())
-                      )
+                      .filter((c) => {
+                        const query = addSearch.trim();
+                        return query === "" ? true : c.name.toLowerCase().includes(query.toLowerCase());
+                      })
                       .map((c) => (
                         <div
                           key={c._id}
@@ -294,9 +296,10 @@ const exportPDF = () => {
                           <Plus size={14} className="text-red-600" />
                         </div>
                       ))}
-                    {availableClients.filter((c) =>
-                      c.name.toLowerCase().includes(addSearch.toLowerCase())
-                    ).length === 0 && (
+                    {availableClients.filter((c) => {
+                      const query = addSearch.trim();
+                      return query === "" ? true : c.name.toLowerCase().includes(query.toLowerCase());
+                    }).length === 0 && (
                       <div className="px-4 py-2 text-gray-500 italic">
                         No clients found
                       </div>
@@ -309,13 +312,13 @@ const exportPDF = () => {
             {/* Export buttons */}
             <button
               onClick={exportPDF}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition cursor-pointer"
             >
               Export PDF
             </button>
             <button
               onClick={exportExcel}
-              className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition"
+              className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition cursor-pointer"
             >
               Export Excel
             </button>
@@ -340,7 +343,7 @@ const exportPDF = () => {
               filteredOverdue.map((client) => (
                 <tr
                   key={client._id}
-                  className="border-b hover:bg-gray-50 transition cursor-pointer"
+                  className="border-b hover:bg-gray-50 transition"
                 >
                   <td className="p-4 font-medium text-gray-800">
                     {client.name}
@@ -355,7 +358,7 @@ const exportPDF = () => {
                   <td className="p-4 text-center">
                     <button
                       onClick={() => removeOverdueClient(client)}
-                      className="flex items-center gap-1 text-red-600 hover:underline mx-auto"
+                      className="flex items-center gap-1 text-red-600 hover:underline mx-auto cursor-pointer"
                     >
                       <X size={14} /> Remove
                     </button>
@@ -395,13 +398,13 @@ const exportPDF = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setModalData({ client: null, amount: "" })}
-                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={addOverdueClient}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg cursor-pointer"
               >
                 Add
               </button>

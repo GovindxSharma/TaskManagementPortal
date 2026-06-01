@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance"; // your axios instance
 import Loader from "../../components/layout/Loader";
 import { useToast } from "../../components/layout/ToastProvider.jsx";
+import Dropdown from "../layout/Dropdown";
 
 export default function PasswordsSection() {
   const navigate = useNavigate();
@@ -139,8 +140,16 @@ export default function PasswordsSection() {
 
   // save add or update
   const handleSave = async () => {
-    if (!newData.client_id || !newData.username)
-      return error("Client and username required");
+    if (!newData.client_id || !newData.username || !newData.username.trim())
+      return error("Client and username are required");
+
+    if (!editingId && (!newData.password || !newData.password.trim())) {
+      return error("Password is required");
+    }
+
+    if (newData.password && !newData.password.trim()) {
+      return error("Password cannot be empty or only spaces");
+    }
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -288,7 +297,7 @@ export default function PasswordsSection() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-gray-600 hover:text-gray-800 font-medium px-3 py-2 bg-white rounded-lg shadow-sm"
+            className="flex items-center gap-1 text-gray-600 hover:text-gray-800 font-medium px-3 py-2 bg-white rounded-lg shadow-sm cursor-pointer"
           >
             <ArrowLeft size={16} /> Back
           </button>
@@ -305,32 +314,34 @@ export default function PasswordsSection() {
               className="pl-10 pr-3 py-2 border rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-400 outline-none w-64"
               placeholder="Search clients / username / category..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (e.target.value.trim() !== "") {
+                  setFilterClientId("");
+                }
+              }}
             />
           </div>
 
-          <div className="relative">
-            <input
-              list="client-filter-list"
-              placeholder="Filter by client..."
-              value={clients.find((c) => c._id === filterClientId)?.name || ""}
-              onChange={(e) => {
-                // if user types, try to find id; if typed value equals known name, set id, else empty
-                const id = getClientIdByName(e.target.value);
-                setFilterClientId(id || "");
-              }}
-              className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-400 outline-none w-56"
-            />
-            <datalist id="client-filter-list">
-              {clientOptions.map((c) => (
-                <option key={c.id} value={c.label} />
-              ))}
-            </datalist>
-          </div>
+          <Dropdown
+            value={clients.find((c) => c._id === filterClientId)?.name || "All Clients"}
+            onChange={(val) => {
+              if (val === "All Clients") {
+                setFilterClientId("");
+              } else {
+                const client = clients.find((c) => c.name === val);
+                setFilterClientId(client?._id || "");
+              }
+              setSearch("");
+            }}
+            options={["All Clients", ...clients.map((c) => c.name)]}
+            width="w-56"
+            placeholder="Filter by client..."
+          />
 
           <button
             onClick={openAddModal}
-            className="ml-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+            className="ml-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 cursor-pointer"
           >
             <Plus size={16} /> Add
           </button>
@@ -384,7 +395,7 @@ export default function PasswordsSection() {
                 <td className="p-3 flex gap-2">
                   <button
                     onClick={() => toggleReveal(p._id, p.password)}
-                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded"
+                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer"
                     title={revealed[p._id] ? "Hide" : "Reveal"}
                   >
                     {revealed[p._id] ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -392,7 +403,7 @@ export default function PasswordsSection() {
 
                   <button
                     onClick={() => handleEdit(p)}
-                    className="p-2 bg-yellow-100 hover:bg-yellow-200 rounded"
+                    className="p-2 bg-yellow-100 hover:bg-yellow-200 rounded cursor-pointer"
                     title="Edit"
                   >
                     <Edit size={16} />
@@ -400,7 +411,7 @@ export default function PasswordsSection() {
 
                   <button
                     onClick={() => handleDelete(p._id)}
-                    className="p-2 bg-red-100 hover:bg-red-200 rounded"
+                    className="p-2 bg-red-100 hover:bg-red-200 rounded cursor-pointer"
                     title="Delete"
                   >
                     <Trash2 size={16} />
@@ -417,7 +428,7 @@ export default function PasswordsSection() {
         <div className="fixed inset-0 bg-black/40 flex justify-center items-start md:items-center z-50 p-4 overflow-auto">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl relative mt-20 md:mt-0">
             <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 cursor-pointer"
               onClick={() => setModalOpen(false)}
             >
               <X size={20} />
@@ -430,25 +441,20 @@ export default function PasswordsSection() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-gray-600">Client</label>
-                <input
-                  list="clients-list"
-                  value={
-                    clients.find((c) => c._id === newData.client_id)?.name || ""
+                <select
+                  value={newData.client_id}
+                  onChange={(e) =>
+                    setNewData((s) => ({ ...s, client_id: e.target.value }))
                   }
-                  onChange={(e) => {
-                    // set by typed name -> find id
-                    const id = getClientIdByName(e.target.value);
-                    setNewData((s) => ({ ...s, client_id: id || "" }));
-                    setClientSearch(e.target.value);
-                  }}
-                  placeholder="Select client"
-                  className="border px-3 py-2 rounded w-full"
-                />
-                <datalist id="clients-list">
+                  className="border px-3 py-2 rounded w-full bg-white text-gray-700 outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+                >
+                  <option value="">Select client</option>
                   {clients.map((c) => (
-                    <option key={c._id} value={c.name} />
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div>
@@ -504,13 +510,13 @@ export default function PasswordsSection() {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setModalOpen(false)}
-                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 cursor-pointer"
               >
                 {editingId ? "Save" : "Add"}
               </button>
@@ -530,7 +536,7 @@ export default function PasswordsSection() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="px-4 py-2 bg-gray-200 rounded"
+                className="px-4 py-2 bg-gray-200 rounded cursor-pointer"
               >
                 Cancel
               </button>
@@ -539,7 +545,7 @@ export default function PasswordsSection() {
                   handleDelete(deleteId);
                   setDeleteId(null);
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded"
+                className="px-4 py-2 bg-red-600 text-white rounded cursor-pointer"
               >
                 Delete
               </button>
