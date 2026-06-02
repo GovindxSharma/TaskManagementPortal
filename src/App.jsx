@@ -18,6 +18,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // ✅ Import Toast
 import { ToastProvider } from "./components/layout/ToastProvider.jsx";
+import { ReminderToastProvider } from "./components/Reminder/ReminderToastProvider.jsx";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -34,6 +35,7 @@ function App() {
       <AuthProvider>
         {/* ✅ Wrap entire app so every route can trigger toast */}
         <ToastProvider>
+          <ReminderToastProvider>
           <div className="App">
             <Routes>
               {/* PUBLIC ROUTE */}
@@ -106,6 +108,7 @@ function App() {
               ))}
             </Routes>
           </div>
+          </ReminderToastProvider>
         </ToastProvider>
       </AuthProvider>
     </Router>
