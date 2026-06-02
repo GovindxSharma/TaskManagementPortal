@@ -28,6 +28,7 @@ export default function PasswordsSection() {
   const [passwords, setPasswords] = useState([]);
   const [clients, setClients] = useState([]);
   const [companyId, setCompanyId] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   // UI state
   const [search, setSearch] = useState("");
@@ -69,6 +70,26 @@ export default function PasswordsSection() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axiosInstance.get(
+        `/dropdown?company_id=${companyId}&type=password`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      setCategories(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch categories", err);
+      error("Failed to fetch categories");
+    }
+  };
+
   const fetchPasswords = async () => {
     if (!companyId) return;
     try {
@@ -87,13 +108,13 @@ export default function PasswordsSection() {
     }
   };
 
-  useEffect(() => {
-    if (!companyId) return;
-    fetchClients();
-    fetchPasswords();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
-
+useEffect(() => {
+  if (!companyId) return;
+  fetchClients();
+  fetchPasswords();
+  fetchCategories();
+}, [companyId]);
+  
   // derived filtered list
   const filteredPasswords = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -105,8 +126,12 @@ export default function PasswordsSection() {
         if (!s) return true;
         return (
           (p.client_id?.name || "").toLowerCase().includes(s) ||
-          (p.category || "").toLowerCase().includes(s) ||
-          (p.username || "").toLowerCase().includes(s) ||
+          (p.category?.name || "")
+            .toLowerCase()
+            .includes(s) ||
+          (p.username || "")
+            .toLowerCase()
+            .includes(s) ||
           (p.remarks || "").toLowerCase().includes(s)
         );
       });
@@ -130,7 +155,7 @@ export default function PasswordsSection() {
     setEditingId(p._id);
     setNewData({
       client_id: p.client_id?._id || "",
-      category: p.category || "",
+      category: p.category?._id || "",
       username: p.username || "",
       password: "", // leave blank, only send if user sets a new password
       remarks: p.remarks || "",
@@ -150,6 +175,8 @@ export default function PasswordsSection() {
     if (newData.password && !newData.password.trim()) {
       return error("Password cannot be empty or only spaces");
     }
+   if (!newData.client_id || !newData.category || !newData.username)
+     return error("Client, category, and username required");
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -377,7 +404,7 @@ export default function PasswordsSection() {
             {filteredPasswords.map((p) => (
               <tr key={p._id} className="border-b hover:bg-gray-50 transition">
                 <td className="p-3 font-medium">{p.client_id?.name || "-"}</td>
-                <td className="p-3">{p.category || "-"}</td>
+                <td className="p-3">{p.category?.name || "-"}</td>{" "}
                 <td className="p-3">{p.username || "-"}</td>
                 <td className="p-3 flex items-center gap-2">
                   <div className="flex items-center gap-2">
@@ -459,13 +486,25 @@ export default function PasswordsSection() {
 
               <div>
                 <label className="text-sm text-gray-600">Category</label>
-                <input
+
+                <select
                   value={newData.category}
                   onChange={(e) =>
-                    setNewData((s) => ({ ...s, category: e.target.value }))
+                    setNewData((s) => ({
+                      ...s,
+                      category: e.target.value,
+                    }))
                   }
                   className="border px-3 py-2 rounded w-full"
-                />
+                >
+                  <option value="">Select Category</option>
+
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
