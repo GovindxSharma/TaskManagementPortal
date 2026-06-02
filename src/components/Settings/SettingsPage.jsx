@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Building, Layers, X, Trash2, Plus } from "lucide-react";
+import { User, Building, Layers, X, Trash2, Plus, Tags } from "lucide-react";
 import { useToast } from "../layout/ToastProvider.jsx";
 
 // API imports
@@ -10,6 +10,12 @@ import {
   updateCategory,
   deleteCategory,
 } from "./CategorySettings.jsx";
+import {
+  getDropdowns,
+  createDropdown,
+  updateDropdown,
+  deleteDropdown,
+} from "./DropdownSettings.jsx";
 import { updateUserApi } from "./AccountSettings.jsx";
 import { getCompanyById, updateCompanyApi } from "./CompanySettings.jsx";
 
@@ -43,6 +49,9 @@ export default function SettingsPage() {
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingCompany, setLoadingCompany] = useState(false);
   const [loadingAccount, setLoadingAccount] = useState(false);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
+  const [licenseCategories, setLicenseCategories] = useState([]);
+  const [passwordCategories, setPasswordCategories] = useState([]);
 
   const handleAccountChange = (e) =>
     setAccount({ ...account, [e.target.name]: e.target.value });
@@ -83,12 +92,32 @@ export default function SettingsPage() {
     }
   };
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchCategories();
-      fetchCompany();
+  const fetchDropdowns = async () => {
+    try {
+      setLoadingDropdowns(true);
+
+      const [licenses, passwords] = await Promise.all([
+        getDropdowns("license"),
+        getDropdowns("password"),
+      ]);
+
+      setLicenseCategories(licenses || []);
+      setPasswordCategories(passwords || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch categories");
+    } finally {
+      setLoadingDropdowns(false);
     }
-  }, [isAdmin]);
+  };
+
+useEffect(() => {
+  if (isAdmin) {
+    fetchCategories();
+    fetchCompany();
+    fetchDropdowns();
+  }
+}, [isAdmin]);
 
   // --- category handlers ---
 const handleCategoryChange = (index, value) => {
@@ -98,7 +127,71 @@ const handleCategoryChange = (index, value) => {
   updated[index].price = value === "" ? "" : value;
 
   setCategories(updated);
-};
+  };
+  
+  const handleDropdownChange = (setter, list, index, value) => {
+    const updated = [...list];
+    updated[index].name = value;
+    setter(updated);
+  };
+
+  const handleUpdateDropdowns = async (list) => {
+    try {
+      await Promise.all(
+        list.map((item) =>
+          updateDropdown(item._id, {
+            name: item.name,
+          }),
+        ),
+      );
+
+      toast.success("Updated successfully");
+      fetchDropdowns();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update");
+    }
+  };
+
+  const handleAddDropdown = async (type) => {
+    try {
+      const created = await createDropdown({
+        name: "New Category",
+        type,
+      });
+
+      if (type === "license") {
+        setLicenseCategories([...licenseCategories, created]);
+      } else {
+        setPasswordCategories([...passwordCategories, created]);
+      }
+
+      toast.success("Category added");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add category");
+    }
+  };
+
+  const handleDeleteDropdown = async (id) => {
+    toast.confirmDelete({
+      message: "Are you sure you want to delete this category?",
+      onConfirm: async () => {
+        try {
+          await deleteDropdown(id);
+
+          setLicenseCategories(licenseCategories.filter((x) => x._id !== id));
+
+          setPasswordCategories(passwordCategories.filter((x) => x._id !== id));
+
+          toast.success("Category deleted successfully");
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to delete category");
+        }
+      },
+    });
+  };
 
 
   const handleUpdateCategories = async () => {
@@ -240,6 +333,15 @@ const handleCategoryChange = (index, value) => {
                 }`}
               >
                 <Layers className="text-teal-500" /> Fees
+              </button>
+              <button
+                onClick={() => setActiveTab("dropdowns")}
+                className={`flex items-center gap-2 p-3 rounded-lg hover:bg-purple-100 transition ${
+                  activeTab === "dropdowns" ? "bg-purple-100 font-semibold" : ""
+                }`}
+              >
+                <Tags size={20} className="text-purple-500 flex-shrink-0" />
+                <span className="text-left">License & Password Categories</span>
               </button>
             </>
           )}
@@ -425,6 +527,120 @@ const handleCategoryChange = (index, value) => {
                   Update Categories
                 </button>
               </div>
+            </div>
+          )}
+
+          {isAdmin && activeTab === "dropdowns" && (
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+                License & Password Categories
+              </h2>
+
+              {loadingDropdowns ? (
+                <p className="text-gray-500">Loading categories...</p>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* LICENSE */}
+                  <div className="border rounded-xl p-5 bg-gray-50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-semibold text-lg">
+                        License Categories
+                      </h3>
+
+                      <button
+                        onClick={() => handleAddDropdown("license")}
+                        className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center gap-2"
+                      >
+                        <Plus size={16} />
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {licenseCategories.map((item, index) => (
+                        <div key={item._id} className="flex gap-2">
+                          <input
+                            value={item.name}
+                            onChange={(e) =>
+                              handleDropdownChange(
+                                setLicenseCategories,
+                                licenseCategories,
+                                index,
+                                e.target.value,
+                              )
+                            }
+                            className="flex-1 border rounded-lg p-2"
+                          />
+
+                          <button
+                            onClick={() => handleDeleteDropdown(item._id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => handleUpdateDropdowns(licenseCategories)}
+                      className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg"
+                    >
+                      Save License Categories
+                    </button>
+                  </div>
+
+                  {/* PASSWORD */}
+                  <div className="border rounded-xl p-5 bg-gray-50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-semibold text-lg">
+                        Password Categories
+                      </h3>
+
+                      <button
+                        onClick={() => handleAddDropdown("password")}
+                        className="bg-green-500 text-white px-3 py-2 rounded-lg flex items-center gap-2"
+                      >
+                        <Plus size={16} />
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {passwordCategories.map((item, index) => (
+                        <div key={item._id} className="flex gap-2">
+                          <input
+                            value={item.name}
+                            onChange={(e) =>
+                              handleDropdownChange(
+                                setPasswordCategories,
+                                passwordCategories,
+                                index,
+                                e.target.value,
+                              )
+                            }
+                            className="flex-1 border rounded-lg p-2"
+                          />
+
+                          <button
+                            onClick={() => handleDeleteDropdown(item._id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => handleUpdateDropdowns(passwordCategories)}
+                      className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg"
+                    >
+                      Save Password Categories
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

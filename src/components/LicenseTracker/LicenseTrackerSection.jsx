@@ -67,19 +67,21 @@ export default function LicenseTrackerSection() {
   const [licenses, setLicenses] = useState([]);
   const [clients, setClients] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [licenseCategories, setLicenseCategories] = useState([]);
   const [showExpiringModal, setShowExpiringModal] = useState(false);
   const [activeTab, setActiveTab] = useState("all"); // "all" | "clients"
   
   // Expand states for Grouped Client Cards
   const [expandedClients, setExpandedClients] = useState({});
 
-  const [newLicense, setNewLicense] = useState({
-    client_id: "",
-    licenseName: "",
-    category: "",
-    startDate: "",
-    endDate: "",
-  });
+const [newLicense, setNewLicense] = useState({
+  client_id: "",
+  licenseName: "",
+  category: "",
+  workerLimit: "",
+  startDate: "",
+  endDate: "",
+});
   
   const [editingLicense, setEditingLicense] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -106,6 +108,29 @@ export default function LicenseTrackerSection() {
     }
   };
 
+  const fetchLicenseCategories = async () => {
+    try {
+      const res = await axiosInstance.get("/dropdown?type=license");
+
+      setLicenseCategories(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+      error("Failed to fetch license categories");
+    }
+  };
+
+const getCategoryName = (category) => {
+  if (!category) return "-";
+
+  if (typeof category === "object") {
+    return category.name || "-";
+  }
+
+  const found = licenseCategories.find((c) => c._id === category);
+
+  return found?.name || "-";
+};
+
   // FETCH CLIENTS
   const fetchClients = async () => {
     try {
@@ -126,16 +151,16 @@ export default function LicenseTrackerSection() {
     }
   };
 
-  useEffect(() => {
-    fetchLicenses();
-    fetchClients();
-  }, []);
+useEffect(() => {
+  fetchLicenses();
+  fetchClients();
+  fetchLicenseCategories();
+}, []);
 
   // DYNAMIC FILTER UTILITIES
-  const uniqueCategories = useMemo(() => {
-    const cats = licenses.map((l) => l.category).filter(Boolean);
-    return [...new Set(cats)].sort();
-  }, [licenses]);
+const uniqueCategories = useMemo(() => {
+  return licenseCategories.sort((a, b) => a.name.localeCompare(b.name));
+}, [licenseCategories]);
 
   const uniqueExpiryYears = useMemo(() => {
     const years = licenses
@@ -190,8 +215,11 @@ export default function LicenseTrackerSection() {
         !filters.licenseName ||
         l.licenseName.toLowerCase().includes(filters.licenseName.toLowerCase());
       
-      const matchesCategory =
-        !filters.category || l.category === filters.category;
+const matchesCategory =
+  !filters.category ||
+  (typeof l.category === "object"
+    ? l.category?._id === filters.category
+    : getCategoryName(l.category) === getCategoryName(filters.category));
 
       let matchesMonth = true;
       let matchesYear = true;
@@ -301,6 +329,7 @@ export default function LicenseTrackerSection() {
         client_id: "",
         licenseName: "",
         category: "",
+        workerLimit: "",
         startDate: "",
         endDate: "",
       });
@@ -330,16 +359,17 @@ export default function LicenseTrackerSection() {
   };
 
   // Open Edit Dialog
-  const handleEditClick = (l) => {
-    setEditingLicense({
-      _id: l._id,
-      client_id: l.client_id?._id || l.client_id,
-      licenseName: l.licenseName,
-      category: l.category,
-      startDate: l.startDate.slice(0, 10),
-      endDate: l.endDate.slice(0, 10),
-    });
-  };
+const handleEditClick = (l) => {
+setEditingLicense({
+  _id: l._id,
+  client_id: l.client_id?._id || l.client_id,
+  licenseName: l.licenseName,
+  category: typeof l.category === "object" ? l.category._id : l.category,
+  workerLimit: l.workerLimit || 0,
+  startDate: l.startDate.slice(0, 10),
+  endDate: l.endDate.slice(0, 10),
+});
+};
 
   // Save Edit Action
   const handleSaveEdit = async () => {
@@ -403,7 +433,7 @@ export default function LicenseTrackerSection() {
       return [
         l.client_id?.name || "-",
         l.licenseName,
-        l.category,
+        l.category?.value || "-",
         l.startDate.slice(0, 10),
         l.endDate.slice(0, 10),
         statusInfo.label,
@@ -432,7 +462,7 @@ export default function LicenseTrackerSection() {
         return {
           Client: l.client_id?.name || "-",
           "License Name": l.licenseName,
-          Category: l.category,
+          Category: l.category?.value || "-",
           "Start Date": l.startDate.slice(0, 10),
           "End Date": l.endDate.slice(0, 10),
           Status: statusInfo.label,
@@ -473,7 +503,7 @@ export default function LicenseTrackerSection() {
       return [
         l.client_id?.name || "-",
         l.licenseName,
-        l.category,
+        l.category?.value || "-",
         l.endDate.slice(0, 10),
         diffDays <= 0 ? "Expired" : `${diffDays} Days`,
       ];
@@ -504,7 +534,7 @@ export default function LicenseTrackerSection() {
         return {
           Client: l.client_id?.name || "-",
           "License Name": l.licenseName,
-          Category: l.category,
+          "Category": l.category?.value || "-",
           "End Date": l.endDate.slice(0, 10),
           "Remaining Days": diffDays <= 0 ? "Expired" : diffDays,
         };
@@ -584,7 +614,10 @@ export default function LicenseTrackerSection() {
               className="group bg-slate-50 border border-slate-200/60 text-slate-600 hover:text-slate-900 px-4 py-2 rounded-xl hover:bg-slate-100 transition-all font-semibold text-sm flex items-center gap-2 cursor-pointer shadow-sm shadow-slate-100"
               onClick={() => navigate(-1)}
             >
-              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform duration-200 text-indigo-500" />
+              <ArrowLeft
+                size={16}
+                className="group-hover:-translate-x-0.5 transition-transform duration-200 text-indigo-500"
+              />
               <span>Back</span>
             </button>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
@@ -640,8 +673,12 @@ export default function LicenseTrackerSection() {
         {/* Total Licenses */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300">
           <div>
-            <span className="text-slate-400 text-sm font-medium">Total Licenses</span>
-            <h3 className="text-3xl font-bold text-slate-800 mt-1">{stats.total}</h3>
+            <span className="text-slate-400 text-sm font-medium">
+              Total Licenses
+            </span>
+            <h3 className="text-3xl font-bold text-slate-800 mt-1">
+              {stats.total}
+            </h3>
           </div>
           <div className="p-4 bg-indigo-50 text-indigo-600 rounded-xl">
             <Award size={24} />
@@ -651,8 +688,12 @@ export default function LicenseTrackerSection() {
         {/* Active Licenses */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300">
           <div>
-            <span className="text-slate-400 text-sm font-medium">Active Licenses</span>
-            <h3 className="text-3xl font-bold text-slate-800 mt-1">{stats.active}</h3>
+            <span className="text-slate-400 text-sm font-medium">
+              Active Licenses
+            </span>
+            <h3 className="text-3xl font-bold text-slate-800 mt-1">
+              {stats.active}
+            </h3>
           </div>
           <div className="p-4 bg-emerald-50 text-emerald-600 rounded-xl">
             <CheckCircle2 size={24} />
@@ -662,8 +703,12 @@ export default function LicenseTrackerSection() {
         {/* Expiring Soon */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300">
           <div>
-            <span className="text-slate-400 text-sm font-medium">Expiring Soon</span>
-            <h3 className="text-3xl font-bold text-slate-800 mt-1">{stats.expiring}</h3>
+            <span className="text-slate-400 text-sm font-medium">
+              Expiring Soon
+            </span>
+            <h3 className="text-3xl font-bold text-slate-800 mt-1">
+              {stats.expiring}
+            </h3>
           </div>
           <div className="p-4 bg-amber-50 text-amber-600 rounded-xl">
             <AlertTriangle size={24} />
@@ -673,8 +718,12 @@ export default function LicenseTrackerSection() {
         {/* Expired Licenses */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300">
           <div>
-            <span className="text-slate-400 text-sm font-medium">Expired Licenses</span>
-            <h3 className="text-3xl font-bold text-slate-800 mt-1">{stats.expired}</h3>
+            <span className="text-slate-400 text-sm font-medium">
+              Expired Licenses
+            </span>
+            <h3 className="text-3xl font-bold text-slate-800 mt-1">
+              {stats.expired}
+            </h3>
           </div>
           <div className="p-4 bg-rose-50 text-rose-600 rounded-xl">
             <AlertCircle size={24} />
@@ -692,7 +741,10 @@ export default function LicenseTrackerSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Client Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+            <Search
+              className="absolute left-3 top-3.5 text-slate-400"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Search Client..."
@@ -706,7 +758,10 @@ export default function LicenseTrackerSection() {
 
           {/* License Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+            <Search
+              className="absolute left-3 top-3.5 text-slate-400"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Search License Name..."
@@ -727,9 +782,10 @@ export default function LicenseTrackerSection() {
             className="border border-slate-200 px-3 py-2.5 rounded-xl w-full text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all text-sm"
           >
             <option value="">All Categories</option>
+
             {uniqueCategories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+              <option key={cat._id} value={cat._id}>
+                {cat.name}
               </option>
             ))}
           </select>
@@ -834,7 +890,10 @@ export default function LicenseTrackerSection() {
               <tbody className="divide-y divide-slate-100 text-slate-700 text-sm">
                 {filteredLicenses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-10 text-slate-400 italic">
+                    <td
+                      colSpan={7}
+                      className="text-center py-10 text-slate-400 italic"
+                    >
                       No licenses match the selected filters.
                     </td>
                   </tr>
@@ -842,7 +901,10 @@ export default function LicenseTrackerSection() {
                   filteredLicenses.map((l) => {
                     const statusInfo = getLicenseStatus(l.endDate);
                     return (
-                      <tr key={l._id} className="hover:bg-slate-50/50 transition">
+                      <tr
+                        key={l._id}
+                        className="hover:bg-slate-50/50 transition"
+                      >
                         <td className="px-6 py-4 font-semibold text-slate-800">
                           {l.client_id?.name || "-"}
                         </td>
@@ -851,7 +913,7 @@ export default function LicenseTrackerSection() {
                         </td>
                         <td className="px-6 py-4">
                           <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200/40">
-                            {l.category}
+                            {getCategoryName(l.category)}{" "}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-slate-500">
@@ -926,13 +988,17 @@ export default function LicenseTrackerSection() {
 
                     <div className="mt-4 pt-3 border-t border-slate-100/60 flex items-center justify-between text-xs text-slate-500">
                       <div>
-                        <span className="block font-medium text-slate-400">Contact</span>
+                        <span className="block font-medium text-slate-400">
+                          Contact
+                        </span>
                         <span className="text-slate-700 font-semibold mt-0.5 block">
                           {client.contactPerson || "-"}
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="block font-medium text-slate-400">Phone</span>
+                        <span className="block font-medium text-slate-400">
+                          Phone
+                        </span>
                         <span className="text-slate-700 font-semibold mt-0.5 block">
                           {client.contactNumber || "-"}
                         </span>
@@ -971,14 +1037,17 @@ export default function LicenseTrackerSection() {
                       {client.licenses.map((lic) => {
                         const statusInfo = getLicenseStatus(lic.endDate);
                         return (
-                          <div key={lic._id} className="py-3 first:pt-0 last:pb-0 space-y-2">
+                          <div
+                            key={lic._id}
+                            className="py-3 first:pt-0 last:pb-0 space-y-2"
+                          >
                             <div className="flex justify-between items-start">
                               <div>
                                 <h5 className="font-semibold text-slate-800 text-sm">
                                   {lic.licenseName}
                                 </h5>
                                 <p className="text-[11px] text-slate-400">
-                                  Category: {lic.category}
+                                  Category: {getCategoryName(lic.category)}{" "}
                                 </p>
                               </div>
                               <span
@@ -990,7 +1059,10 @@ export default function LicenseTrackerSection() {
 
                             <div className="flex justify-between items-center text-xs">
                               <span className="text-slate-400">
-                                Expiry: <strong className="text-slate-600">{lic.endDate.slice(0, 10)}</strong>
+                                Expiry:{" "}
+                                <strong className="text-slate-600">
+                                  {lic.endDate.slice(0, 10)}
+                                </strong>
                               </span>
 
                               <div className="flex gap-2">
@@ -1066,11 +1138,14 @@ export default function LicenseTrackerSection() {
                     const end = new Date(l.endDate);
                     const today = new Date();
                     const diffDays = Math.ceil(
-                      (end - today) / (1000 * 60 * 60 * 24)
+                      (end - today) / (1000 * 60 * 60 * 24),
                     );
 
                     return (
-                      <tr key={l._id} className="hover:bg-slate-50/50 transition">
+                      <tr
+                        key={l._id}
+                        className="hover:bg-slate-50/50 transition"
+                      >
                         <td className="p-3 font-semibold text-slate-800">
                           {l.client_id?.name}
                         </td>
@@ -1147,14 +1222,43 @@ export default function LicenseTrackerSection() {
             <label className="block text-sm font-semibold text-slate-700 mb-1">
               Category
             </label>
-            <input
-              type="text"
-              placeholder="e.g. Accounting, Security, Operating System"
+            <select
               value={newLicense.category}
               onChange={(e) =>
-                setNewLicense({ ...newLicense, category: e.target.value })
+                setNewLicense({
+                  ...newLicense,
+                  category: e.target.value,
+                })
               }
-              className="border border-slate-200 px-3.5 py-2.5 rounded-xl w-full text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all text-sm placeholder:text-slate-400"
+              className="border border-slate-200 px-3.5 py-2.5 rounded-xl w-full text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <option value="">Select Category</option>
+
+              {licenseCategories.map((cat) => (
+                <option key={cat._id} value={cat._id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
+              Worker Limit (if applicable)
+            </label>
+
+            <input
+              type="number"
+              min="0"
+              value={newLicense.workerLimit || ""}
+              onChange={(e) =>
+                setNewLicense({
+                  ...newLicense,
+                  workerLimit: e.target.value,
+                })
+              }
+              className="border border-slate-200 px-3.5 py-2.5 rounded-xl w-full"
+              placeholder="Enter worker limit"
             />
           </div>
 
@@ -1233,16 +1337,42 @@ export default function LicenseTrackerSection() {
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Category
               </label>
-              <input
-                type="text"
-                value={editingLicense.category}
+              <select
+                value={editingLicense.category || ""}
                 onChange={(e) =>
                   setEditingLicense({
                     ...editingLicense,
                     category: e.target.value,
                   })
                 }
-                className="border border-slate-200 px-3.5 py-2.5 rounded-xl w-full text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all text-sm"
+                className="border border-slate-200 px-3.5 py-2.5 rounded-xl w-full"
+              >
+                <option value="">Select Category</option>
+
+                {licenseCategories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Worker Limit (if applicable)
+              </label>
+
+              <input
+                type="number"
+                min="0"
+                value={editingLicense.workerLimit || ""}
+                onChange={(e) =>
+                  setEditingLicense({
+                    ...editingLicense,
+                    workerLimit: e.target.value,
+                  })
+                }
+                className="border border-slate-200 px-3.5 py-2.5 rounded-xl w-full"
               />
             </div>
 
