@@ -201,7 +201,12 @@ const fetchRecentNotifications = async () => {
                       key={i}
                       className="border-b last:border-none hover:bg-indigo-50/40 transition"
                       onClick={() =>
-                        navigate(`/accountant/pending-bills/${b.clientId}`)
+                        navigate(`/accountant/customer/${b.clientId}`, {
+                          state: {
+                            selectedMonthRecordId: b._id,
+                            autoOpenMonthlyRecord: true,
+                          },
+                        })
                       }
                     >
                       <td className="py-2 px-3 font-medium">{b.clientName}</td>

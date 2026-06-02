@@ -25,9 +25,9 @@ export const dynamicClientEmail = (
 
             <p>
               Warm Regards,<br/>
-              <strong>RAJAK TURK</strong><br/>
               Compliance: +919558107027<br/>
-              CCS Helpline: +916358937091
+              CCS Helpline: +916358937094<br/>
+              CCS Landline: 02838297888
             </p>
 
             <img 
