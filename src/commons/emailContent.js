@@ -34,10 +34,9 @@ export const clientWelcomeEmail = (contactPerson, companyName) => {
             <br/>
 
             <p>
-              Warm Regards,<br/>
-              RAJAK TURK<br/>
               Compliance: +919558107027<br/>
-              CCS Helpline: +916358937091
+              CCS Helpline: +916358937094<br/>
+              CCS Landline: 02838297888
             </p>
 
             <img 
@@ -47,10 +46,12 @@ export const clientWelcomeEmail = (contactPerson, companyName) => {
               style="display:block; margin-top:10px;"
             />
 
+            <br/>
+
             <p>
               For more details visit 
-              <a href="https://www.ccsmundra.in">
-                www.ccsmundra.in
+              <a href="https://www.ccsgroup.company">
+                www.ccsgroup.company
               </a>
             </p>
 
