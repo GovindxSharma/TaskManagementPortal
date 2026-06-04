@@ -151,10 +151,10 @@ const Clients = () => {
       newErrors.contactNumber = "Contact number must be exactly 10 digits";
     }
 
-    if (!form.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-      newErrors.email = "Enter a valid email address";
+    if (form.email && form.email.trim()) {
+      if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+        newErrors.email = "Enter a valid email address";
+      }
     }
 
     if (!form.businessUnit || !form.businessUnit.trim()) {
@@ -335,7 +335,7 @@ const Clients = () => {
     { label: "Client Name", key: "name", required: true },
     { label: "Contact Person", key: "contactPerson", required: true },
     { label: "Contact Number", key: "contactNumber", required: true },
-    { label: "Email", key: "email", type: "email", required: true },
+    { label: "Email", key: "email", type: "email" },
     { label: "GST Number", key: "gstNumber" },
     { label: "Address", key: "address" },
     { label: "Company Name", key: "businessUnit", required: true },
@@ -705,9 +705,9 @@ const Clients = () => {
               <div className="border-t p-4 flex justify-end bg-white">
                 <button
                   type="submit"
-                  disabled={!form.name || !form.email}
+                  disabled={!form.name}
                   className={`px-6 py-2 rounded-lg font-medium transition ${
-                    !form.name || !form.email
+                    !form.name
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
