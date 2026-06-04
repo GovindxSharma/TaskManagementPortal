@@ -141,10 +141,36 @@ const Clients = () => {
       newErrors.name = "Client name is required";
     }
 
+    if (!form.contactPerson || !form.contactPerson.trim()) {
+      newErrors.contactPerson = "Contact person is required";
+    }
+
+    if (!form.contactNumber || !form.contactNumber.trim()) {
+      newErrors.contactNumber = "Contact number is required";
+    } else if (!/^\d{10}$/.test(form.contactNumber.trim())) {
+      newErrors.contactNumber = "Contact number must be exactly 10 digits";
+    }
+
     if (!form.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
       newErrors.email = "Enter a valid email address";
+    }
+
+    if (!form.businessUnit || !form.businessUnit.trim()) {
+      newErrors.businessUnit = "Company name is required";
+    }
+
+    if (!form.site || !form.site.trim()) {
+      newErrors.site = "Business unit is required";
+    }
+
+    if (form.startMonth === null || form.startMonth === undefined || form.startMonth === "") {
+      newErrors.startMonth = "Start month is required";
+    }
+
+    if (!form.startYear || !form.startYear.toString().trim()) {
+      newErrors.startYear = "Start year is required";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -307,13 +333,13 @@ const Clients = () => {
 
   const fields = [
     { label: "Client Name", key: "name", required: true },
-    { label: "Contact Person", key: "contactPerson" },
-    { label: "Contact Number", key: "contactNumber" },
+    { label: "Contact Person", key: "contactPerson", required: true },
+    { label: "Contact Number", key: "contactNumber", required: true },
     { label: "Email", key: "email", type: "email", required: true },
     { label: "GST Number", key: "gstNumber" },
     { label: "Address", key: "address" },
-    { label: "Company Name", key: "businessUnit" },
-    { label: "Business Unit", key: "site" },
+    { label: "Company Name", key: "businessUnit", required: true },
+    { label: "Business Unit", key: "site", required: true },
   ];
 
   const exportPDF = () => {
@@ -603,29 +629,34 @@ const Clients = () => {
                   {/* Start Year */}
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">
-                      Start Year
+                      Start Year <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       value={form.startYear}
-                      onChange={(e) =>
-                        setForm({ ...form, startYear: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                      onChange={(e) => {
+                        setForm({ ...form, startYear: e.target.value });
+                        setErrors((prev) => ({ ...prev, startYear: "" }));
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+                      ${errors.startYear ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`}
                     />
+                    {errors.startYear && <span className="text-xs text-red-500 mt-1">{errors.startYear}</span>}
                   </div>
 
                   {/* Start Month */}
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">
-                      Start Month
+                      Start Month <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={form.startMonth}
-                      onChange={(e) =>
-                        setForm({ ...form, startMonth: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400"
+                      onChange={(e) => {
+                        setForm({ ...form, startMonth: e.target.value });
+                        setErrors((prev) => ({ ...prev, startMonth: "" }));
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md
+                      ${errors.startMonth ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`}
                     >
                       <option value="">Select Month</option>
                       {months.map((m, i) => (
@@ -634,6 +665,7 @@ const Clients = () => {
                         </option>
                       ))}
                     </select>
+                    {errors.startMonth && <span className="text-xs text-red-500 mt-1">{errors.startMonth}</span>}
                   </div>
 
                   {/* Status Toggle (Edit Mode) */}
