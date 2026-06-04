@@ -24,7 +24,6 @@ export const dynamicClientEmail = (
             <br/>
 
             <p>
-              Warm Regards,<br/>
               Compliance: +919558107027<br/>
               CCS Helpline: +916358937094<br/>
               CCS Landline: 02838297888
@@ -39,8 +38,8 @@ export const dynamicClientEmail = (
 
             <p>
               For more details visit 
-              <a href="https://www.ccsmundra.in">
-                www.ccsmundra.in
+              <a href="https://www.ccsgroup.company">
+                www.ccsgroup.company
               </a>
             </p>
 
