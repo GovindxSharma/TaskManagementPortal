@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
 import Loader from "../layout/Loader";
+import { ArrowLeft } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function CategoryDetails() {
   const { id } = useParams();
@@ -83,6 +85,72 @@ export default function CategoryDetails() {
     fetchClients();
   }, [fetchClients]);
 
+  const getExportData = () => {
+    return clients.map((c, i) => {
+      const comp = c.monthlyCompliances?.[0];
+      return {
+        "#": i + 1,
+        "Client Name": c.name,
+        "Workers": comp?.noOfWorkers ?? 0,
+        "Bill Amount (INR)": comp?.bill ?? 0,
+      };
+    });
+  };
+
+  const exportExcel = () => {
+    if (!clients.length) return alert("No records to export");
+
+    const data = getExportData();
+
+    // Add totals
+    data.push({
+      "#": "TOTAL",
+      "Client Name": "",
+      "Workers": totalWorkers,
+      "Bill Amount (INR)": totalBill,
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Category Details");
+
+    XLSX.writeFile(workbook, `${categoryName}_Category_Report.xlsx`);
+  };
+
+  const exportPDF = async () => {
+    if (!clients.length) return alert("No records to export");
+
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+
+    const doc = new jsPDF();
+
+    const tableColumn = ["#", "Client Name", "Workers", "Bill Amount"];
+    const data = getExportData();
+    const tableRows = data.map((r) => [
+      r["#"],
+      r["Client Name"],
+      r["Workers"],
+      `INR ${r["Bill Amount (INR)"]}`,
+    ]);
+
+    tableRows.push(["", "TOTAL", totalWorkers, `INR ${totalBill}`]);
+
+    doc.text(`${categoryName} Category Report`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${monthFilter} ${yearFilter}`, 14, 20);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 25,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [79, 70, 229] }, // matching theme color
+    });
+
+    doc.save(`${categoryName}_Category_Report.pdf`);
+  };
+
   // 🔥 Totals
   const totalWorkers = clients.reduce(
     (sum, c) => sum + (c.monthlyCompliances?.[0]?.noOfWorkers || 0),
@@ -103,13 +171,14 @@ export default function CategoryDetails() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 min-h-screen text-gray-800">
       {/* 🔙 Back */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 text-sm text-blue-600 hover:underline"
+        className="flex items-center gap-2 bg-white shadow-sm border px-3 py-1.5 rounded-xl hover:bg-gray-100 text-gray-600 text-sm font-medium transition mb-4 cursor-pointer"
       >
-        ← Back
+        <ArrowLeft size={16} />
+        Back
       </button>
 
       {/* 🔥 Header */}
@@ -139,11 +208,17 @@ export default function CategoryDetails() {
 
       {/* 🔥 Export Buttons */}
       <div className="flex gap-3 mb-4">
-        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+        <button
+          onClick={exportExcel}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer text-sm font-semibold transition"
+        >
           Export Excel
         </button>
 
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <button
+          onClick={exportPDF}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-sm font-semibold transition"
+        >
           Export PDF
         </button>
       </div>

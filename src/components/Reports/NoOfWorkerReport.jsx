@@ -3,8 +3,11 @@ import axios from "../../api/axiosInstance";
 import Dropdown from "../layout/Dropdown";
 import Loader from "../layout/Loader";
 import * as XLSX from "xlsx";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 export default function SimpleComplianceTable() {
+  const navigate = useNavigate();
   const monthNames = [
     "January",
     "February",
@@ -234,6 +237,13 @@ const getComplianceData = (client) => {
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* 🔥 Header */}
       <div className="mb-6">
+        <button
+          onClick={() => navigate("/admin/reports")}
+          className="flex items-center gap-2 bg-white shadow-sm border px-3 py-1.5 rounded-xl hover:bg-gray-100 text-gray-600 text-sm font-medium transition mb-2 cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          Back to Reports
+        </button>
         <h1 className="text-3xl font-bold text-gray-800">
           Number Of Workers Report
         </h1>

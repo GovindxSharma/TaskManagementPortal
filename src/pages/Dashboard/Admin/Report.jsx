@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Users, Layers } from "lucide-react";
+import { Users, Layers, FileText } from "lucide-react";
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -14,6 +14,11 @@ export default function Reports() {
       title: "Category Wise Report",
       icon: <Layers size={22} />,
       path: "/admin/reports/category",
+    },
+    {
+      title: "Pending Bill Report",
+      icon: <FileText size={22} />,
+      path: "/admin/reports/pending-bills",
     },
   ];
 
