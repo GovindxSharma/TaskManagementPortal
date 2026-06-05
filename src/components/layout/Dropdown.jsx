@@ -49,7 +49,7 @@ const Dropdown = ({
       <button
         type="button"
         onClick={toggleDropdown}
-        className="flex items-center justify-between gap-2 bg-white border border-gray-300 px-4 py-2 rounded-lg shadow-sm hover:shadow-md text-gray-700 text-sm w-full"
+        className="flex items-center justify-between gap-2 bg-white border border-gray-300 px-4 py-2 rounded-lg shadow-sm hover:shadow-md text-gray-700 text-sm w-full cursor-pointer"
       >
         {icon && <span className="text-indigo-500">{icon}</span>}
 
