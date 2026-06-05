@@ -6,11 +6,10 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
-  server: {
-    host: '0.0.0.0',
-    allowedHosts: true
+  preview: {
+    allowedHosts: ['taskmanagementportal-xg9n.onrender.com'],
   },
-  
+
   build: {
     commonjsOptions: {
       transformMixedEsModules: true,
