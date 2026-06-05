@@ -17,8 +17,6 @@ export const dynamicClientEmail = (
         <tr>
           <td>
 
-            <p>Dear ${contactPerson || "Sir/Madam"},</p>
-
             ${customContent || "<p>-</p>"}
 
             <br/>
