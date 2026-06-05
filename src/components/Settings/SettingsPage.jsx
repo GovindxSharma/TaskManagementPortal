@@ -53,6 +53,47 @@ export default function SettingsPage() {
   const [licenseCategories, setLicenseCategories] = useState([]);
   const [passwordCategories, setPasswordCategories] = useState([]);
 
+  // --- company dropdown & business units state ---
+  const [companyDropdowns, setCompanyDropdowns] = useState([]);
+  const [selectedCompanyDropdown, setSelectedCompanyDropdown] = useState(null);
+  const [buDropdowns, setBuDropdowns] = useState([]);
+  const [loadingCompanyDropdowns, setLoadingCompanyDropdowns] = useState(false);
+  const [loadingBuDropdowns, setLoadingBuDropdowns] = useState(false);
+
+  const fetchCompanyDropdowns = async () => {
+    try {
+      setLoadingCompanyDropdowns(true);
+      const data = await getDropdowns("companyName");
+      setCompanyDropdowns(data || []);
+      if (data && data.length > 0) {
+        const first = data[0];
+        setSelectedCompanyDropdown(first);
+        fetchBuDropdowns(first._id);
+      } else {
+        setSelectedCompanyDropdown(null);
+        setBuDropdowns([]);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch company names");
+    } finally {
+      setLoadingCompanyDropdowns(false);
+    }
+  };
+
+  const fetchBuDropdowns = async (companyDropdownId) => {
+    try {
+      setLoadingBuDropdowns(true);
+      const data = await getDropdowns("businessUnit", companyDropdownId);
+      setBuDropdowns(data || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch business units");
+    } finally {
+      setLoadingBuDropdowns(false);
+    }
+  };
+
   const handleAccountChange = (e) =>
     setAccount({ ...account, [e.target.name]: e.target.value });
   const handleCompanyChange = (e) =>
@@ -118,6 +159,125 @@ useEffect(() => {
     fetchDropdowns();
   }
 }, [isAdmin]);
+
+useEffect(() => {
+  if (activeTab === "company_dropdowns" && isAdmin) {
+    fetchCompanyDropdowns();
+  }
+}, [activeTab, isAdmin]);
+
+const handleAddCompanyDropdown = async () => {
+  try {
+    const created = await createDropdown({
+      name: "New Company",
+      type: "companyName",
+    });
+    setCompanyDropdowns([...companyDropdowns, created]);
+    setSelectedCompanyDropdown(created);
+    setBuDropdowns([]);
+    toast.success("Company name added");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to add company name");
+  }
+};
+
+const handleDeleteCompanyDropdown = async (id) => {
+  toast.confirmDelete({
+    message: "Are you sure you want to delete this company name? All its business units will become unlinked.",
+    onConfirm: async () => {
+      try {
+        await deleteDropdown(id);
+        const updatedList = companyDropdowns.filter((x) => x._id !== id);
+        setCompanyDropdowns(updatedList);
+        if (selectedCompanyDropdown?._id === id) {
+          if (updatedList.length > 0) {
+            setSelectedCompanyDropdown(updatedList[0]);
+            fetchBuDropdowns(updatedList[0]._id);
+          } else {
+            setSelectedCompanyDropdown(null);
+            setBuDropdowns([]);
+          }
+        }
+        toast.success("Company name deleted");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete company name");
+      }
+    },
+  });
+};
+
+const handleUpdateCompanyDropdowns = async () => {
+  try {
+    await Promise.all(
+      companyDropdowns.map((item) =>
+        updateDropdown(item._id, {
+          name: item.name,
+        }),
+      ),
+    );
+    toast.success("Company names updated successfully");
+    fetchCompanyDropdowns();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to update company names");
+  }
+};
+
+const handleAddBuDropdown = async () => {
+  if (!selectedCompanyDropdown) {
+    toast.warning("Please select a Company Name first");
+    return;
+  }
+  try {
+    const created = await createDropdown({
+      name: "New Business Unit",
+      type: "businessUnit",
+      parent_id: selectedCompanyDropdown._id,
+    });
+    setBuDropdowns([...buDropdowns, created]);
+    toast.success("Business unit added");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to add business unit");
+  }
+};
+
+const handleDeleteBuDropdown = async (id) => {
+  toast.confirmDelete({
+    message: "Are you sure you want to delete this business unit?",
+    onConfirm: async () => {
+      try {
+        await deleteDropdown(id);
+        setBuDropdowns(buDropdowns.filter((x) => x._id !== id));
+        toast.success("Business unit deleted");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete business unit");
+      }
+    },
+  });
+};
+
+const handleUpdateBuDropdowns = async () => {
+  try {
+    await Promise.all(
+      buDropdowns.map((item) =>
+        updateDropdown(item._id, {
+          name: item.name,
+        }),
+      ),
+    );
+    toast.success("Business units updated successfully");
+    if (selectedCompanyDropdown) {
+      fetchBuDropdowns(selectedCompanyDropdown._id);
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to update business units");
+  }
+};
 
   // --- category handlers ---
 const handleCategoryChange = (index, value) => {
@@ -342,6 +502,15 @@ const handleCategoryChange = (index, value) => {
               >
                 <Tags size={20} className="text-purple-500 flex-shrink-0" />
                 <span className="text-left">License & Password Categories</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("company_dropdowns")}
+                className={`flex items-center gap-2 p-3 rounded-lg hover:bg-orange-100 transition ${
+                  activeTab === "company_dropdowns" ? "bg-orange-100 font-semibold" : ""
+                }`}
+              >
+                <Building size={20} className="text-orange-500 flex-shrink-0" />
+                <span className="text-left">Company & BUs Settings</span>
               </button>
             </>
           )}
@@ -641,6 +810,157 @@ const handleCategoryChange = (index, value) => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {isAdmin && activeTab === "company_dropdowns" && (
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                Company & Business Units Settings
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Configure Company Names and their corresponding Business Units for client registration.
+              </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* COMPANY NAMES PANEL */}
+                <div className="border rounded-xl p-5 bg-gray-50">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-lg">Company Names</h3>
+                    <button
+                      onClick={handleAddCompanyDropdown}
+                      className="bg-orange-500 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-orange-600 transition cursor-pointer"
+                    >
+                      <Plus size={16} /> Add Company
+                    </button>
+                  </div>
+
+                  {loadingCompanyDropdowns ? (
+                    <p className="text-gray-500 text-sm">Loading companies...</p>
+                  ) : companyDropdowns.length === 0 ? (
+                    <p className="text-gray-400 text-sm italic py-4 text-center">No companies added yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {companyDropdowns.map((item, index) => (
+                        <div
+                          key={item._id}
+                          onClick={() => {
+                            setSelectedCompanyDropdown(item);
+                            fetchBuDropdowns(item._id);
+                          }}
+                          className={`flex gap-2 p-2 rounded-lg border transition cursor-pointer ${
+                            selectedCompanyDropdown?._id === item._id
+                              ? "border-orange-500 bg-orange-50/50"
+                              : "border-gray-200 bg-white hover:bg-gray-50"
+                          }`}
+                        >
+                          <input
+                            value={item.name}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              handleDropdownChange(
+                                setCompanyDropdowns,
+                                companyDropdowns,
+                                index,
+                                e.target.value,
+                              )
+                            }
+                            className="flex-1 border rounded-lg p-2 text-sm focus:outline-orange-500 bg-transparent border-none focus:ring-0"
+                          />
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCompanyDropdown(item._id);
+                            }}
+                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {companyDropdowns.length > 0 && (
+                    <button
+                      onClick={handleUpdateCompanyDropdowns}
+                      className="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-semibold text-sm transition cursor-pointer"
+                    >
+                      Save Company Names
+                    </button>
+                  )}
+                </div>
+
+                {/* BUSINESS UNITS PANEL */}
+                <div className="border rounded-xl p-5 bg-gray-50">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-lg">
+                      {selectedCompanyDropdown
+                        ? `BUs for: ${selectedCompanyDropdown.name}`
+                        : "Business Units"}
+                    </h3>
+                    <button
+                      onClick={handleAddBuDropdown}
+                      disabled={!selectedCompanyDropdown}
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition cursor-pointer ${
+                        selectedCompanyDropdown
+                          ? "bg-blue-500 hover:bg-blue-600 text-white"
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      }`}
+                    >
+                      <Plus size={16} /> Add BU
+                    </button>
+                  </div>
+
+                  {!selectedCompanyDropdown ? (
+                    <p className="text-gray-400 text-sm italic py-8 text-center">
+                      Select a Company Name to manage its Business Units
+                    </p>
+                  ) : loadingBuDropdowns ? (
+                    <p className="text-gray-500 text-sm">Loading BUs...</p>
+                  ) : buDropdowns.length === 0 ? (
+                    <p className="text-gray-400 text-sm italic py-4 text-center">
+                      No business units added for this company yet
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {buDropdowns.map((item, index) => (
+                        <div key={item._id} className="flex gap-2">
+                          <input
+                            value={item.name}
+                            onChange={(e) =>
+                              handleDropdownChange(
+                                setBuDropdowns,
+                                buDropdowns,
+                                index,
+                                e.target.value,
+                              )
+                            }
+                            className="flex-1 border rounded-lg p-2 text-sm bg-white border-gray-200 focus:outline-blue-500"
+                          />
+
+                          <button
+                            onClick={() => handleDeleteBuDropdown(item._id)}
+                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedCompanyDropdown && buDropdowns.length > 0 && (
+                    <button
+                      onClick={handleUpdateBuDropdowns}
+                      className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-sm transition cursor-pointer"
+                    >
+                      Save Business Units
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

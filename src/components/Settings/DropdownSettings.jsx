@@ -1,8 +1,9 @@
 import axios from "../../api/axiosInstance";
 
 // Fetch dropdowns by type
-export const getDropdowns = async (type) => {
-  const { data } = await axios.get(`/dropdown?type=${type}`);
+export const getDropdowns = async (type, parent_id) => {
+  const url = parent_id ? `/dropdown?type=${type}&parent_id=${parent_id}` : `/dropdown?type=${type}`;
+  const { data } = await axios.get(url);
   return data.data;
 };
 

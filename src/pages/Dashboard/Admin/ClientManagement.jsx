@@ -55,6 +55,8 @@ const Clients = () => {
   const [clients, setClients] = useState([]);
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
+  const [companyList, setCompanyList] = useState([]);
+  const [buList, setBuList] = useState([]);
   const [form, setForm] = useState({
     name: "",
     contactPerson: "",
@@ -109,10 +111,29 @@ const Clients = () => {
     }
   }, [toast]);
 
+  const fetchCompanyDropdowns = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get("/dropdown?type=companyName");
+      setCompanyList(data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch company dropdown options:", err);
+    }
+  }, []);
+
+  const fetchBuDropdowns = useCallback(async (companyDropdownId) => {
+    try {
+      const { data } = await axiosInstance.get(`/dropdown?type=businessUnit&parent_id=${companyDropdownId}`);
+      setBuList(data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch business unit options:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchClients();
     fetchEmployees();
-  }, [fetchClients, fetchEmployees]);
+    fetchCompanyDropdowns();
+  }, [fetchClients, fetchEmployees, fetchCompanyDropdowns]);
 
   const resetForm = () => {
     setForm({
@@ -288,6 +309,15 @@ const Clients = () => {
       status: client.status || "Active",
     });
     setEditingId(client._id);
+
+    // Find matching company dropdown to load BUs
+    const matchedCompany = companyList.find(c => c.name === client.businessUnit);
+    if (matchedCompany) {
+      fetchBuDropdowns(matchedCompany._id);
+    } else {
+      setBuList([]);
+    }
+
     setShowModal(true);
   };
 
@@ -338,8 +368,6 @@ const Clients = () => {
     { label: "Email", key: "email", type: "email" },
     { label: "GST Number", key: "gstNumber" },
     { label: "Address", key: "address" },
-    { label: "Company Name", key: "businessUnit", required: true },
-    { label: "Business Unit", key: "site", required: true },
   ];
 
   const exportPDF = () => {
@@ -604,6 +632,64 @@ const Clients = () => {
                       }}
                     />
                   ))}
+
+                  {/* Company Name (Dropdown) */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Company Name <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <select
+                      value={form.businessUnit}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm({ ...form, businessUnit: val, site: "" });
+                        setErrors((prev) => ({ ...prev, businessUnit: "", site: "" }));
+                        
+                        const matched = companyList.find(c => c.name === val);
+                        if (matched) {
+                          fetchBuDropdowns(matched._id);
+                        } else {
+                          setBuList([]);
+                        }
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md text-sm
+                      ${errors.businessUnit ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`}
+                    >
+                      <option value="">Select Company Name</option>
+                      {companyList.map((c) => (
+                        <option key={c._id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.businessUnit && <span className="text-xs text-red-500 mt-1">{errors.businessUnit}</span>}
+                  </div>
+
+                  {/* Business Unit (Dropdown, dependent on Company Name selection) */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Business Unit <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <select
+                      value={form.site}
+                      disabled={!form.businessUnit}
+                      onChange={(e) => {
+                        setForm({ ...form, site: e.target.value });
+                        setErrors((prev) => ({ ...prev, site: "" }));
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition shadow-sm hover:shadow-md text-sm
+                      ${errors.site ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}
+                      ${!form.businessUnit ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                    >
+                      <option value="">Select Business Unit</option>
+                      {buList.map((bu) => (
+                        <option key={bu._id} value={bu.name}>
+                          {bu.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.site && <span className="text-xs text-red-500 mt-1">{errors.site}</span>}
+                  </div>
 
                   {/* Assign To */}
                   <div className="flex flex-col">
