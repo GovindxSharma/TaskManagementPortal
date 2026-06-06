@@ -104,7 +104,10 @@ function AccountTab({ userLS, toast }) {
     setAccount((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSave = async () => {
-    if (account.newPassword && account.newPassword !== account.confirmPassword) {
+    if (
+      account.newPassword &&
+      account.newPassword !== account.confirmPassword
+    ) {
       toast.error("Passwords do not match");
       return;
     }
@@ -200,7 +203,7 @@ function CompanyTab({ userLS, toast }) {
           email: data.email || "",
           phone: data.phone || "",
           location: data.location || "",
-        })
+        }),
       )
       .catch(() => toast.error("Failed to fetch company info"))
       .finally(() => setLoading(false));
@@ -275,7 +278,9 @@ function FeesTab({ toast }) {
     }
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
 
   const handlePriceChange = (index, value) =>
     setCategories((prev) => {
@@ -312,7 +317,7 @@ function FeesTab({ toast }) {
   const handleSave = async () => {
     // Validate: prices must be valid non-negative numbers
     const invalid = categories.some(
-      (c) => c.price === "" || isNaN(Number(c.price)) || Number(c.price) < 0
+      (c) => c.price === "" || isNaN(Number(c.price)) || Number(c.price) < 0,
     );
     if (invalid) {
       toast.error("All prices must be valid non-negative numbers");
@@ -322,8 +327,8 @@ function FeesTab({ toast }) {
       setLoading(true);
       await Promise.all(
         categories.map((c) =>
-          updateCategory(c._id, { price: Number(c.price), name: c.name })
-        )
+          updateCategory(c._id, { price: Number(c.price), name: c.name }),
+        ),
       );
       toast.success("Fees updated successfully");
       fetch();
@@ -339,7 +344,10 @@ function FeesTab({ toast }) {
 
   return (
     <div>
-      <SectionHeader title="Fees" description="Set price ranges for each category." />
+      <SectionHeader
+        title="Fees"
+        description="Set price ranges for each category."
+      />
       {categories.length === 0 ? (
         <p className="text-sm text-gray-400 italic">No fee categories yet.</p>
       ) : (
@@ -393,7 +401,15 @@ function FeesTab({ toast }) {
 // Tab: License & Password dropdowns
 // ---------------------------------------------------------------------------
 
-function DropdownGroup({ title, color, items, onAdd, onDelete, onSave, onItemChange }) {
+function DropdownGroup({
+  title,
+  color,
+  items,
+  onAdd,
+  onDelete,
+  onSave,
+  onItemChange,
+}) {
   const accent = {
     blue: {
       addBtn: "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100",
@@ -508,15 +524,16 @@ function DropdownsTab({ toast }) {
       return;
     }
     try {
-      await Promise.all(list.map((x) => updateDropdown(x._id, { name: x.name.trim() })));
+      await Promise.all(
+        list.map((x) => updateDropdown(x._id, { name: x.name.trim() })),
+      );
       toast.success(`${label} saved successfully`);
     } catch {
       toast.error("Failed to save");
     }
   };
 
-  if (loading)
-    return <p className="text-gray-500 text-sm">Loading…</p>;
+  if (loading) return <p className="text-gray-500 text-sm">Loading…</p>;
 
   return (
     <div>
@@ -554,7 +571,7 @@ function DropdownsTab({ toast }) {
 
 function CompanyBUTab({ toast }) {
   const [companies, setCompanies] = useState([]);
-  const [buMap, setBuMap] = useState({});          // { companyId: [bu, ...] }
+  const [buMap, setBuMap] = useState({}); // { companyId: [bu, ...] }
   const [selectedId, setSelectedId] = useState(null);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [loadingBUs, setLoadingBUs] = useState(false);
@@ -579,11 +596,13 @@ function CompanyBUTab({ toast }) {
             list.map((c) =>
               getDropdowns("businessUnit", c._id)
                 .then((bus) => ({ id: c._id, bus: bus || [] }))
-                .catch(() => ({ id: c._id, bus: [] }))
-            )
+                .catch(() => ({ id: c._id, bus: [] })),
+            ),
           );
           const map = {};
-          results.forEach(({ id, bus }) => { map[id] = bus; });
+          results.forEach(({ id, bus }) => {
+            map[id] = bus;
+          });
           setBuMap(map);
         } finally {
           setLoadingBUs(false);
@@ -596,7 +615,9 @@ function CompanyBUTab({ toast }) {
   const fetchBUs = useCallback((companyId) => {
     setLoadingBUs(true);
     getDropdowns("businessUnit", companyId)
-      .then((data) => setBuMap((prev) => ({ ...prev, [companyId]: data || [] })))
+      .then((data) =>
+        setBuMap((prev) => ({ ...prev, [companyId]: data || [] })),
+      )
       .catch(() => toast.error("Failed to fetch business units"))
       .finally(() => setLoadingBUs(false));
   }, []);
@@ -609,7 +630,10 @@ function CompanyBUTab({ toast }) {
   // ---- Company CRUD ----
   const handleAddCompany = async () => {
     try {
-      const created = await createDropdown({ name: "New company", type: "companyName" });
+      const created = await createDropdown({
+        name: "New company",
+        type: "companyName",
+      });
       setCompanies((prev) => [...prev, created]);
       setSelectedId(created._id);
       setBuMap((prev) => ({ ...prev, [created._id]: [] }));
@@ -663,7 +687,7 @@ function CompanyBUTab({ toast }) {
     try {
       setSavingCompanies(true);
       await Promise.all(
-        companies.map((c) => updateDropdown(c._id, { name: c.name.trim() }))
+        companies.map((c) => updateDropdown(c._id, { name: c.name.trim() })),
       );
       toast.success("Company names saved");
     } catch {
@@ -675,7 +699,7 @@ function CompanyBUTab({ toast }) {
 
   const updateCompanyName = (id, value) =>
     setCompanies((prev) =>
-      prev.map((c) => (c._id === id ? { ...c, name: value } : c))
+      prev.map((c) => (c._id === id ? { ...c, name: value } : c)),
     );
 
   // ---- BU CRUD ----
@@ -730,7 +754,7 @@ function CompanyBUTab({ toast }) {
     try {
       setSavingBUs(true);
       await Promise.all(
-        currentBUs.map((b) => updateDropdown(b._id, { name: b.name.trim() }))
+        currentBUs.map((b) => updateDropdown(b._id, { name: b.name.trim() })),
       );
       toast.success("Business units saved");
     } catch {
@@ -744,7 +768,7 @@ function CompanyBUTab({ toast }) {
     setBuMap((prev) => ({
       ...prev,
       [selectedId]: (prev[selectedId] || []).map((b) =>
-        b._id === id ? { ...b, name: value } : b
+        b._id === id ? { ...b, name: value } : b,
       ),
     }));
 
@@ -764,7 +788,9 @@ function CompanyBUTab({ toast }) {
           {/* Panel header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
             <div>
-              <p className="text-sm font-semibold text-gray-800">Company names</p>
+              <p className="text-sm font-semibold text-gray-800">
+                Company names
+              </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 Click a row to manage its BUs
               </p>
@@ -786,7 +812,9 @@ function CompanyBUTab({ toast }) {
             ) : companies.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-gray-400">
                 <Building size={28} className="opacity-40" />
-                <p className="text-sm italic">No companies yet. Add one to get started.</p>
+                <p className="text-sm italic">
+                  No companies yet. Add one to get started.
+                </p>
               </div>
             ) : (
               companies.map((company) => {
@@ -818,7 +846,9 @@ function CompanyBUTab({ toast }) {
                       id={`company-input-${company._id}`}
                       value={company.name}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => updateCompanyName(company._id, e.target.value)}
+                      onChange={(e) =>
+                        updateCompanyName(company._id, e.target.value)
+                      }
                       className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 placeholder-gray-300 min-w-0"
                       placeholder="Company name"
                     />
@@ -905,7 +935,8 @@ function CompanyBUTab({ toast }) {
               <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-gray-400">
                 <GitBranch size={28} className="opacity-40" />
                 <p className="text-sm italic text-center">
-                  Select a company on the left to view and manage its business units
+                  Select a company on the left to view and manage its business
+                  units
                 </p>
               </div>
             ) : loadingBUs ? (
@@ -970,7 +1001,8 @@ function CompanyBUTab({ toast }) {
 function NavItem({ label, icon: Icon, tab, activeTab, setActiveTab, color }) {
   const colors = {
     blue: "hover:bg-blue-50 data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700",
-    green: "hover:bg-green-50 data-[active=true]:bg-green-100 data-[active=true]:text-green-700",
+    green:
+      "hover:bg-green-50 data-[active=true]:bg-green-100 data-[active=true]:text-green-700",
     teal: "hover:bg-teal-50 data-[active=true]:bg-teal-100 data-[active=true]:text-teal-700",
     purple:
       "hover:bg-purple-50 data-[active=true]:bg-purple-100 data-[active=true]:text-purple-700",
@@ -1010,11 +1042,41 @@ export default function SettingsPage() {
   const isAdmin = userLS.role === "Admin";
 
   const tabs = [
-    { tab: "account", label: "Account settings", icon: User, color: "blue", adminOnly: false },
-    { tab: "company", label: "Company settings", icon: Building, color: "green", adminOnly: true },
-    { tab: "categories", label: "Fees", icon: Layers, color: "teal", adminOnly: true },
-    { tab: "dropdowns", label: "License & password categories", icon: Tags, color: "purple", adminOnly: true },
-    { tab: "company_dropdowns", label: "Company & BU settings", icon: Building, color: "orange", adminOnly: true },
+    {
+      tab: "account",
+      label: "Account settings",
+      icon: User,
+      color: "blue",
+      adminOnly: false,
+    },
+    {
+      tab: "company",
+      label: "Company settings",
+      icon: Building,
+      color: "green",
+      adminOnly: true,
+    },
+    {
+      tab: "categories",
+      label: "Fees",
+      icon: Layers,
+      color: "teal",
+      adminOnly: true,
+    },
+    {
+      tab: "dropdowns",
+      label: "License & password categories",
+      icon: Tags,
+      color: "purple",
+      adminOnly: true,
+    },
+    {
+      tab: "company_dropdowns",
+      label: "Company & BU settings",
+      icon: Building,
+      color: "orange",
+      adminOnly: true,
+    },
   ];
 
   return (
@@ -1054,9 +1116,7 @@ export default function SettingsPage() {
           {isAdmin && activeTab === "company" && (
             <CompanyTab userLS={userLS} toast={toast} />
           )}
-          {isAdmin && activeTab === "categories" && (
-            <FeesTab toast={toast} />
-          )}
+          {isAdmin && activeTab === "categories" && <FeesTab toast={toast} />}
           {isAdmin && activeTab === "dropdowns" && (
             <DropdownsTab toast={toast} />
           )}
