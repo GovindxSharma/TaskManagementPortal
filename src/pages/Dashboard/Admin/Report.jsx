@@ -16,9 +16,9 @@ export default function Reports() {
       path: "/admin/reports/category",
     },
     {
-      title: "Pending Bill Report",
+      title: "Data Pending Report",
       icon: <FileText size={22} />,
-      path: "/admin/reports/pending-bills",
+      path: "/admin/reports/pending-data",
     },
   ];
 

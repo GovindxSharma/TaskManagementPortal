@@ -37,7 +37,7 @@ export const dashboardRoutes = {
     { path: "/admin/reports/workers", element: <NoOfWorkers /> },
     { path: "/admin/reports/category", element: <CategoryReport /> },
     { path: "/admin/reports/category/:id", element: <CategoryDetails /> },
-    { path: "/admin/reports/pending-bills", element: <PendingBillReport /> },
+    { path: "/admin/reports/pending-data", element: <PendingBillReport /> },
     { path: "/admin/send-email", element: <SendEmail /> },
     { path: "/admin/reminders", element: <ReminderPage /> },
   ],
