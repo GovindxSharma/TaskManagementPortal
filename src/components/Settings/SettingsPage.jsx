@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User,
@@ -9,7 +9,7 @@ import {
   Plus,
   Tags,
   ChevronRight,
-  GitBranch,
+  Search,
 } from "lucide-react";
 import { useToast } from "../layout/ToastProvider.jsx";
 
@@ -39,6 +39,19 @@ const getUserFromLS = () => {
     return {};
   }
 };
+
+/** Extract the most meaningful error message from various error shapes */
+const extractErrorMessage = (err, fallback = "An error occurred") => {
+  return (
+    err?.response?.data?.message ||
+    err?.response?.data?.error ||
+    err?.message ||
+    fallback
+  );
+};
+
+const sortByName = (arr) =>
+  [...arr].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -121,7 +134,7 @@ function AccountTab({ userLS, toast }) {
       toast.success("Account updated successfully");
       setAccount((prev) => ({ ...prev, newPassword: "", confirmPassword: "" }));
     } catch (err) {
-      toast.error(err?.message || "Failed to update account");
+      toast.error(extractErrorMessage(err, "Failed to update account"));
     } finally {
       setLoading(false);
     }
@@ -205,9 +218,11 @@ function CompanyTab({ userLS, toast }) {
           location: data.location || "",
         }),
       )
-      .catch(() => toast.error("Failed to fetch company info"))
+      .catch((err) =>
+        toast.error(extractErrorMessage(err, "Failed to fetch company info")),
+      )
       .finally(() => setLoading(false));
-  }, [userLS.company_id]);
+  }, [userLS.company_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) =>
     setCompany((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -218,7 +233,7 @@ function CompanyTab({ userLS, toast }) {
       await updateCompanyApi(userLS.company_id, company);
       toast.success("Company updated successfully");
     } catch (err) {
-      toast.error("Failed to update company");
+      toast.error(extractErrorMessage(err, "Failed to update company"));
     } finally {
       setLoading(false);
     }
@@ -266,21 +281,21 @@ function FeesTab({ toast }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const fetch = useCallback(async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getCategories();
       setCategories(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error("Failed to fetch fee categories");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to fetch fee categories"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetch();
-  }, [fetch]);
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handlePriceChange = (index, value) =>
     setCategories((prev) => {
@@ -294,8 +309,8 @@ function FeesTab({ toast }) {
       const created = await createCategory({ name: "New range", price: 0 });
       setCategories((prev) => [...prev, created]);
       toast.success("Category added");
-    } catch {
-      toast.error("Failed to add category");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to add category"));
     }
   };
 
@@ -307,15 +322,14 @@ function FeesTab({ toast }) {
           await deleteCategory(id);
           setCategories((prev) => prev.filter((c) => c._id !== id));
           toast.success("Category deleted");
-        } catch {
-          toast.error("Failed to delete category");
+        } catch (err) {
+          toast.error(extractErrorMessage(err, "Failed to delete category"));
         }
       },
     });
   };
 
   const handleSave = async () => {
-    // Validate: prices must be valid non-negative numbers
     const invalid = categories.some(
       (c) => c.price === "" || isNaN(Number(c.price)) || Number(c.price) < 0,
     );
@@ -331,9 +345,9 @@ function FeesTab({ toast }) {
         ),
       );
       toast.success("Fees updated successfully");
-      fetch();
-    } catch {
-      toast.error("Failed to update fees");
+      fetchCategories();
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to update fees"));
     } finally {
       setLoading(false);
     }
@@ -432,7 +446,6 @@ function DropdownGroup({
           <Plus size={15} /> Add
         </button>
       </div>
-
       {items.length === 0 ? (
         <p className="text-sm text-gray-400 italic text-center py-4">
           No items yet. Click "Add" to create one.
@@ -457,7 +470,6 @@ function DropdownGroup({
           ))}
         </div>
       )}
-
       {items.length > 0 && (
         <button
           onClick={onSave}
@@ -482,9 +494,13 @@ function DropdownsTab({ toast }) {
         setLicenseItems(lic || []);
         setPasswordItems(pass || []);
       })
-      .catch(() => toast.error("Failed to fetch dropdown categories"))
+      .catch((err) =>
+        toast.error(
+          extractErrorMessage(err, "Failed to fetch dropdown categories"),
+        ),
+      )
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mutateList = (setter, index, value) =>
     setter((prev) => {
@@ -493,13 +509,14 @@ function DropdownsTab({ toast }) {
       return updated;
     });
 
-  const handleAdd = async (type, setter, list) => {
+  const handleAdd = async (type, setter) => {
     try {
       const created = await createDropdown({ name: "New category", type });
-      setter([...list, created]);
+      // Use functional updater to avoid stale closure on `list`
+      setter((prev) => [...prev, created]);
       toast.success("Item added");
-    } catch {
-      toast.error("Failed to add item");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to add item"));
     }
   };
 
@@ -511,8 +528,8 @@ function DropdownsTab({ toast }) {
           await deleteDropdown(id);
           setter((prev) => prev.filter((x) => x._id !== id));
           toast.success("Deleted successfully");
-        } catch {
-          toast.error("Failed to delete");
+        } catch (err) {
+          toast.error(extractErrorMessage(err, "Failed to delete"));
         }
       },
     });
@@ -528,8 +545,9 @@ function DropdownsTab({ toast }) {
         list.map((x) => updateDropdown(x._id, { name: x.name.trim() })),
       );
       toast.success(`${label} saved successfully`);
-    } catch {
-      toast.error("Failed to save");
+    } catch (err) {
+      // FIX: extract structured error message from response body
+      toast.error(extractErrorMessage(err, `Failed to save ${label}`));
     }
   };
 
@@ -546,7 +564,7 @@ function DropdownsTab({ toast }) {
           title="License categories"
           color="blue"
           items={licenseItems}
-          onAdd={() => handleAdd("license", setLicenseItems, licenseItems)}
+          onAdd={() => handleAdd("license", setLicenseItems)}
           onDelete={(id) => handleDelete(id, setLicenseItems)}
           onSave={() => handleSave(licenseItems, "License categories")}
           onItemChange={(i, val) => mutateList(setLicenseItems, i, val)}
@@ -555,7 +573,7 @@ function DropdownsTab({ toast }) {
           title="Password categories"
           color="green"
           items={passwordItems}
-          onAdd={() => handleAdd("password", setPasswordItems, passwordItems)}
+          onAdd={() => handleAdd("password", setPasswordItems)}
           onDelete={(id) => handleDelete(id, setPasswordItems)}
           onSave={() => handleSave(passwordItems, "Password categories")}
           onItemChange={(i, val) => mutateList(setPasswordItems, i, val)}
@@ -566,134 +584,117 @@ function DropdownsTab({ toast }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tab: Company & Business Units (improved UI)
+// Tab: Company & Business Units
 // ---------------------------------------------------------------------------
 
 function CompanyBUTab({ toast }) {
   const [companies, setCompanies] = useState([]);
-  const [buMap, setBuMap] = useState({}); // { companyId: [bu, ...] }
-  const [selectedId, setSelectedId] = useState(null);
-  const [loadingCompanies, setLoadingCompanies] = useState(false);
-  const [loadingBUs, setLoadingBUs] = useState(false);
-  const [savingCompanies, setSavingCompanies] = useState(false);
-  const [savingBUs, setSavingBUs] = useState(false);
+  const [buMap, setBuMap] = useState({});
+  const [openId, setOpenId] = useState(null);
+  const [loadingInit, setLoadingInit] = useState(false);
+  const [savingCompany, setSavingCompany] = useState(null);
+  const [savingBUs, setSavingBUs] = useState(null);
+  const [search, setSearch] = useState("");
 
-  // ---- Fetch companies + all their BUs in parallel on mount ----
+  // Refs to prevent double-firing from Enter + button click both triggering save
+  const savingCompanyRef = useRef(false);
+  const savingBUsRef = useRef(false);
+
+  // ---- Initial load ----
   useEffect(() => {
-    setLoadingCompanies(true);
+    setLoadingInit(true);
     getDropdowns("companyName")
-      .then(async (data) => {
-        const list = data || [];
-        setCompanies(list);
-        if (list.length === 0) return;
-
-        setSelectedId(list[0]._id);
-
-        // Fetch BUs for every company in parallel so counts are correct immediately
-        setLoadingBUs(true);
-        try {
-          const results = await Promise.all(
-            list.map((c) =>
-              getDropdowns("businessUnit", c._id)
-                .then((bus) => ({ id: c._id, bus: bus || [] }))
-                .catch(() => ({ id: c._id, bus: [] })),
-            ),
-          );
-          const map = {};
-          results.forEach(({ id, bus }) => {
-            map[id] = bus;
-          });
-          setBuMap(map);
-        } finally {
-          setLoadingBUs(false);
-        }
+      .then(async (list) => {
+        list = list || [];
+        // Sort alphabetically on initial load
+        const sorted = sortByName(list);
+        setCompanies(sorted);
+        const results = await Promise.all(
+          sorted.map((c) =>
+            getDropdowns("businessUnit", c._id)
+              .then((bus) => ({ id: c._id, bus: bus || [] }))
+              .catch(() => ({ id: c._id, bus: [] })),
+          ),
+        );
+        const map = {};
+        results.forEach(({ id, bus }) => {
+          map[id] = bus;
+        });
+        setBuMap(map);
       })
-      .catch(() => toast.error("Failed to fetch companies"))
-      .finally(() => setLoadingCompanies(false));
-  }, []);
-
-  const fetchBUs = useCallback((companyId) => {
-    setLoadingBUs(true);
-    getDropdowns("businessUnit", companyId)
-      .then((data) =>
-        setBuMap((prev) => ({ ...prev, [companyId]: data || [] })),
+      .catch((err) =>
+        toast.error(extractErrorMessage(err, "Failed to fetch companies")),
       )
-      .catch(() => toast.error("Failed to fetch business units"))
-      .finally(() => setLoadingBUs(false));
-  }, []);
+      .finally(() => setLoadingInit(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectCompany = (id) => {
-    setSelectedId(id);
-    if (!buMap[id]) fetchBUs(id);
-  };
+  const toggle = (id) => setOpenId((prev) => (prev === id ? null : id));
+
+  // ---- Search filter — still searched against sorted list ----
+  const filteredCompanies = companies.filter((c) =>
+    (c.name || "").toLowerCase().includes(search.toLowerCase()),
+  );
 
   // ---- Company CRUD ----
   const handleAddCompany = async () => {
     try {
-      const created = await createDropdown({
-        name: "New company",
-        type: "companyName",
-      });
-      setCompanies((prev) => [...prev, created]);
-      setSelectedId(created._id);
+      const created = await createDropdown({ name: "", type: "companyName" });
+      // FIX: prepend new company so it appears at the top, then open it
+      setCompanies((prev) => [created, ...prev]);
       setBuMap((prev) => ({ ...prev, [created._id]: [] }));
-      toast.success("Company added");
-      // auto-focus the new input
+      setOpenId(created._id);
       setTimeout(() => {
-        document.getElementById(`company-input-${created._id}`)?.focus();
-        document.getElementById(`company-input-${created._id}`)?.select();
+        document.getElementById(`cname-${created._id}`)?.focus();
       }, 60);
-    } catch {
-      toast.error("Failed to add company");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to add company"));
     }
   };
 
   const handleDeleteCompany = (id) => {
     toast.confirmDelete({
-      message:
-        "Delete this company? All its business units will become unlinked.",
+      message: "Delete this company? All its business units will be removed.",
       onConfirm: async () => {
         try {
           await deleteDropdown(id);
-          setCompanies((prev) => {
-            const updated = prev.filter((c) => c._id !== id);
-            // pick next selected
-            if (selectedId === id) {
-              const next = updated[0]?._id ?? null;
-              setSelectedId(next);
-              if (next && !buMap[next]) fetchBUs(next);
-            }
-            return updated;
-          });
+          setCompanies((prev) => prev.filter((c) => c._id !== id));
           setBuMap((prev) => {
             const copy = { ...prev };
             delete copy[id];
             return copy;
           });
+          if (openId === id) setOpenId(null);
           toast.success("Company deleted");
-        } catch {
-          toast.error("Failed to delete company");
+        } catch (err) {
+          toast.error(extractErrorMessage(err, "Failed to delete company"));
         }
       },
     });
   };
 
-  const handleSaveCompanies = async () => {
-    const invalid = companies.some((c) => !c.name.trim());
-    if (invalid) {
-      toast.error("Company names cannot be empty");
+  // Guard with ref so Enter keydown + button click can't both fire
+  const handleSaveCompanyName = async (company) => {
+    if (savingCompanyRef.current) return;
+    if (!company.name.trim()) {
+      toast.error("Company name cannot be empty");
       return;
     }
+    savingCompanyRef.current = true;
     try {
-      setSavingCompanies(true);
-      await Promise.all(
-        companies.map((c) => updateDropdown(c._id, { name: c.name.trim() })),
+      setSavingCompany(company._id);
+      await updateDropdown(company._id, { name: company.name.trim() });
+      // Re-sort list alphabetically after a name is saved
+      setCompanies((prev) => sortByName(prev));
+      toast.success("Company name saved");
+    } catch (err) {
+      toast.error(
+        extractErrorMessage(err, "Failed to save company name"),
       );
-      toast.success("Company names saved");
-    } catch {
-      toast.error("Failed to save company names");
     } finally {
-      setSavingCompanies(false);
+      setSavingCompany(null);
+      setTimeout(() => {
+        savingCompanyRef.current = false;
+      }, 300);
     }
   };
 
@@ -703,293 +704,281 @@ function CompanyBUTab({ toast }) {
     );
 
   // ---- BU CRUD ----
-  const currentBUs = buMap[selectedId] || [];
-
-  const handleAddBU = async () => {
-    if (!selectedId) return;
+  const handleAddBU = async (companyId) => {
     try {
       const created = await createDropdown({
-        name: "New business unit",
+        name: "",
         type: "businessUnit",
-        parent_id: selectedId,
+        parent_id: companyId,
       });
       setBuMap((prev) => ({
         ...prev,
-        [selectedId]: [...(prev[selectedId] || []), created],
+        [companyId]: [...(prev[companyId] || []), created],
       }));
-      toast.success("Business unit added");
       setTimeout(() => {
-        document.getElementById(`bu-input-${created._id}`)?.focus();
-        document.getElementById(`bu-input-${created._id}`)?.select();
+        document.getElementById(`bu-${created._id}`)?.focus();
       }, 60);
-    } catch {
-      toast.error("Failed to add business unit");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to add business unit"));
     }
   };
 
-  const handleDeleteBU = (id) => {
+  const handleDeleteBU = (companyId, buId) => {
     toast.confirmDelete({
       message: "Delete this business unit?",
       onConfirm: async () => {
         try {
-          await deleteDropdown(id);
+          await deleteDropdown(buId);
           setBuMap((prev) => ({
             ...prev,
-            [selectedId]: (prev[selectedId] || []).filter((x) => x._id !== id),
+            [companyId]: (prev[companyId] || []).filter((b) => b._id !== buId),
           }));
           toast.success("Business unit deleted");
-        } catch {
-          toast.error("Failed to delete business unit");
+        } catch (err) {
+          toast.error(extractErrorMessage(err, "Failed to delete business unit"));
         }
       },
     });
   };
 
-  const handleSaveBUs = async () => {
-    const invalid = currentBUs.some((b) => !b.name.trim());
-    if (invalid) {
-      toast.error("Business unit names cannot be empty");
+  // Guard with ref so button click can't double-fire
+  const handleSaveBUs = async (companyId) => {
+    if (savingBUsRef.current) return;
+    const bus = buMap[companyId] || [];
+    if (bus.some((b) => !b.name.trim())) {
+      toast.error("All business unit names must be filled before saving");
       return;
     }
+    savingBUsRef.current = true;
     try {
-      setSavingBUs(true);
+      setSavingBUs(companyId);
       await Promise.all(
-        currentBUs.map((b) => updateDropdown(b._id, { name: b.name.trim() })),
+        bus.map((b) => updateDropdown(b._id, { name: b.name.trim() })),
       );
       toast.success("Business units saved");
-    } catch {
-      toast.error("Failed to save business units");
+    } catch (err) {
+      // FIX: extract structured error message from response body
+      toast.error(extractErrorMessage(err, "Failed to save business units"));
     } finally {
-      setSavingBUs(false);
+      setSavingBUs(null);
+      setTimeout(() => {
+        savingBUsRef.current = false;
+      }, 300);
     }
   };
 
-  const updateBUName = (id, value) =>
+  const updateBUName = (companyId, buId, value) =>
     setBuMap((prev) => ({
       ...prev,
-      [selectedId]: (prev[selectedId] || []).map((b) =>
-        b._id === id ? { ...b, name: value } : b,
+      [companyId]: (prev[companyId] || []).map((b) =>
+        b._id === buId ? { ...b, name: value } : b,
       ),
     }));
 
-  // ---- Helpers ----
-  const selectedCompany = companies.find((c) => c._id === selectedId);
+  if (loadingInit) return <p className="text-sm text-gray-400">Loading…</p>;
 
   return (
     <div>
       <SectionHeader
         title="Company & business units"
-        description="Manage company names and their business units for client registration."
+        description="Expand a company to view and manage its business units."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* ---- LEFT: Company Names ---- */}
-        <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden bg-white">
-          {/* Panel header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <div>
-              <p className="text-sm font-semibold text-gray-800">
-                Company names
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Click a row to manage its BUs
-              </p>
-            </div>
-            <button
-              onClick={handleAddCompany}
-              className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
-            >
-              <Plus size={14} /> Add company
-            </button>
-          </div>
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[180px]">
+          <Search
+            size={14}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search companies…"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 focus:outline-none transition"
+          />
+        </div>
 
-          {/* Panel body */}
-          <div className="flex-1 overflow-y-auto min-h-[260px] max-h-[380px] p-3 space-y-1.5">
-            {loadingCompanies ? (
-              <p className="text-sm text-gray-400 italic text-center py-8">
-                Loading…
-              </p>
-            ) : companies.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-gray-400">
-                <Building size={28} className="opacity-40" />
-                <p className="text-sm italic">
-                  No companies yet. Add one to get started.
-                </p>
-              </div>
-            ) : (
-              companies.map((company) => {
-                const isSelected = selectedId === company._id;
-                const buCount = (buMap[company._id] || []).length;
-                return (
+        <button
+          onClick={handleAddCompany}
+          className="flex items-center gap-2 border border-gray-300 text-sm font-medium text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex-shrink-0"
+        >
+          <Plus size={15} /> Add company
+        </button>
+      </div>
+
+      {/* Empty states */}
+      {companies.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+          <Building size={32} className="opacity-40" />
+          <p className="text-sm italic">
+            No companies yet. Add one to get started.
+          </p>
+        </div>
+      ) : filteredCompanies.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+          <Search size={28} className="opacity-40" />
+          <p className="text-sm italic">No companies match "{search}"</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filteredCompanies.map((company) => {
+            const isOpen = openId === company._id;
+            const bus = buMap[company._id] || [];
+
+            return (
+              <div
+                key={company._id}
+                className={`border rounded-xl overflow-hidden transition-colors ${
+                  isOpen ? "border-gray-300" : "border-gray-200"
+                }`}
+              >
+                {/* Company header row */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer bg-white hover:bg-gray-50 transition"
+                  onClick={() => toggle(company._id)}
+                >
+                  {/* Icon */}
                   <div
-                    key={company._id}
-                    onClick={() => selectCompany(company._id)}
-                    className={`group flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
-                      isSelected
-                        ? "border-orange-400 bg-orange-50"
-                        : "border-transparent hover:border-gray-200 hover:bg-gray-50"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition ${
+                      isOpen
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-gray-100 text-gray-400"
                     }`}
                   >
-                    {/* Icon */}
-                    <div
-                      className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 transition ${
-                        isSelected
-                          ? "bg-orange-100 text-orange-600"
-                          : "bg-gray-100 text-gray-400"
-                      }`}
-                    >
-                      <Building size={15} />
-                    </div>
+                    <Building size={15} />
+                  </div>
 
-                    {/* Editable name */}
-                    <input
-                      id={`company-input-${company._id}`}
-                      value={company.name}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        updateCompanyName(company._id, e.target.value)
-                      }
-                      className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 placeholder-gray-300 min-w-0"
-                      placeholder="Company name"
-                    />
+                  {/* Editable name */}
+                  <input
+                    id={`cname-${company._id}`}
+                    value={company.name}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) =>
+                      updateCompanyName(company._id, e.target.value)
+                    }
+                    onKeyDown={(e) => {
+                      // blur on Enter so the button click handler fires instead — avoids double toast
+                      if (e.key === "Enter") e.target.blur();
+                    }}
+                    placeholder="Enter company name…"
+                    className={`flex-1 text-sm font-medium bg-transparent border-none outline-none min-w-0 ${
+                      !company.name.trim()
+                        ? "text-gray-400 italic"
+                        : "text-gray-800"
+                    }`}
+                  />
 
-                    {/* BU count badge / selected label */}
-                    {isSelected ? (
-                      <span className="text-[10px] font-semibold text-orange-500 uppercase tracking-wide flex-shrink-0">
-                        selected
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                        {buCount} BU{buCount !== 1 ? "s" : ""}
-                      </span>
-                    )}
-
-                    <ChevronRight
-                      size={14}
-                      className={`flex-shrink-0 transition ${
-                        isSelected ? "text-orange-400" : "text-gray-300"
-                      }`}
-                    />
-
-                    {/* Delete */}
+                  {/* BU count / Save name btn */}
+                  {isOpen ? (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteCompany(company._id);
+                        handleSaveCompanyName(company);
                       }}
-                      className="flex-shrink-0 text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-                      aria-label={`Delete ${company.name}`}
+                      disabled={savingCompany === company._id}
+                      className="text-xs font-medium border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 flex-shrink-0"
                     >
-                      <Trash2 size={15} />
+                      {savingCompany === company._id ? "Saving…" : "Save name"}
                     </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full flex-shrink-0">
+                      {!company.name.trim()
+                        ? "unsaved"
+                        : `${bus.length} BU${bus.length !== 1 ? "s" : ""}`}
+                    </span>
+                  )}
 
-          {/* Panel footer */}
-          {companies.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-              <button
-                onClick={handleSaveCompanies}
-                disabled={savingCompanies}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium py-2 rounded-lg transition disabled:opacity-50"
-              >
-                {savingCompanies ? "Saving…" : "Save company names"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ---- RIGHT: Business Units ---- */}
-        <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden bg-white">
-          {/* Panel header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800 truncate">
-                {selectedCompany ? selectedCompany.name : "Business units"}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {selectedCompany
-                  ? `${currentBUs.length} business unit${currentBUs.length !== 1 ? "s" : ""}`
-                  : "Select a company to manage BUs"}
-              </p>
-            </div>
-            <button
-              onClick={handleAddBU}
-              disabled={!selectedId}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex-shrink-0 ${
-                selectedId
-                  ? "bg-blue-500 hover:bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              <Plus size={14} /> Add BU
-            </button>
-          </div>
-
-          {/* Panel body */}
-          <div className="flex-1 overflow-y-auto min-h-[260px] max-h-[380px] p-3 space-y-1.5">
-            {!selectedId ? (
-              <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-gray-400">
-                <GitBranch size={28} className="opacity-40" />
-                <p className="text-sm italic text-center">
-                  Select a company on the left to view and manage its business
-                  units
-                </p>
-              </div>
-            ) : loadingBUs ? (
-              <p className="text-sm text-gray-400 italic text-center py-8">
-                Loading…
-              </p>
-            ) : currentBUs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-gray-400">
-                <GitBranch size={28} className="opacity-40" />
-                <p className="text-sm italic text-center">
-                  No business units yet. Click "+ Add BU" to create one.
-                </p>
-              </div>
-            ) : (
-              currentBUs.map((bu) => (
-                <div
-                  key={bu._id}
-                  className="group flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:border-blue-200 hover:bg-blue-50 transition"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-300 flex-shrink-0" />
-                  <input
-                    id={`bu-input-${bu._id}`}
-                    value={bu.name}
-                    onChange={(e) => updateBUName(bu._id, e.target.value)}
-                    className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0"
-                    placeholder="Business unit name"
+                  <ChevronRight
+                    size={15}
+                    className={`flex-shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-90" : ""}`}
                   />
+
+                  {/* Delete company */}
                   <button
-                    onClick={() => handleDeleteBU(bu._id)}
-                    className="flex-shrink-0 text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-                    aria-label={`Delete ${bu.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCompany(company._id);
+                    }}
+                    className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition"
+                    aria-label={`Delete ${company.name}`}
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
-              ))
-            )}
-          </div>
 
-          {/* Panel footer */}
-          {selectedId && currentBUs.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-              <button
-                onClick={handleSaveBUs}
-                disabled={savingBUs}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 rounded-lg transition disabled:opacity-50"
-              >
-                {savingBUs ? "Saving…" : "Save business units"}
-              </button>
-            </div>
-          )}
+                {/* BU body (expanded) */}
+                {isOpen && (
+                  <div className="border-t border-gray-100 px-4 py-4 bg-gray-50">
+                    {bus.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic text-center py-4">
+                        No business units yet.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2 mb-4">
+                        {bus.map((bu) => (
+                          <div key={bu._id} className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                            <input
+                              id={`bu-${bu._id}`}
+                              value={bu.name}
+                              onChange={(e) =>
+                                updateBUName(
+                                  company._id,
+                                  bu._id,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Enter business unit name…"
+                              className={`flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 transition ${
+                                !bu.name.trim()
+                                  ? "italic text-gray-400"
+                                  : "text-gray-800"
+                              }`}
+                            />
+                            <button
+                              onClick={() =>
+                                handleDeleteBU(company._id, bu._id)
+                              }
+                              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition"
+                              aria-label={`Delete ${bu.name}`}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer actions */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleAddBU(company._id)}
+                        className="flex items-center gap-1.5 text-sm border border-gray-300 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-white hover:text-gray-900 transition"
+                      >
+                        <Plus size={14} /> Add business unit
+                      </button>
+                      {bus.length > 0 && (
+                        <button
+                          onClick={() => handleSaveBUs(company._id)}
+                          disabled={savingBUs === company._id}
+                          className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg transition disabled:opacity-50"
+                        >
+                          {savingBUs === company._id
+                            ? "Saving…"
+                            : "Save business units"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1081,7 +1070,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">
-      {/* Page header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
         <button
