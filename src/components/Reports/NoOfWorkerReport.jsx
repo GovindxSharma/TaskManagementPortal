@@ -120,15 +120,17 @@ const getComplianceData = (client) => {
     return sum + (comp?.bill || 0);
   }, 0);
 
-  const monthOptions = [
-    ...new Set(
-      clients.flatMap((c) =>
-        (c.monthlyCompliances || []).map(
-          (m) => monthNames[parseInt(m.month, 10) - 1],
-        ),
-      ),
-    ),
-  ];
+const monthOptions = [
+  ...new Set(
+    clients.flatMap((c) =>
+      (c.monthlyCompliances || []).map(
+        (m) => monthNames[parseInt(m.month, 10) - 1]
+      )
+    )
+  ),
+].sort(
+  (a, b) => monthNames.indexOf(a) - monthNames.indexOf(b)
+);
 
   const yearOptions = [
     ...new Set(
