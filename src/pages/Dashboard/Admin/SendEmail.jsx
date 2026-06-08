@@ -4,8 +4,7 @@ import { useToast } from "../../../components/layout/ToastProvider.jsx";
 import WelcomeEmailEditor from "../../../commons/WelcomeEmailEditor.jsx";
 import { dynamicClientEmail } from "../../../commons/dynamicEmailTemplate";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { text } from "framer-motion/client";
+import { ArrowLeft, Loader } from "lucide-react";
 
 const SendEmail = () => {
   const toast = useToast();
@@ -18,6 +17,8 @@ const SendEmail = () => {
   const [emailBody, setEmailBody] = useState("");
 
   const [attachments, setAttachments] = useState([]);
+  const [isSending, setIsSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState({ sent: 0, total: 0 });
   const navigate = useNavigate();
 
   // Fetch Clients
@@ -62,47 +63,97 @@ const endpoint =
   };
 
   const handleSendEmail = async () => {
+    // Prevent double-click / multiple sends
+    if (isSending) return;
+
     if (!selectedClientIds.length) {
       toast.error("Select at least one client");
       return;
     }
 
+    if (!emailSubject.trim()) {
+      toast.error("Please enter a valid subject (cannot be empty or spaces only)");
+      return;
+    }
+
+    setIsSending(true);
+    setSendProgress({ sent: 0, total: selectedClientIds.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
     try {
-      for (const clientId of selectedClientIds) {
-        const client = clients.find((c) => c._id === clientId);
-        if (!client) continue;
+      // Send in parallel batches of 5 to avoid overwhelming the server
+      const BATCH_SIZE = 5;
 
-        const personalizedContent = replaceVariables(emailBody, client);
+      for (let i = 0; i < selectedClientIds.length; i += BATCH_SIZE) {
+        const batch = selectedClientIds.slice(i, i + BATCH_SIZE);
 
-        const finalHtml = dynamicClientEmail(
-          client.contactPerson,
-          client.name,
-          personalizedContent,
+        const results = await Promise.allSettled(
+          batch.map(async (clientId) => {
+            const client = clients.find((c) => c._id === clientId);
+            if (!client) return;
+
+            const personalizedContent = replaceVariables(emailBody, client);
+            const finalHtml = dynamicClientEmail(
+              client.contactPerson,
+              client.name,
+              personalizedContent,
+            );
+
+            const formData = new FormData();
+            formData.append("to", client.email);
+            formData.append("subject", emailSubject.trim());
+            formData.append("html", finalHtml);
+            attachments.forEach((file) => formData.append("attachments", file));
+
+            await axiosInstance.post("/email/send-welcome", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+          }),
         );
 
-        const formData = new FormData();
-        formData.append("to", client.email);
-        formData.append("subject", emailSubject);
-        formData.append("html", finalHtml);
-
-        attachments.forEach((file) => formData.append("attachments", file));
-
-        await axiosInstance.post("/email/send-welcome", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
+        // Tally results
+        results.forEach((r) => {
+          if (r.status === "fulfilled") successCount++;
+          else failCount++;
         });
+
+        // Update live progress counter
+        setSendProgress((prev) => ({
+          ...prev,
+          sent: Math.min(i + BATCH_SIZE, selectedClientIds.length),
+        }));
       }
 
-      toast.success("Emails sent 🚀");
+      if (failCount === 0) {
+        toast.success(
+          `Email${successCount > 1 ? "s" : ""} sent to ${
+            successCount
+          } client${successCount > 1 ? "s" : ""} 🚀`,
+        );
+      } else {
+        toast.error(
+          `${successCount} sent, ${failCount} failed. Please retry the failed ones.`,
+        );
+      }
+
       setSelectedClientIds([]);
       setAttachments([]);
-      navigate("/admin/dashboard");
+      // Stay on the same page — no navigation
     } catch (err) {
-      toast.error("Failed to send emails");
+      toast.error("Failed to send emails. Please try again.");
+    } finally {
+      setIsSending(false);
+      setSendProgress({ sent: 0, total: 0 });
     }
   };
 
+  // Fix: trim search and treat whitespace-only as empty to avoid false results
+  const trimmedSearch = clientSearch.trim();
   const filteredClients = clients.filter((c) =>
-    `${c.name} ${c.email}`.toLowerCase().includes(clientSearch.toLowerCase()),
+    trimmedSearch === "" ||
+    `${c.name} ${c.email}`.toLowerCase().includes(trimmedSearch.toLowerCase()),
   );
 
   return (
@@ -323,9 +374,19 @@ const endpoint =
       <div className="flex justify-end">
         <button
           onClick={handleSendEmail}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+          disabled={isSending}
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg cursor-pointer flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition font-medium min-w-[140px] justify-center"
         >
-          Send Email
+          {isSending ? (
+            <>
+              <Loader size={16} className="animate-spin" />
+              {sendProgress.total > 0
+                ? `Sending ${sendProgress.sent}/${sendProgress.total}...`
+                : "Sending..."}
+            </>
+          ) : (
+            "Send Email"
+          )}
         </button>
       </div>
     </div>

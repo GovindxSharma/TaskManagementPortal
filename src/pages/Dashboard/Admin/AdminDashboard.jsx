@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [revenueData, setRevenueData] = useState([]);
   const currentYear = new Date().getFullYear();
 
+const [selectedClientYear, setSelectedClientYear] = useState(currentYear);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   // const [revenueData, setRevenueData] = useState([]);
 
@@ -121,14 +122,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchClientStats = async () => {
-    try {
-      const res = await axios.get("/auth/client-monthly-stats");
-      setClientStats(res.data.data || []);
-    } catch (err) {
-      console.error("Failed to fetch client stats", err);
-    }
-  };
+const fetchClientStats = async (year) => {
+  try {
+    const res = await axios.get(`/auth/client-monthly-stats?year=${year}`);
+    setClientStats(res.data.data || []);
+  } catch (err) {
+    console.error("Failed to fetch client stats", err);
+  }
+};
 
 const fetchRevenueData = async (year) => {
   try {
@@ -160,8 +161,8 @@ const fetchRevenueData = async (year) => {
     fetchRecentTickets();
     fetchExpiringLicenses();
     fetchOverdueClients();
-    fetchClientStats();
-  }, []);
+    fetchClientStats(selectedClientYear);
+  }, [selectedClientYear]);
   
   useEffect(() => {
     fetchRevenueData(selectedYear);
@@ -441,45 +442,22 @@ useEffect(() => {
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mt-10">
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Client Growth Trend
-          </h2>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={clientStats}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="new"
-                stroke="#4F46E5"
-                strokeWidth={3}
-                name="New Clients"
-              />
-              <Line
-                type="monotone"
-                dataKey="inactive"
-                stroke="#EF4444"
-                strokeWidth={3}
-                name="Inactive Clients"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
-          <div className="flex items-center gap-3 mb-4">
-            <label className="text-sm font-medium text-gray-600">
-              Select Year
-            </label>
-
+        {/* Client Growth Trend */}
+        {/* Client Growth Trend */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Client Growth Trend
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Clients added each month — active vs inactive
+              </p>
+            </div>
             <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="border rounded-lg px-3 py-1.5 shadow-sm"
+              value={selectedClientYear}
+              onChange={(e) => setSelectedClientYear(Number(e.target.value))}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             >
               {[currentYear - 2, currentYear - 1, currentYear].map((year) => (
                 <option key={year} value={year}>
@@ -488,19 +466,187 @@ useEffect(() => {
               ))}
             </select>
           </div>
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Monthly Revenue
-          </h2>
+
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="revenue" name="Revenue (₹)" fill="#10B981" />
+            <LineChart
+              data={clientStats}
+              margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#f0f0f0"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "10px",
+                  fontSize: "13px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                }}
+                formatter={(value, name) => [
+                  value,
+                  name === "new"
+                    ? "🟢 Active Clients Added"
+                    : "🔴 Inactive Clients Added",
+                ]}
+                labelStyle={{
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 4,
+                }}
+              />
+              <Legend
+                formatter={(value) =>
+                  value === "new" ? (
+                    <span style={{ color: "#4F46E5", fontSize: 12 }}>
+                      Active Clients Added
+                    </span>
+                  ) : (
+                    <span style={{ color: "#EF4444", fontSize: 12 }}>
+                      Inactive Clients Added
+                    </span>
+                  )
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="new"
+                stroke="#4F46E5"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: "#4F46E5", strokeWidth: 0 }}
+                activeDot={{ r: 6 }}
+                name="new"
+              />
+              <Line
+                type="monotone"
+                dataKey="inactive"
+                stroke="#EF4444"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: "#EF4444", strokeWidth: 0 }}
+                activeDot={{ r: 6 }}
+                name="inactive"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+
+          {/* Summary pills */}
+          <div className="flex gap-3 mt-4">
+            <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-medium px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
+              Active Clients Added
+            </div>
+            <div className="flex items-center gap-1.5 bg-red-50 text-red-600 text-xs font-medium px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+              Inactive Clients Added
+            </div>
+            <div className="ml-auto text-xs text-gray-400 self-center">
+              Total: {clientStats.reduce((s, d) => s + d.new + d.inactive, 0)}{" "}
+              clients in {selectedClientYear}
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Revenue */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Monthly Revenue
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Total revenue collected per month
+              </p>
+            </div>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            >
+              {[currentYear - 2, currentYear - 1, currentYear].map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart
+              data={revenueData}
+              margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+              barSize={28}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#f0f0f0"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => (v >= 1000 ? `₹${v / 1000}k` : `₹${v}`)}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "10px",
+                  fontSize: "13px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                }}
+                formatter={(value) => [
+                  `₹${value.toLocaleString("en-IN")}`,
+                  "Revenue",
+                ]}
+                labelStyle={{
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 4,
+                }}
+                cursor={{ fill: "#F0FDF4" }}
+              />
+              <Bar
+                dataKey="revenue"
+                name="Revenue"
+                fill="#10B981"
+                radius={[6, 6, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
+
+          {/* Total for selected year */}
+          <div className="mt-4 bg-emerald-50 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-emerald-700 font-medium">
+              Total for {selectedYear}
+            </span>
+            <span className="text-sm font-bold text-emerald-800">
+              ₹
+              {revenueData
+                .reduce((sum, d) => sum + (d.revenue || 0), 0)
+                .toLocaleString("en-IN")}
+            </span>
+          </div>
         </div>
       </div>
     </div>
