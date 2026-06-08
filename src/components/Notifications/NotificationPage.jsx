@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  X,
+  ArrowLeft,
   Trash2,
   Check,
   ChevronDown,
@@ -93,6 +93,7 @@ export default function NotificationsPage({ onStatusChange }) {
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState("compact"); // compact or detailed
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false); // Blocks action buttons during bulk ops
   const [expandedId, setExpandedId] = useState(null); // Track expanded notification
   const [loadingDetails, setLoadingDetails] = useState(null); // Track which notification is loading details
   const [notificationDetails, setNotificationDetails] = useState({}); // Cache for detailed data
@@ -157,13 +158,16 @@ export default function NotificationsPage({ onStatusChange }) {
     loadNotifications();
   }, [currentUserId]);
 
+  const trimmedSearch = search.trim();
+
   // 🔸 Filter & Sort
   const filteredNotifications = notifications
     .filter(
       (n) =>
         (filter === "all" || n.type === filter) &&
-        (n.message.toLowerCase().includes(search.toLowerCase()) ||
-          n.type.toLowerCase().includes(search.toLowerCase())),
+        (trimmedSearch === "" ||
+          n.message.toLowerCase().includes(trimmedSearch.toLowerCase()) ||
+          n.type.toLowerCase().includes(trimmedSearch.toLowerCase())),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -206,68 +210,73 @@ export default function NotificationsPage({ onStatusChange }) {
 
   // 🔸 MARK AS READ
   const markAsRead = async () => {
+    if (isProcessing || !selected.length) return;
+    setIsProcessing(true);
     try {
       await Promise.all(
         selected.map((id) => axios.put(`/notification/read/${id}`)),
       );
-
       setNotifications((prev) =>
         prev.map((n) =>
           selected.includes(n._id) ? { ...n, isRead: true } : n,
         ),
       );
-
       setSelected([]);
-      toast.success("Selected notifications marked as read");
+      toast.success(`${selected.length} notification${selected.length > 1 ? "s" : ""} marked as read`);
       fetchUnreadCount();
     } catch {
       toast.error("Failed to mark notifications as read");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   // 🔸 MARK AS UNREAD
   const markAsUnread = async () => {
+    if (isProcessing || !selected.length) return;
+    setIsProcessing(true);
     try {
       await Promise.all(
         selected.map((id) => axios.put(`/notification/unread/${id}`)),
       );
-
       setNotifications((prev) =>
         prev.map((n) =>
           selected.includes(n._id) ? { ...n, isRead: false } : n,
         ),
       );
-
       setSelected([]);
-      toast.success("Selected notifications marked as unread");
+      toast.success(`${selected.length} notification${selected.length > 1 ? "s" : ""} marked as unread`);
       fetchUnreadCount();
     } catch {
       toast.error("Failed to mark notifications as unread");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   // 🔸 DELETE NOTIFICATIONS
   const deleteNotifications = () => {
-    if (!selected.length) return;
+    if (isProcessing || !selected.length) return;
 
     toast.confirmDelete({
-      message: `Delete ${selected.length} notification(s)?`,
+      message: `Delete ${selected.length} notification${selected.length > 1 ? "s" : ""}?`,
       onConfirm: async () => {
+        setIsProcessing(true);
         try {
           await Promise.all(
             selected.map((id) => axios.delete(`/notification/${id}`)),
           );
-
           setNotifications((prev) =>
             prev.filter((n) => !selected.includes(n._id)),
           );
-
           setSelected([]);
-          toast.success("Notifications deleted");
+          toast.success(`${selected.length > 1 ? `${selected.length} notifications` : "Notification"} deleted successfully`);
           fetchUnreadCount();
         } catch (err) {
           console.error("Delete error:", err);
           toast.error("Failed to delete notifications");
+        } finally {
+          setIsProcessing(false);
         }
       },
     });
@@ -284,6 +293,14 @@ export default function NotificationsPage({ onStatusChange }) {
         <div className="max-w-6xl mx-auto px-6 py-5">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
+              <button
+                className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition font-medium"
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft size={20} />
+                <span className="text-sm">Back</span>
+              </button>
+              <div className="w-px h-6 bg-slate-200" />
               <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
                 <Bell size={24} className="text-white" />
               </div>
@@ -296,12 +313,6 @@ export default function NotificationsPage({ onStatusChange }) {
                 </p>
               </div>
             </div>
-            <button
-              className="p-2 hover:bg-slate-100 rounded-lg transition"
-              onClick={() => navigate(-1)}
-            >
-              <X size={20} className="text-slate-600" />
-            </button>
           </div>
         </div>
       </div>
@@ -347,40 +358,81 @@ export default function NotificationsPage({ onStatusChange }) {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 relative">
+          {/* Processing overlay */}
+          {isProcessing && (
+            <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] rounded-xl z-10 flex items-center justify-center">
+              <div className="flex items-center gap-2 bg-white border border-slate-200 shadow px-4 py-2 rounded-full">
+                <Loader size={16} className="text-blue-500 animate-spin" />
+                <span className="text-sm font-medium text-slate-700">Processing...</span>
+              </div>
+            </div>
+          )}
+
           {/* Search & Filter Row */}
           <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <input
                 type="text"
                 placeholder="Search notifications..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-8"
               />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            <select
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              {notificationTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1">
+              <select
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                {notificationTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type === "all" ? "All Types" : type}
+                  </option>
+                ))}
+              </select>
+              {filter !== "all" && (
+                <button
+                  onClick={() => setFilter("all")}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                  title="Clear filter"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
-            <select
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="unread">Unread First</option>
-            </select>
+            <div className="flex items-center gap-1">
+              <select
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="unread">Unread First</option>
+              </select>
+              {sortBy !== "newest" && (
+                <button
+                  onClick={() => setSortBy("newest")}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                  title="Reset sort"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
             <button
               onClick={() =>
@@ -402,25 +454,29 @@ export default function NotificationsPage({ onStatusChange }) {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={selectAll}
-                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition"
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Select All
                 </button>
                 <button
                   onClick={selectUnread}
-                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition"
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Unread
                 </button>
                 <button
                   onClick={selectRead}
-                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition"
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Read
                 </button>
                 <button
                   onClick={clearSelection}
-                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition"
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Clear
                 </button>
@@ -429,23 +485,41 @@ export default function NotificationsPage({ onStatusChange }) {
 
                 <button
                   onClick={markAsRead}
-                  className="px-4 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition flex items-center gap-1"
+                  disabled={isProcessing}
+                  className="px-4 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Check size={16} /> Mark Read
+                  {isProcessing ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Check size={16} />
+                  )}
+                  Mark Read
                 </button>
 
                 <button
                   onClick={markAsUnread}
-                  className="px-4 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition flex items-center gap-1"
+                  disabled={isProcessing}
+                  className="px-4 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <EyeOff size={16} /> Mark Unread
+                  {isProcessing ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <EyeOff size={16} />
+                  )}
+                  Mark Unread
                 </button>
 
                 <button
                   onClick={deleteNotifications}
-                  className="px-4 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition flex items-center gap-1"
+                  disabled={isProcessing}
+                  className="px-4 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Trash2 size={16} /> Delete
+                  {isProcessing ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                  Delete
                 </button>
               </div>
             </div>
@@ -620,47 +694,72 @@ export default function NotificationsPage({ onStatusChange }) {
                                 </p>
                               </div>
 
-                              {/* Client ID */}
-                              {(notificationDetails[n._id].client_id ||
-                                n.client_id) && (
-                                <div className="bg-slate-50 p-3 rounded-lg">
-                                  <p className="text-xs text-slate-600 font-semibold mb-1">
-                                    Client ID
-                                  </p>
-                                  <p className="text-sm text-slate-700 font-mono">
-                                    {notificationDetails[n._id].client_id ||
-                                      n.client_id}
-                                  </p>
-                                </div>
-                              )}
+                              {/* Client Name */}
+                              {(() => {
+                                const clientRaw =
+                                  notificationDetails[n._id].client_id ||
+                                  n.client_id;
+                                const clientName =
+                                  typeof clientRaw === "object" && clientRaw?.name
+                                    ? clientRaw.name
+                                    : clientRaw
+                                    ? String(clientRaw)
+                                    : null;
+                                return clientName ? (
+                                  <div className="bg-slate-50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-600 font-semibold mb-1">
+                                      Client
+                                    </p>
+                                    <p className="text-sm text-slate-700">
+                                      {clientName}
+                                    </p>
+                                  </div>
+                                ) : null;
+                              })()}
 
-                              {/* Company ID */}
-                              {(notificationDetails[n._id].company_id ||
-                                n.company_id) && (
-                                <div className="bg-slate-50 p-3 rounded-lg">
-                                  <p className="text-xs text-slate-600 font-semibold mb-1">
-                                    Company ID
-                                  </p>
-                                  <p className="text-sm text-slate-700 font-mono">
-                                    {notificationDetails[n._id].company_id ||
-                                      n.company_id}
-                                  </p>
-                                </div>
-                              )}
+                              {/* Company Name */}
+                              {(() => {
+                                const companyRaw =
+                                  notificationDetails[n._id].company_id ||
+                                  n.company_id;
+                                const companyName =
+                                  typeof companyRaw === "object" &&
+                                  companyRaw?.name
+                                    ? companyRaw.name
+                                    : null;
+                                return companyName ? (
+                                  <div className="bg-slate-50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-600 font-semibold mb-1">
+                                      Company
+                                    </p>
+                                    <p className="text-sm text-slate-700">
+                                      {companyName}
+                                    </p>
+                                  </div>
+                                ) : null;
+                              })()}
 
-                              {/* Created By */}
-                              {(notificationDetails[n._id].createdBy ||
-                                n.createdBy) && (
-                                <div className="bg-slate-50 p-3 rounded-lg">
-                                  <p className="text-xs text-slate-600 font-semibold mb-1">
-                                    Created By
-                                  </p>
-                                  <p className="text-sm text-slate-700 font-mono">
-                                    {notificationDetails[n._id].createdBy ||
-                                      n.createdBy}
-                                  </p>
-                                </div>
-                              )}
+                              {/* Created By (updater name) */}
+                              {(() => {
+                                const createdByRaw =
+                                  notificationDetails[n._id].createdBy ||
+                                  n.createdBy;
+                                const createdByName =
+                                  typeof createdByRaw === "object" &&
+                                  createdByRaw?.name
+                                    ? createdByRaw.name
+                                    : null;
+                                return createdByName ? (
+                                  <div className="bg-slate-50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-600 font-semibold mb-1">
+                                      Updated By
+                                    </p>
+                                    <p className="text-sm text-slate-700">
+                                      {createdByName}
+                                    </p>
+                                  </div>
+                                ) : null;
+                              })()}
 
                               {/* Read Status */}
                               <div className="bg-slate-50 p-3 rounded-lg">
