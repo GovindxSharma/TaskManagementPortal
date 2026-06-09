@@ -27,7 +27,7 @@ export default function Reports() {
       {/* Header */}
       <div className="mb-8">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/admin/dashboard")}
           className="
             inline-flex items-center gap-2
             px-4 py-2
