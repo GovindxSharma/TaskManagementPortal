@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "../../../api/axiosInstance";
 import StatusBadge from "./StatusBadge";
@@ -66,18 +66,25 @@ const clampNonNegDecimal = (val) => {
 // ─── Component ────────────────────────────────────────────────────────────────
 const MonthCard = ({ clientId }) => {
   const location = useLocation();
-  // Memoize filters ref so useEffect dependency is stable
+  // Filters passed from the compliance list page
   const filters = location.state?.filters || {};
+
+  // When arriving from PendingBills, only this record ID should be shown/opened
+  const selectedMonthRecordId = location.state?.selectedMonthRecordId || null;
 
   const toast = useToast();
 
   const [monthlyData, setMonthlyData] = useState([]);
   // committedStates = last-saved (or initially fetched) state per record
-  // used as the source of truth for display and cancel rollback
   const [committedStates, setCommittedStates] = useState({});
   // draftStates = in-flight edits; only exists while a card is being edited
   const [draftStates, setDraftStates] = useState({});
   const [editingMonthId, setEditingMonthId] = useState(null);
+
+  // Ref map so we can scroll the highlighted card into view on arrival
+  const cardRefs = useRef({});
+  // Guard: auto-open should fire only once after the initial fetch
+  const hasAutoOpened = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -110,8 +117,8 @@ const MonthCard = ({ clientId }) => {
         initial[m._id] = recordToState(m);
       });
       setCommittedStates(initial);
-      setDraftStates({}); // clear any stale drafts
-      setEditingMonthId(null); // close any open editor
+      setDraftStates({});
+      setEditingMonthId(null);
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch monthly compliance data");
@@ -124,9 +131,33 @@ const MonthCard = ({ clientId }) => {
     if (clientId) fetchMonthlyCompliance();
   }, [fetchMonthlyCompliance]);
 
+  // ── Auto-open & scroll when arriving from PendingBills ───────────────────
+  useEffect(() => {
+    // Only act once, after data has loaded, and only if a target ID was passed
+    if (
+      loading ||
+      !selectedMonthRecordId ||
+      hasAutoOpened.current ||
+      monthlyData.length === 0
+    )
+      return;
+
+    hasAutoOpened.current = true;
+
+    // Start editing that specific card
+    startEditing(selectedMonthRecordId);
+
+    // Scroll it into view with a small delay so the DOM has painted
+    setTimeout(() => {
+      cardRefs.current[selectedMonthRecordId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 150);
+  }, [loading, monthlyData, selectedMonthRecordId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Edit lifecycle ────────────────────────────────────────────────────────
 
-  /** Open editor — copy committed state into draft so edits are isolated */
   const startEditing = (id) => {
     setDraftStates((prev) => ({
       ...prev,
@@ -135,7 +166,6 @@ const MonthCard = ({ clientId }) => {
     setEditingMonthId(id);
   };
 
-  /** Cancel — discard draft, revert to committed state, close editor */
   const cancelEditing = () => {
     setDraftStates((prev) => {
       const next = { ...prev };
@@ -145,7 +175,6 @@ const MonthCard = ({ clientId }) => {
     setEditingMonthId(null);
   };
 
-  /** Update a single field inside the draft for the currently edited card */
   const updateDraft = (id, field, value) => {
     setDraftStates((prev) => ({
       ...prev,
@@ -180,7 +209,6 @@ const MonthCard = ({ clientId }) => {
         ...recordToState({ ...monthRecord, ...data.record }),
       };
 
-      // Commit the saved state and tear down the draft
       setCommittedStates((prev) => ({ ...prev, [monthRecord._id]: updated }));
       setMonthlyData((prev) =>
         prev.map((m) =>
@@ -249,7 +277,21 @@ const MonthCard = ({ clientId }) => {
   };
 
   // ── Filtered view ─────────────────────────────────────────────────────────
+  //
+  // KEY FIX: if we arrived from PendingBills with a selectedMonthRecordId,
+  // show ONLY that record — ignore the manual month/year filter controls.
+  // The user can clear the highlight by using the Reset button.
+  //
+  const [pendingFilterActive, setPendingFilterActive] = useState(
+    !!selectedMonthRecordId,
+  );
+
   const filteredData = monthlyData.filter((m) => {
+    // Arriving from PendingBills: show only the targeted record
+    if (pendingFilterActive && selectedMonthRecordId) {
+      return m._id === selectedMonthRecordId;
+    }
+    // Normal filter controls
     const monthMatch = filterMonth ? m.month === filterMonth : true;
     const yearMatch = filterYear ? m.year === Number(filterYear) : true;
     return monthMatch && yearMatch;
@@ -262,39 +304,59 @@ const MonthCard = ({ clientId }) => {
     <>
       {/* Filters & Add Button */}
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">All Months</option>
-            {MONTH_NAMES.map((m, i) => (
-              <option key={i} value={String(i + 1).padStart(2, "0")}>
-                {m}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* If viewing a specific record from PendingBills, show a clear banner */}
+          {pendingFilterActive && selectedMonthRecordId ? (
+            <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-3 py-2 rounded-lg">
+              <span>Showing selected record only</span>
+              <button
+                onClick={() => {
+                  setPendingFilterActive(false);
+                  setFilterMonth("");
+                  setFilterYear("");
+                }}
+                className="ml-1 hover:text-yellow-900 transition"
+                title="Show all records"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="border rounded px-3 py-2 text-sm"
+              >
+                <option value="">All Months</option>
+                {MONTH_NAMES.map((m, i) => (
+                  <option key={i} value={String(i + 1).padStart(2, "0")}>
+                    {m}
+                  </option>
+                ))}
+              </select>
 
-          <input
-            type="number"
-            placeholder="Year"
-            value={filterYear}
-            min="2000"
-            max="2100"
-            onChange={(e) => setFilterYear(e.target.value)}
-            className="border rounded px-3 py-2 text-sm w-28"
-          />
+              <input
+                type="number"
+                placeholder="Year"
+                value={filterYear}
+                min="2000"
+                max="2100"
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="border rounded px-3 py-2 text-sm w-28"
+              />
 
-          <button
-            onClick={() => {
-              setFilterMonth("");
-              setFilterYear("");
-            }}
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded transition text-sm"
-          >
-            Reset
-          </button>
+              <button
+                onClick={() => {
+                  setFilterMonth("");
+                  setFilterYear("");
+                }}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded transition text-sm"
+              >
+                Reset
+              </button>
+            </>
+          )}
         </div>
 
         {role === "ADMIN" && (
@@ -317,16 +379,23 @@ const MonthCard = ({ clientId }) => {
         {filteredData.map((monthRecord) => {
           const id = monthRecord._id;
           const isEditing = editingMonthId === id;
+          const isHighlighted =
+            selectedMonthRecordId === id && pendingFilterActive;
           // While editing, show draft values; otherwise show committed values
           const state = isEditing ? draftStates[id] : committedStates[id];
-          if (!state) return null; // guard against missing state
+          if (!state) return null;
 
           const monthTitle = `${MONTH_NAMES[parseInt(monthRecord.month, 10) - 1]} ${monthRecord.year}`;
 
           return (
             <div
               key={id}
-              className="border rounded-xl p-5 bg-white shadow hover:shadow-md transition flex flex-col gap-4 relative"
+              ref={(el) => {
+                cardRefs.current[id] = el;
+              }}
+              className={`border rounded-xl p-5 bg-white shadow hover:shadow-md transition flex flex-col gap-4 relative ${
+                isHighlighted ? "ring-2 ring-yellow-400 border-yellow-300" : ""
+              }`}
             >
               {/* Edit / Save / Cancel controls */}
               {!isEditing ? (
