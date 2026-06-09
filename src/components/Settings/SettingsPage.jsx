@@ -3,13 +3,19 @@ import { useNavigate } from "react-router-dom";
 import {
   User,
   Building,
+  Building2,
   Layers,
   X,
   Trash2,
   Plus,
   Tags,
-  ChevronRight,
   Search,
+  Pencil,
+  Check,
+  AlertTriangle,
+  Loader2,
+  Save,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "../layout/ToastProvider.jsx";
 
@@ -29,7 +35,7 @@ import { updateUserApi } from "./AccountSettings.jsx";
 import { getCompanyById, updateCompanyApi } from "./CompanySettings.jsx";
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Shared helpers
 // ---------------------------------------------------------------------------
 
 const getUserFromLS = () => {
@@ -40,22 +46,56 @@ const getUserFromLS = () => {
   }
 };
 
-/** Extract the most meaningful error message from various error shapes */
-const extractErrorMessage = (err, fallback = "An error occurred") => {
-  return (
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    err?.message ||
-    fallback
-  );
-};
+const extractErrorMessage = (err, fallback = "An error occurred") =>
+  err?.response?.data?.message ||
+  err?.response?.data?.error ||
+  err?.message ||
+  fallback;
 
 const sortByName = (arr) =>
   [...arr].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
+const normalize = (s) => (s || "").trim().toLowerCase();
+
+const formatDate = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const diff = Math.floor((Date.now() - d) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`;
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 // ---------------------------------------------------------------------------
-// Sub-components
+// Shared primitives
 // ---------------------------------------------------------------------------
+
+function Spinner({ size = 16 }) {
+  return <Loader2 size={size} className="animate-spin" />;
+}
+
+function Badge({ children, color = "gray" }) {
+  const map = {
+    gray: "bg-gray-100 text-gray-500",
+    green: "bg-green-50 text-green-600 border border-green-200",
+    amber: "bg-amber-50 text-amber-600 border border-amber-200",
+    red: "bg-red-50 text-red-600 border border-red-200",
+    blue: "bg-blue-50 text-blue-600 border border-blue-200",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${map[color]}`}
+    >
+      {children}
+    </span>
+  );
+}
 
 function SectionHeader({ title, description }) {
   return (
@@ -512,7 +552,6 @@ function DropdownsTab({ toast }) {
   const handleAdd = async (type, setter) => {
     try {
       const created = await createDropdown({ name: "New category", type });
-      // Use functional updater to avoid stale closure on `list`
       setter((prev) => [...prev, created]);
       toast.success("Item added");
     } catch (err) {
@@ -546,7 +585,6 @@ function DropdownsTab({ toast }) {
       );
       toast.success(`${label} saved successfully`);
     } catch (err) {
-      // FIX: extract structured error message from response body
       toast.error(extractErrorMessage(err, `Failed to save ${label}`));
     }
   };
@@ -584,29 +622,535 @@ function DropdownsTab({ toast }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tab: Company & Business Units
+// Tab: Company & Business Units — improved
 // ---------------------------------------------------------------------------
+
+// ── Add-Company Modal ────────────────────────────────────────────────────────
+
+function AddCompanyModal({ existingNames, onConfirm, onCancel, loading }) {
+  const [name, setName] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 60);
+  }, []);
+
+  const isDuplicate =
+    name.trim() && existingNames.some((n) => normalize(n) === normalize(name));
+
+  const handleSubmit = () => {
+    if (!name.trim() || isDuplicate) return;
+    onConfirm(name.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center">
+            <Building2 size={18} className="text-orange-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">Add company</h2>
+            <p className="text-xs text-gray-500">
+              Enter a name to create the record
+            </p>
+          </div>
+        </div>
+
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Company name
+        </label>
+        <input
+          ref={inputRef}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          placeholder="e.g. Acme Corp"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+        />
+        {isDuplicate && (
+          <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+            <AlertTriangle size={12} /> A company with this name already exists.
+          </p>
+        )}
+
+        <div className="flex gap-3 mt-6 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!name.trim() || isDuplicate || loading}
+            className="px-5 py-2 text-sm rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium transition disabled:opacity-40 flex items-center gap-2"
+          >
+            {loading && <Spinner size={14} />}
+            Create company
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Delete Confirmation Modal ────────────────────────────────────────────────
+
+function DeleteConfirmModal({ company, buList, onConfirm, onCancel, loading }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Trash2 size={18} className="text-red-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">Delete company</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-5">
+          <p className="text-sm font-semibold text-gray-800 mb-2">
+            {company.name || "(Unnamed company)"}
+          </p>
+          {buList.length > 0 ? (
+            <>
+              <p className="text-xs text-gray-500 mb-2">
+                The following {buList.length} business unit
+                {buList.length !== 1 ? "s" : ""} will also be deleted:
+              </p>
+              <ul className="space-y-1">
+                {buList.map((bu) => (
+                  <li
+                    key={bu._id}
+                    className="flex items-center gap-1.5 text-xs text-gray-700"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                    {bu.name || "(Unnamed)"}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="text-xs text-gray-500">No business units.</p>
+          )}
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-5 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition disabled:opacity-40 flex items-center gap-2"
+          >
+            {loading && <Spinner size={14} />}
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit Drawer ──────────────────────────────────────────────────────────────
+
+function EditDrawer({
+  company,
+  initialBUs,
+  allCompanyNames,
+  onClose,
+  onSaved,
+  toast,
+}) {
+  const [companyName, setCompanyName] = useState(company.name || "");
+  const [buRows, setBuRows] = useState(
+    (initialBUs || []).map((b) => ({ ...b, _local: false })),
+  );
+
+  const [savingName, setSavingName] = useState(false);
+  const [savingBUs, setSavingBUs] = useState(false);
+  const [nameSaveState, setNameSaveState] = useState("idle"); // idle | saved | dirty
+  const [buSaveState, setBuSaveState] = useState("idle");
+
+  // Track name dirty state
+  useEffect(() => {
+    setNameSaveState(companyName !== company.name ? "dirty" : "idle");
+  }, [companyName, company.name]);
+
+  // Dirty check for BUs
+  const buDirty =
+    buRows.some((b) => b._local) ||
+    buRows.some((b) => {
+      const orig = initialBUs.find((x) => x._id === b._id);
+      return orig && orig.name !== b.name;
+    });
+
+  // Duplicate detection
+  const otherCompanyNames = allCompanyNames.filter(
+    (n) => normalize(n) !== normalize(company.name),
+  );
+  const companyNameDuplicate =
+    companyName.trim() !== "" &&
+    companyName.trim() !== company.name &&
+    otherCompanyNames.some((n) => normalize(n) === normalize(companyName));
+
+  const buNameList = buRows.map((b) => normalize(b.name));
+  const buDuplicateSet = new Set(
+    buNameList.filter((n, i) => n && buNameList.indexOf(n) !== i),
+  );
+
+  // Save company name
+  const handleSaveName = async () => {
+    if (!companyName.trim()) {
+      toast.error("Company name cannot be empty");
+      return;
+    }
+    if (companyNameDuplicate) {
+      toast.error("A company with this name already exists");
+      return;
+    }
+    try {
+      setSavingName(true);
+      await updateDropdown(company._id, { name: companyName.trim() });
+      setNameSaveState("saved");
+      onSaved({ ...company, name: companyName.trim() }, null);
+      setTimeout(() => setNameSaveState("idle"), 3000);
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to save company name"));
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  // Add a local-only BU row
+  const handleAddBU = () => {
+    setBuRows((prev) => [
+      ...prev,
+      { _id: `local-${Date.now()}`, name: "", _local: true },
+    ]);
+    setBuSaveState("dirty");
+  };
+
+  const handleBUChange = (id, value) => {
+    setBuRows((prev) =>
+      prev.map((b) => (b._id === id ? { ...b, name: value } : b)),
+    );
+    setBuSaveState("dirty");
+  };
+
+  // Delete BU — local rows just removed; persisted rows call API
+  const handleDeleteBU = (id) => {
+    const bu = buRows.find((b) => b._id === id);
+    if (!bu) return;
+    if (bu._local) {
+      setBuRows((prev) => prev.filter((b) => b._id !== id));
+      return;
+    }
+    deleteDropdown(id)
+      .then(() => {
+        setBuRows((prev) => prev.filter((b) => b._id !== id));
+        toast.success("Business unit deleted");
+        onSaved(null, { companyId: company._id, deletedBuId: id });
+      })
+      .catch((err) =>
+        toast.error(extractErrorMessage(err, "Failed to delete business unit")),
+      );
+  };
+
+  // Save BUs: create local ones, update changed existing ones
+  const handleSaveBUs = async () => {
+    if (buRows.some((b) => !b.name.trim())) {
+      toast.error("All business unit names must be filled in");
+      return;
+    }
+    if (buDuplicateSet.size > 0) {
+      toast.error("Duplicate business unit names detected");
+      return;
+    }
+    try {
+      setSavingBUs(true);
+      const results = await Promise.all(
+        buRows.map((b) =>
+          b._local
+            ? createDropdown({
+                name: b.name.trim(),
+                type: "businessUnit",
+                parent_id: company._id,
+              })
+            : updateDropdown(b._id, { name: b.name.trim() }),
+        ),
+      );
+      const saved = results.map((r) => ({ ...r, _local: false }));
+      setBuRows(saved);
+      setBuSaveState("saved");
+      onSaved(null, { companyId: company._id, buList: saved });
+      setTimeout(() => setBuSaveState("idle"), 3000);
+      toast.success("Business units saved");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to save business units"));
+    } finally {
+      setSavingBUs(false);
+    }
+  };
+
+  const companyIsSaved = !!company.name;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Centered modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col pointer-events-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                <Building2 size={16} className="text-orange-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900 text-sm leading-tight">
+                  {company.name || "New company"}
+                </h2>
+                <p className="text-xs text-gray-400">Company settings</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
+            {/* ── Company Name section ── */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Company name
+                </h3>
+                {nameSaveState === "saved" && (
+                  <Badge color="green">
+                    <Check size={10} /> Saved
+                  </Badge>
+                )}
+                {nameSaveState === "dirty" && (
+                  <Badge color="amber">Unsaved changes</Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                  placeholder="Enter company name…"
+                  className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition ${
+                    companyNameDuplicate
+                      ? "border-red-300 focus:ring-red-300"
+                      : "border-gray-300 focus:ring-orange-400"
+                  }`}
+                />
+                <button
+                  onClick={handleSaveName}
+                  disabled={
+                    savingName ||
+                    !companyName.trim() ||
+                    companyName === company.name ||
+                    companyNameDuplicate
+                  }
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition disabled:opacity-40"
+                >
+                  {savingName ? <Spinner size={14} /> : <Save size={14} />}
+                  Save
+                </button>
+              </div>
+              {companyNameDuplicate && (
+                <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                  <AlertTriangle size={12} /> Name already in use.
+                </p>
+              )}
+            </section>
+
+            {/* ── Business Units section ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Business units
+                </h3>
+                {buSaveState === "saved" && (
+                  <Badge color="green">
+                    <Check size={10} /> Saved
+                  </Badge>
+                )}
+                {(buSaveState === "dirty" || buDirty) &&
+                  buSaveState !== "saved" && (
+                    <Badge color="amber">Unsaved changes</Badge>
+                  )}
+              </div>
+
+              {!companyIsSaved ? (
+                <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <AlertTriangle size={16} className="flex-shrink-0" />
+                  Save the company name first before adding business units.
+                </div>
+              ) : (
+                <>
+                  {buRows.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-sm italic border border-dashed border-gray-200 rounded-xl">
+                      No business units yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 mb-3">
+                      {buRows.map((bu) => {
+                        const isDupe =
+                          bu.name.trim() &&
+                          buDuplicateSet.has(normalize(bu.name));
+                        return (
+                          <div key={bu._id}>
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                              <input
+                                value={bu.name}
+                                onChange={(e) =>
+                                  handleBUChange(bu._id, e.target.value)
+                                }
+                                placeholder="Business unit name…"
+                                className={`flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 transition ${
+                                  isDupe
+                                    ? "border-red-300 focus:ring-red-300"
+                                    : "border-gray-200 focus:ring-orange-300 bg-gray-50 focus:bg-white"
+                                }`}
+                              />
+                              {bu._local && <Badge color="blue">New</Badge>}
+                              <button
+                                onClick={() => handleDeleteBU(bu._id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition flex-shrink-0"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                            {isDupe && (
+                              <p className="mt-1 ml-5 text-xs text-red-500">
+                                Duplicate name.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleAddBU}
+                      className="flex items-center gap-1.5 text-sm border border-gray-300 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition"
+                    >
+                      <Plus size={14} /> Add business unit
+                    </button>
+                    {buRows.length > 0 &&
+                      (buDirty || buSaveState === "dirty") && (
+                        <button
+                          onClick={handleSaveBUs}
+                          disabled={savingBUs}
+                          className="flex items-center gap-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg font-medium transition disabled:opacity-40"
+                        >
+                          {savingBUs ? (
+                            <Spinner size={14} />
+                          ) : (
+                            <Save size={14} />
+                          )}
+                          Save changes
+                        </button>
+                      )}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* ── Metadata section ── */}
+            <section className="border-t border-gray-100 pt-5">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Metadata
+              </h3>
+              <dl className="space-y-2">
+                {company.createdAt && (
+                  <div className="flex justify-between text-xs">
+                    <dt className="text-gray-400">Created</dt>
+                    <dd className="text-gray-600">
+                      {formatDate(company.createdAt)}
+                    </dd>
+                  </div>
+                )}
+                {company.updatedAt && (
+                  <div className="flex justify-between text-xs">
+                    <dt className="text-gray-400">Last updated</dt>
+                    <dd className="text-gray-600">
+                      {formatDate(company.updatedAt)}
+                    </dd>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs">
+                  <dt className="text-gray-400">Business units</dt>
+                  <dd className="text-gray-600">{buRows.length}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-100 px-6 py-4 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Main CompanyBUTab ────────────────────────────────────────────────────────
 
 function CompanyBUTab({ toast }) {
   const [companies, setCompanies] = useState([]);
   const [buMap, setBuMap] = useState({});
-  const [openId, setOpenId] = useState(null);
   const [loadingInit, setLoadingInit] = useState(false);
-  const [savingCompany, setSavingCompany] = useState(null);
-  const [savingBUs, setSavingBUs] = useState(null);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addingCompany, setAddingCompany] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState(null); // { company, buList }
+  const [deletingCompany, setDeletingCompany] = useState(false);
+
+  const [drawerCompany, setDrawerCompany] = useState(null);
+
   const [search, setSearch] = useState("");
 
-  // Refs to prevent double-firing from Enter + button click both triggering save
-  const savingCompanyRef = useRef(false);
-  const savingBUsRef = useRef(false);
-
-  // ---- Initial load ----
+  // Load
   useEffect(() => {
     setLoadingInit(true);
     getDropdowns("companyName")
       .then(async (list) => {
         list = list || [];
-        // Sort alphabetically on initial load
         const sorted = sortByName(list);
         setCompanies(sorted);
         const results = await Promise.all(
@@ -628,182 +1172,119 @@ function CompanyBUTab({ toast }) {
       .finally(() => setLoadingInit(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggle = (id) => setOpenId((prev) => (prev === id ? null : id));
-
-  // ---- Search filter — still searched against sorted list ----
-  const filteredCompanies = companies.filter((c) =>
-    (c.name || "").toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // ---- Company CRUD ----
-  const handleAddCompany = async () => {
+  // Add company — DB record created only after a valid name is entered
+  const handleAddCompany = async (name) => {
+    setAddingCompany(true);
     try {
-      const created = await createDropdown({ name: "", type: "companyName" });
-      // FIX: prepend new company so it appears at the top, then open it
-      setCompanies((prev) => [created, ...prev]);
+      const created = await createDropdown({ name, type: "companyName" });
+      setCompanies((prev) => sortByName([...prev, created]));
       setBuMap((prev) => ({ ...prev, [created._id]: [] }));
-      setOpenId(created._id);
-      setTimeout(() => {
-        document.getElementById(`cname-${created._id}`)?.focus();
-      }, 60);
+      setShowAddModal(false);
+      setDrawerCompany(created); // open drawer immediately
     } catch (err) {
-      toast.error(extractErrorMessage(err, "Failed to add company"));
-    }
-  };
-
-  const handleDeleteCompany = (id) => {
-    toast.confirmDelete({
-      message: "Delete this company? All its business units will be removed.",
-      onConfirm: async () => {
-        try {
-          await deleteDropdown(id);
-          setCompanies((prev) => prev.filter((c) => c._id !== id));
-          setBuMap((prev) => {
-            const copy = { ...prev };
-            delete copy[id];
-            return copy;
-          });
-          if (openId === id) setOpenId(null);
-          toast.success("Company deleted");
-        } catch (err) {
-          toast.error(extractErrorMessage(err, "Failed to delete company"));
-        }
-      },
-    });
-  };
-
-  // Guard with ref so Enter keydown + button click can't both fire
-  const handleSaveCompanyName = async (company) => {
-    if (savingCompanyRef.current) return;
-    if (!company.name.trim()) {
-      toast.error("Company name cannot be empty");
-      return;
-    }
-    savingCompanyRef.current = true;
-    try {
-      setSavingCompany(company._id);
-      await updateDropdown(company._id, { name: company.name.trim() });
-      // Re-sort list alphabetically after a name is saved
-      setCompanies((prev) => sortByName(prev));
-      toast.success("Company name saved");
-    } catch (err) {
-      toast.error(
-        extractErrorMessage(err, "Failed to save company name"),
-      );
+      toast.error(extractErrorMessage(err, "Failed to create company"));
     } finally {
-      setSavingCompany(null);
-      setTimeout(() => {
-        savingCompanyRef.current = false;
-      }, 300);
+      setAddingCompany(false);
     }
   };
 
-  const updateCompanyName = (id, value) =>
-    setCompanies((prev) =>
-      prev.map((c) => (c._id === id ? { ...c, name: value } : c)),
-    );
-
-  // ---- BU CRUD ----
-  const handleAddBU = async (companyId) => {
+  // Delete company
+  const handleDeleteCompany = async () => {
+    if (!deleteTarget) return;
+    setDeletingCompany(true);
     try {
-      const created = await createDropdown({
-        name: "",
-        type: "businessUnit",
-        parent_id: companyId,
+      await deleteDropdown(deleteTarget.company._id);
+      setCompanies((prev) =>
+        prev.filter((c) => c._id !== deleteTarget.company._id),
+      );
+      setBuMap((prev) => {
+        const copy = { ...prev };
+        delete copy[deleteTarget.company._id];
+        return copy;
       });
-      setBuMap((prev) => ({
-        ...prev,
-        [companyId]: [...(prev[companyId] || []), created],
-      }));
-      setTimeout(() => {
-        document.getElementById(`bu-${created._id}`)?.focus();
-      }, 60);
+      if (drawerCompany?._id === deleteTarget.company._id)
+        setDrawerCompany(null);
+      toast.success("Company deleted");
     } catch (err) {
-      toast.error(extractErrorMessage(err, "Failed to add business unit"));
-    }
-  };
-
-  const handleDeleteBU = (companyId, buId) => {
-    toast.confirmDelete({
-      message: "Delete this business unit?",
-      onConfirm: async () => {
-        try {
-          await deleteDropdown(buId);
-          setBuMap((prev) => ({
-            ...prev,
-            [companyId]: (prev[companyId] || []).filter((b) => b._id !== buId),
-          }));
-          toast.success("Business unit deleted");
-        } catch (err) {
-          toast.error(extractErrorMessage(err, "Failed to delete business unit"));
-        }
-      },
-    });
-  };
-
-  // Guard with ref so button click can't double-fire
-  const handleSaveBUs = async (companyId) => {
-    if (savingBUsRef.current) return;
-    const bus = buMap[companyId] || [];
-    if (bus.some((b) => !b.name.trim())) {
-      toast.error("All business unit names must be filled before saving");
-      return;
-    }
-    savingBUsRef.current = true;
-    try {
-      setSavingBUs(companyId);
-      await Promise.all(
-        bus.map((b) => updateDropdown(b._id, { name: b.name.trim() })),
-      );
-      toast.success("Business units saved");
-    } catch (err) {
-      // FIX: extract structured error message from response body
-      toast.error(extractErrorMessage(err, "Failed to save business units"));
+      toast.error(extractErrorMessage(err, "Failed to delete company"));
     } finally {
-      setSavingBUs(null);
-      setTimeout(() => {
-        savingBUsRef.current = false;
-      }, 300);
+      setDeletingCompany(false);
+      setDeleteTarget(null);
     }
   };
 
-  const updateBUName = (companyId, buId, value) =>
-    setBuMap((prev) => ({
-      ...prev,
-      [companyId]: (prev[companyId] || []).map((b) =>
-        b._id === buId ? { ...b, name: value } : b,
-      ),
-    }));
+  // Drawer save callback — keeps table in sync
+  const handleDrawerSaved = (updatedCompany, buUpdate) => {
+    if (updatedCompany) {
+      setCompanies((prev) =>
+        sortByName(
+          prev.map((c) => (c._id === updatedCompany._id ? updatedCompany : c)),
+        ),
+      );
+      setDrawerCompany((prev) =>
+        prev?._id === updatedCompany._id ? updatedCompany : prev,
+      );
+    }
+    if (buUpdate) {
+      if (buUpdate.buList) {
+        setBuMap((prev) => ({
+          ...prev,
+          [buUpdate.companyId]: buUpdate.buList,
+        }));
+      }
+      if (buUpdate.deletedBuId) {
+        setBuMap((prev) => ({
+          ...prev,
+          [buUpdate.companyId]: (prev[buUpdate.companyId] || []).filter(
+            (b) => b._id !== buUpdate.deletedBuId,
+          ),
+        }));
+      }
+    }
+  };
 
-  if (loadingInit) return <p className="text-sm text-gray-400">Loading…</p>;
+  // Search: matches company name OR any BU name
+  const filteredCompanies = companies.filter((c) => {
+    const q = normalize(search);
+    if (!q) return true;
+    if (normalize(c.name).includes(q)) return true;
+    return (buMap[c._id] || []).some((b) => normalize(b.name).includes(q));
+  });
+
+  if (loadingInit) {
+    return (
+      <div className="flex items-center gap-2 text-gray-400 text-sm py-10 justify-center">
+        <Spinner /> Loading…
+      </div>
+    );
+  }
+
+  const allCompanyNames = companies.map((c) => c.name);
 
   return (
     <div>
       <SectionHeader
         title="Company & business units"
-        description="Expand a company to view and manage its business units."
+        description="Manage companies and their business units used during client registration."
       />
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {/* Search */}
         <div className="relative flex-1 min-w-[180px]">
           <Search
             size={14}
             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
           />
           <input
-            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search companies…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 focus:outline-none transition"
+            placeholder="Search companies or business units…"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-orange-400 focus:outline-none transition"
           />
         </div>
-
         <button
-          onClick={handleAddCompany}
-          className="flex items-center gap-2 border border-gray-300 text-sm font-medium text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex-shrink-0"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex-shrink-0"
         >
           <Plus size={15} /> Add company
         </button>
@@ -812,7 +1293,7 @@ function CompanyBUTab({ toast }) {
       {/* Empty states */}
       {companies.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400 border border-dashed border-gray-200 rounded-xl">
-          <Building size={32} className="opacity-40" />
+          <Building2 size={32} className="opacity-40" />
           <p className="text-sm italic">
             No companies yet. Add one to get started.
           </p>
@@ -820,164 +1301,122 @@ function CompanyBUTab({ toast }) {
       ) : filteredCompanies.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
           <Search size={28} className="opacity-40" />
-          <p className="text-sm italic">No companies match "{search}"</p>
+          <p className="text-sm italic">No results for "{search}"</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {filteredCompanies.map((company) => {
-            const isOpen = openId === company._id;
-            const bus = buMap[company._id] || [];
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          {/* Table head — desktop only */}
+          <div className="hidden md:grid grid-cols-[1fr_130px_160px_120px] gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <span>Company</span>
+            <span>Business units</span>
+            <span>Last updated</span>
+            <span className="text-right">Actions</span>
+          </div>
 
-            return (
-              <div
-                key={company._id}
-                className={`border rounded-xl overflow-hidden transition-colors ${
-                  isOpen ? "border-gray-300" : "border-gray-200"
-                }`}
-              >
-                {/* Company header row */}
+          {/* Rows */}
+          <div className="divide-y divide-gray-100">
+            {filteredCompanies.map((company) => {
+              const bus = buMap[company._id] || [];
+              const updated = company.updatedAt || company.createdAt;
+
+              return (
                 <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer bg-white hover:bg-gray-50 transition"
-                  onClick={() => toggle(company._id)}
+                  key={company._id}
+                  className="grid grid-cols-1 md:grid-cols-[1fr_130px_160px_120px] gap-2 md:gap-4 px-4 py-3.5 hover:bg-gray-50/70 transition items-center"
                 >
-                  {/* Icon */}
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition ${
-                      isOpen
-                        ? "bg-blue-100 text-blue-600"
-                        : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    <Building size={15} />
-                  </div>
-
-                  {/* Editable name */}
-                  <input
-                    id={`cname-${company._id}`}
-                    value={company.name}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) =>
-                      updateCompanyName(company._id, e.target.value)
-                    }
-                    onKeyDown={(e) => {
-                      // blur on Enter so the button click handler fires instead — avoids double toast
-                      if (e.key === "Enter") e.target.blur();
-                    }}
-                    placeholder="Enter company name…"
-                    className={`flex-1 text-sm font-medium bg-transparent border-none outline-none min-w-0 ${
-                      !company.name.trim()
-                        ? "text-gray-400 italic"
-                        : "text-gray-800"
-                    }`}
-                  />
-
-                  {/* BU count / Save name btn */}
-                  {isOpen ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSaveCompanyName(company);
-                      }}
-                      disabled={savingCompany === company._id}
-                      className="text-xs font-medium border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 flex-shrink-0"
-                    >
-                      {savingCompany === company._id ? "Saving…" : "Save name"}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full flex-shrink-0">
-                      {!company.name.trim()
-                        ? "unsaved"
-                        : `${bus.length} BU${bus.length !== 1 ? "s" : ""}`}
-                    </span>
-                  )}
-
-                  <ChevronRight
-                    size={15}
-                    className={`flex-shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-90" : ""}`}
-                  />
-
-                  {/* Delete company */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCompany(company._id);
-                    }}
-                    className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition"
-                    aria-label={`Delete ${company.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                {/* BU body (expanded) */}
-                {isOpen && (
-                  <div className="border-t border-gray-100 px-4 py-4 bg-gray-50">
-                    {bus.length === 0 ? (
-                      <p className="text-sm text-gray-400 italic text-center py-4">
-                        No business units yet.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-2 mb-4">
-                        {bus.map((bu) => (
-                          <div key={bu._id} className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                            <input
-                              id={`bu-${bu._id}`}
-                              value={bu.name}
-                              onChange={(e) =>
-                                updateBUName(
-                                  company._id,
-                                  bu._id,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="Enter business unit name…"
-                              className={`flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 transition ${
-                                !bu.name.trim()
-                                  ? "italic text-gray-400"
-                                  : "text-gray-800"
-                              }`}
-                            />
-                            <button
-                              onClick={() =>
-                                handleDeleteBU(company._id, bu._id)
-                              }
-                              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition"
-                              aria-label={`Delete ${bu.name}`}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Footer actions */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleAddBU(company._id)}
-                        className="flex items-center gap-1.5 text-sm border border-gray-300 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-white hover:text-gray-900 transition"
-                      >
-                        <Plus size={14} /> Add business unit
-                      </button>
-                      {bus.length > 0 && (
-                        <button
-                          onClick={() => handleSaveBUs(company._id)}
-                          disabled={savingBUs === company._id}
-                          className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg transition disabled:opacity-50"
-                        >
-                          {savingBUs === company._id
-                            ? "Saving…"
-                            : "Save business units"}
-                        </button>
+                  {/* Name + BU preview */}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {company.name || (
+                        <span className="text-gray-400 italic">Unnamed</span>
                       )}
-                    </div>
+                    </p>
+                    {bus.length > 0 && (
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        {bus
+                          .slice(0, 3)
+                          .map((b) => b.name)
+                          .join(", ")}
+                        {bus.length > 3 && ` +${bus.length - 3} more`}
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {/* BU count */}
+                  <div className="hidden md:block">
+                    <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
+                      {bus.length} BU{bus.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  {/* Last updated */}
+                  <div className="hidden md:block text-xs text-gray-400">
+                    {formatDate(updated) || "—"}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 md:justify-end">
+                    <button
+                      onClick={() => setDrawerCompany(company)}
+                      className="flex items-center gap-1.5 text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget({ company, buList: bus })}
+                      className="flex items-center gap-1 text-xs font-medium border border-gray-200 text-gray-400 px-2.5 py-1.5 rounded-lg hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition"
+                      aria-label={`Delete ${company.name}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
+      )}
+
+      {/* Summary */}
+      {companies.length > 0 && (
+        <p className="text-xs text-gray-400 mt-3">
+          {companies.length} {companies.length === 1 ? "company" : "companies"}{" "}
+          total
+          {search &&
+            filteredCompanies.length !== companies.length &&
+            ` · ${filteredCompanies.length} shown`}
+        </p>
+      )}
+
+      {/* Modals & Drawer */}
+      {showAddModal && (
+        <AddCompanyModal
+          existingNames={allCompanyNames}
+          onConfirm={handleAddCompany}
+          onCancel={() => setShowAddModal(false)}
+          loading={addingCompany}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteConfirmModal
+          company={deleteTarget.company}
+          buList={deleteTarget.buList}
+          onConfirm={handleDeleteCompany}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deletingCompany}
+        />
+      )}
+
+      {drawerCompany && (
+        <EditDrawer
+          company={drawerCompany}
+          initialBUs={buMap[drawerCompany._id] || []}
+          allCompanyNames={allCompanyNames}
+          onClose={() => setDrawerCompany(null)}
+          onSaved={handleDrawerSaved}
+          toast={toast}
+        />
       )}
     </div>
   );
@@ -1019,7 +1458,7 @@ function NavItem({ label, icon: Icon, tab, activeTab, setActiveTab, color }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main Page
+// Main SettingsPage
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
@@ -1062,7 +1501,7 @@ export default function SettingsPage() {
     {
       tab: "company_dropdowns",
       label: "Company & BU settings",
-      icon: Building,
+      icon: Building2,
       color: "orange",
       adminOnly: true,
     },
