@@ -3,6 +3,7 @@ import { getCategories } from "../Settings/CategorySettings.jsx";
 import Dropdown from "../layout/Dropdown";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../layout/ToastProvider.jsx";
+import { ArrowLeft } from "lucide-react";
 
 export default function CategoryReport() {
     const navigate = useNavigate();
@@ -43,11 +44,20 @@ export default function CategoryReport() {
   const isDisabled = !monthFilter || !yearFilter;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 min-h-screen text-gray-800">
       {/* 🔥 Header */}
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
-        Category Wise Report
-      </h1>
+      <div className="mb-6">
+        <button
+          onClick={() => navigate("/admin/reports")}
+          className="flex items-center gap-2 bg-white shadow-sm border px-3 py-1.5 rounded-xl hover:bg-gray-100 text-gray-600 text-sm font-medium transition mb-2 cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          Back to Reports
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">
+          Category Wise Report
+        </h1>
+      </div>
 
       {/* 🔥 Filters */}
       <div className="bg-white p-4 rounded-2xl shadow-sm flex flex-wrap gap-4 mb-6">
