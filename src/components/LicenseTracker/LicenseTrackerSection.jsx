@@ -207,13 +207,15 @@ const uniqueCategories = useMemo(() => {
   const filteredLicenses = useMemo(() => {
     return licenses.filter((l) => {
       const clientName = l.client_id?.name || "";
+      const trimmedClientSearch = filters.clientName.trim();
       const matchesClient =
-        !filters.clientName ||
-        clientName.toLowerCase().includes(filters.clientName.toLowerCase());
+        !trimmedClientSearch ||
+        clientName.toLowerCase().includes(trimmedClientSearch.toLowerCase());
       
+      const trimmedLicenseSearch = filters.licenseName.trim();
       const matchesLicense =
-        !filters.licenseName ||
-        l.licenseName.toLowerCase().includes(filters.licenseName.toLowerCase());
+        !trimmedLicenseSearch ||
+        l.licenseName.toLowerCase().includes(trimmedLicenseSearch.toLowerCase());
       
 const matchesCategory =
   !filters.category ||
