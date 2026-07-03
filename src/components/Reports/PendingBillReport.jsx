@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, FileText, File, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Search, FileText, File, X, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
 import axios from "../../api/axiosInstance";
 import Loader from "../layout/Loader";
 import Dropdown from "../layout/Dropdown";
@@ -14,6 +14,7 @@ export default function PendingBillReport() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedRows, setExpandedRows] = useState({});
 
   // Filters State
   const [searchText, setSearchText] = useState("");
@@ -79,9 +80,20 @@ export default function PendingBillReport() {
     return [...new Set(records.map(r => r.categoryName).filter(Boolean))].sort();
   }, [records]);
 
-  // Filtering Logic
+  
   const filteredRecords = useMemo(() => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+
     return records.filter((r) => {
+      const recordYear = parseInt(r.year, 10);
+      const recordMonth = parseInt(r.month, 10);
+      const monthsDifference = (currentYear - recordYear) * 12 + (currentMonth - recordMonth);
+
+      // Pending since 1 month or more (excluding present month)
+      if (monthsDifference < 1) return false;
+
       const matchesSearch =
         !searchText ||
         r.clientName.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -110,6 +122,21 @@ export default function PendingBillReport() {
     };
   }, [filteredRecords]);
 
+  const groupedRecords = useMemo(() => {
+    const grouped = {};
+    filteredRecords.forEach((r) => {
+      if (!grouped[r.clientId]) {
+        grouped[r.clientId] = [];
+      }
+      grouped[r.clientId].push(r);
+    });
+    return Object.values(grouped);
+  }, [filteredRecords]);
+
+  const toggleRow = (clientId) => {
+    setExpandedRows(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
+
   const resetFilters = () => {
     setSearchText("");
     setMonthFilter("");
@@ -126,50 +153,21 @@ export default function PendingBillReport() {
     }
 
     const data = filteredRecords.map((r, i) => ({
-      "#": i + 1,
       "Client Name": r.clientName,
       "Business Unit": r.businessUnit,
       "Site": r.site,
       "Contact Person": r.contactPerson,
       "Contact Number": r.contactNumber,
       "Email": r.email,
-      "GST Number": r.gstNumber,
       "Assigned Employee": r.assignedEmployee,
       "Month": getMonthName(r.month),
       "Year": r.year,
-      "Category": r.categoryName,
-      "Workers": r.workersAsPerData,
-      "Expected Bill": r.expectedBill,
-      "Data Status": r.dataReceiveStatus,
-      "Work Progress": r.workProgress,
-      "Bill Status": r.billStatus,
     }));
-
-    // Add totals
-    data.push({
-      "#": "TOTALS",
-      "Client Name": "",
-      "Business Unit": "",
-      "Site": "",
-      "Contact Person": "",
-      "Contact Number": "",
-      "Email": "",
-      "GST Number": "",
-      "Assigned Employee": "",
-      "Month": "",
-      "Year": "",
-      "Category": "",
-      "Workers": filteredRecords.reduce((sum, r) => sum + r.workersAsPerData, 0),
-      "Expected Bill": stats.totalExpectedBill,
-      "Data Status": "",
-      "Work Progress": "",
-      "Bill Status": "",
-    });
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Pending Bills");
-    XLSX.writeFile(workbook, "Pending_Bills_Report.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Worst Bills");
+    XLSX.writeFile(workbook, "Worst_Bill_Report.xlsx");
   };
 
   // PDF Export
@@ -184,45 +182,22 @@ export default function PendingBillReport() {
     const doc = new jsPDF("landscape");
 
     const tableColumn = [
-      "#",
       "Client Name",
       "BU / Site",
+      "Contact Info",
       "Assigned Employee",
       "Month / Year",
-      "Category",
-      "Workers",
-      "Expected Bill",
-      "Data Status",
-      "Work Progress",
     ];
 
-    const tableRows = filteredRecords.map((r, i) => [
-      i + 1,
+    const tableRows = filteredRecords.map((r) => [
       r.clientName,
       `${r.businessUnit} / ${r.site}`,
+      `${r.contactPerson}\n${r.contactNumber}\n${r.email}`,
       r.assignedEmployee,
       `${getMonthName(r.month)} ${r.year}`,
-      r.categoryName,
-      r.workersAsPerData,
-      `INR ${r.expectedBill}`,
-      r.dataReceiveStatus,
-      r.workProgress,
     ]);
 
-    tableRows.push([
-      "",
-      "TOTAL",
-      "",
-      "",
-      "",
-      "",
-      filteredRecords.reduce((sum, r) => sum + r.workersAsPerData, 0),
-      `INR ${stats.totalExpectedBill}`,
-      "",
-      "",
-    ]);
-
-    doc.text("Pending Bills Report", 14, 15);
+    doc.text("Worst Bill Report", 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 20);
 
@@ -234,7 +209,7 @@ export default function PendingBillReport() {
       headStyles: { fillColor: [79, 70, 229] }, // Premium Indigo color
     });
 
-    doc.save("Pending_Bills_Report.pdf");
+    doc.save("Worst_Bill_Report.pdf");
   };
 
   // Helper styles for badges
@@ -285,7 +260,7 @@ export default function PendingBillReport() {
             Back to Reports
           </button>
           <h1 className="text-3xl font-extrabold tracking-tight text-gray-950">
-            Pending Bill Report
+            Worst Bill Report
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Overview of client compliance records pending billing for the last two months.
@@ -321,7 +296,7 @@ export default function PendingBillReport() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
           <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Clients</p>
           <h2 className="text-3xl font-extrabold text-gray-900 mt-1">{stats.totalClients}</h2>
@@ -330,11 +305,6 @@ export default function PendingBillReport() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
           <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Pending Bill Records</p>
           <h2 className="text-3xl font-extrabold text-amber-600 mt-1">{stats.totalPendingBills}</h2>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Expected Pending Billing</p>
-          <h2 className="text-3xl font-extrabold text-indigo-600 mt-1">₹ {stats.totalExpectedBill}</h2>
         </div>
       </div>
 
@@ -407,80 +377,97 @@ export default function PendingBillReport() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs font-bold uppercase tracking-wider">
               <tr>
-                <th className="py-4 px-6 text-center w-12">#</th>
                 <th className="py-4 px-4">Client Detail</th>
                 <th className="py-4 px-4">Contact Info</th>
                 <th className="py-4 px-4">Assigned Employee</th>
                 <th className="py-4 px-4 text-center">Month/Year</th>
-                <th className="py-4 px-4 text-center">Category</th>
-                <th className="py-4 px-4 text-center">Workers</th>
-                <th className="py-4 px-4 text-right">Expected Bill</th>
-                <th className="py-4 px-4 text-center">Data Status</th>
-                <th className="py-4 px-4 text-center">Work Progress</th>
                 <th className="py-4 px-6 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredRecords.length > 0 ? (
-                filteredRecords.map((r, index) => (
-                  <tr
-                    key={r._id}
-                    className="hover:bg-indigo-50/20 transition duration-150"
-                  >
-                    <td className="py-4 px-6 text-center text-gray-400 font-semibold">{index + 1}</td>
-                    <td className="py-4 px-4">
-                      <div className="font-bold text-gray-900">{r.clientName}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        <span className="font-semibold">BU:</span> {r.businessUnit} | <span className="font-semibold">Site:</span> {r.site}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-xs font-medium text-gray-800">{r.contactPerson}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{r.contactNumber}</div>
-                      <div className="text-xs text-gray-400">{r.email}</div>
-                    </td>
-                    <td className="py-4 px-4 text-gray-600 font-medium">{r.assignedEmployee}</td>
-                    <td className="py-4 px-4 text-center font-semibold text-gray-800">
-                      {getMonthName(r.month)} {r.year}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="px-2.5 py-1 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100">
-                        {r.categoryName}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center font-bold text-gray-900">{r.workersAsPerData}</td>
-                    <td className="py-4 px-4 text-right font-extrabold text-indigo-700">₹ {r.expectedBill}</td>
-                    <td className="py-4 px-4 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getDataStatusBadge(r.dataReceiveStatus)}`}>
-                        {r.dataReceiveStatus}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getWorkProgressBadge(r.workProgress)}`}>
-                        {r.workProgress}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => navigate(
-                          `/${userRole}/customer/${r.clientId}`,
-                          {
-                            state: {
-                              selectedMonthRecordId: r._id,
-                              autoOpenMonthlyRecord: true,
-                            },
-                          }
-                        )}
-                        className="text-xs font-extrabold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200/50 transition cursor-pointer"
+              {groupedRecords.length > 0 ? (
+                groupedRecords.map((group) => {
+                  const r = group[0];
+                  const isExpanded = expandedRows[r.clientId];
+                  return (
+                    <React.Fragment key={r.clientId}>
+                      <tr
+                        onClick={() => toggleRow(r.clientId)}
+                        className={`hover:bg-indigo-50/20 transition duration-150 cursor-pointer ${isExpanded ? 'bg-indigo-50/10' : ''}`}
                       >
-                        Edit →
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        <td className="py-4 px-4 align-top border-b border-gray-50">
+                          <div className="font-bold text-gray-900">{r.clientName}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            <span className="font-semibold">BU:</span> {r.businessUnit} | <span className="font-semibold">Site:</span> {r.site}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 align-top border-b border-gray-50">
+                          <div className="text-xs font-medium text-gray-800">{r.contactPerson}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{r.contactNumber}</div>
+                          <div className="text-xs text-gray-400">{r.email}</div>
+                        </td>
+                        <td className="py-4 px-4 text-gray-600 font-medium border-b border-gray-50">{r.assignedEmployee}</td>
+                        <td className="py-4 px-4 text-center border-b border-gray-50">
+                          <span className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-200/50 shadow-sm inline-flex items-center gap-1">
+                            {group.length} Pending
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-center border-b border-gray-50">
+                           <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition cursor-pointer">
+                             {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                           </button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-gray-50/30">
+                          <td colSpan="5" className="p-0 border-b border-gray-100">
+                            <div className="px-6 py-4 border-l-2 border-indigo-500 bg-white shadow-inner">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                    <th className="pb-3 text-left font-bold pl-2">Month / Year</th>
+                                    <th className="pb-3 text-right font-bold pr-2">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {group.map((record) => (
+                                    <tr key={record._id} className="border-b border-gray-50 last:border-0 hover:bg-indigo-50/20 transition">
+                                      <td className="py-3 font-semibold text-gray-800 text-left pl-2">
+                                        {getMonthName(record.month)} {record.year}
+                                      </td>
+                                      <td className="py-3 text-right pr-2">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(
+                                              `/${userRole}/customer/${record.clientId}`,
+                                              {
+                                                state: {
+                                                  selectedMonthRecordId: record._id,
+                                                  autoOpenMonthlyRecord: true,
+                                                },
+                                              }
+                                            );
+                                          }}
+                                          className="text-xs font-extrabold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg border border-indigo-200/50 transition cursor-pointer shadow-sm inline-flex items-center gap-1"
+                                        >
+                                          Edit →
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan="11" className="text-center py-12 text-gray-400 font-medium">
+                  <td colSpan="5" className="text-center py-12 text-gray-400 font-medium">
                     No matching records found
                   </td>
                 </tr>

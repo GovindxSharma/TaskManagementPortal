@@ -62,13 +62,15 @@ export default function LicenseTrackerSection() {
   const filteredClients = useMemo(() => {
     return licenses.filter((client) =>
       client.policies.some((policy) => {
-        const matchesName = filter.policyName
-          ? policy.name.toLowerCase().includes(filter.policyName.toLowerCase())
+        const trimmedPolicyName = filter.policyName.trim();
+        const matchesName = trimmedPolicyName
+          ? policy.name.toLowerCase().includes(trimmedPolicyName.toLowerCase())
           : true;
-        const matchesCategory = filter.category
+        const trimmedCategory = filter.category.trim();
+        const matchesCategory = trimmedCategory
           ? policy.category
               .toLowerCase()
-              .includes(filter.category.toLowerCase())
+              .includes(trimmedCategory.toLowerCase())
           : true;
         const matchesMonth = filter.endMonth
           ? policy.end.slice(0, 7) === filter.endMonth
