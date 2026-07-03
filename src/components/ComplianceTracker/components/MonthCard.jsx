@@ -85,6 +85,7 @@ const MonthCard = ({ clientId }) => {
   const cardRefs = useRef({});
   // Guard: auto-open should fire only once after the initial fetch
   const hasAutoOpened = useRef(false);
+  const creatingRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -256,7 +257,9 @@ const MonthCard = ({ clientId }) => {
       toast.error("Please select month and year");
       return;
     }
+    if (creatingRef.current) return;
     try {
+      creatingRef.current = true;
       setCreating(true);
       await axios.post("/monthly-compliance", {
         client_id: clientId,
@@ -270,8 +273,10 @@ const MonthCard = ({ clientId }) => {
       fetchMonthlyCompliance();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to create monthly compliance");
+      const msg = err.response?.data?.message || "Failed to create monthly compliance";
+      toast.error(msg);
     } finally {
+      creatingRef.current = false;
       setCreating(false);
     }
   };
