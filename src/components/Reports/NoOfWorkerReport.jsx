@@ -110,6 +110,11 @@ const getComplianceData = (client) => {
   }, [fetchClients]);
 
   // ✅ Stats
+  const totalClientsWithWorkers = clients.reduce((count, c) => {
+    const comp = getComplianceData(c);
+    return count + ((comp?.noOfWorkers || 0) > 0 ? 1 : 0);
+  }, 0);
+
   const totalWorkers = clients.reduce((sum, c) => {
     const comp = getComplianceData(c);
     return sum + (comp?.noOfWorkers || 0);
@@ -119,6 +124,14 @@ const getComplianceData = (client) => {
     const comp = getComplianceData(c);
     return sum + (comp?.bill || 0);
   }, 0);
+
+  const sortedClients = [...clients].sort((a, b) => {
+    const compA = getComplianceData(a);
+    const compB = getComplianceData(b);
+    const workersA = compA?.noOfWorkers || 0;
+    const workersB = compB?.noOfWorkers || 0;
+    return workersB - workersA;
+  });
 
 const monthOptions = [
   ...new Set(
@@ -149,7 +162,7 @@ const monthOptions = [
     }
     
     const getExportData = () => {
-      return clients.map((c, i) => {
+      return sortedClients.map((c, i) => {
         const comp = getComplianceData(c);
 
         return {
@@ -255,7 +268,7 @@ const monthOptions = [
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-5 rounded-2xl shadow-sm">
           <p className="text-gray-500 text-sm">Total Clients</p>
-          <h2 className="text-2xl font-semibold">{clients.length}</h2>
+          <h2 className="text-2xl font-semibold">{totalClientsWithWorkers}</h2>
         </div>
 
         <div className="bg-white p-5 rounded-2xl shadow-sm">
@@ -356,8 +369,8 @@ const monthOptions = [
           </thead>
 
           <tbody>
-            {clients.length > 0 ? (
-              clients.map((c, index) => {
+            {sortedClients.length > 0 ? (
+              sortedClients.map((c, index) => {
                 const comp = getComplianceData(c);
 
                 return (
