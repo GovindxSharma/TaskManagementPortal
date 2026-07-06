@@ -81,18 +81,43 @@ export default function PendingBillReport() {
   }, [records]);
 
   
-  const filteredRecords = useMemo(() => {
+  const groupedRecords = useMemo(() => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    return records.filter((r) => {
+    // 1. Group all past records by client
+    const clientGroups = {};
+    records.forEach((r) => {
       const recordYear = parseInt(r.year, 10);
       const recordMonth = parseInt(r.month, 10);
       const monthsDifference = (currentYear - recordYear) * 12 + (currentMonth - recordMonth);
 
-      // Pending since 1 month or more (excluding present month)
-      if (monthsDifference < 1) return false;
+      if (monthsDifference >= 1) {
+        if (!clientGroups[r.clientId]) {
+          clientGroups[r.clientId] = [];
+        }
+        clientGroups[r.clientId].push(r);
+      }
+    });
+
+    // 2. Filter clients with 2 or more "Not Received" months
+    const eligibleClientIds = new Set(
+      Object.keys(clientGroups).filter(
+        (clientId) => clientGroups[clientId].length >= 2
+      )
+    );
+
+    // 3. Group and filter records for eligible clients
+    const grouped = {};
+    records.forEach((r) => {
+      if (!eligibleClientIds.has(r.clientId)) return;
+
+      const recordYear = parseInt(r.year, 10);
+      const recordMonth = parseInt(r.month, 10);
+      const monthsDifference = (currentYear - recordYear) * 12 + (currentMonth - recordMonth);
+
+      if (monthsDifference < 1) return;
 
       const matchesSearch =
         !searchText ||
@@ -106,9 +131,20 @@ export default function PendingBillReport() {
       const matchesEmployee = !employeeFilter || r.assignedEmployee === employeeFilter;
       const matchesCategory = !categoryFilter || r.categoryName === categoryFilter;
 
-      return matchesSearch && matchesMonth && matchesYear && matchesEmployee && matchesCategory;
+      if (matchesSearch && matchesMonth && matchesYear && matchesEmployee && matchesCategory) {
+        if (!grouped[r.clientId]) {
+          grouped[r.clientId] = [];
+        }
+        grouped[r.clientId].push(r);
+      }
     });
+
+    return Object.values(grouped).filter((group) => group.length >= 2);
   }, [records, searchText, monthFilter, yearFilter, employeeFilter, categoryFilter]);
+
+  const filteredRecords = useMemo(() => {
+    return groupedRecords.flat();
+  }, [groupedRecords]);
 
   // Stats Calculations
   const stats = useMemo(() => {
@@ -120,17 +156,6 @@ export default function PendingBillReport() {
       totalPendingBills: filteredRecords.length,
       totalExpectedBill
     };
-  }, [filteredRecords]);
-
-  const groupedRecords = useMemo(() => {
-    const grouped = {};
-    filteredRecords.forEach((r) => {
-      if (!grouped[r.clientId]) {
-        grouped[r.clientId] = [];
-      }
-      grouped[r.clientId].push(r);
-    });
-    return Object.values(grouped);
   }, [filteredRecords]);
 
   const toggleRow = (clientId) => {
@@ -303,7 +328,7 @@ export default function PendingBillReport() {
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Pending Bill Records</p>
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Pending Months Records</p>
           <h2 className="text-3xl font-extrabold text-amber-600 mt-1">{stats.totalPendingBills}</h2>
         </div>
       </div>
