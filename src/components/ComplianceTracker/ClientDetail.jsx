@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MonthCard from "./components/MonthCard.jsx";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Building2, Layers } from "lucide-react";
 import axios from "../../api/axiosInstance";
 import Loader from "../layout/Loader"; // ✅ import loader
 
@@ -55,7 +55,29 @@ export default function CustomerDetails() {
       </button>
 
       {/* Client Info */}
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">{client.name}</h1>
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
+            {client.name}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+            {client.businessUnit && (
+              <div className="flex items-center gap-2">
+                <Building2 size={16} className="text-gray-400" />
+                <span className="text-gray-400">Company Name:</span>
+                <span className="font-semibold text-gray-800">{client.businessUnit}</span>
+              </div>
+            )}
+            {client.site && (
+              <div className="flex items-center gap-2">
+                <Layers size={16} className="text-gray-400" />
+                <span className="text-gray-400">Business Unit:</span>
+                <span className="font-semibold text-gray-800">{client.site}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Month Cards */}
       <MonthCard clientId={id} />
