@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { getCategories } from "../Settings/CategorySettings.jsx";
 import Dropdown from "../layout/Dropdown";
 import { useNavigate } from "react-router-dom";
@@ -10,8 +10,17 @@ export default function CategoryReport() {
     const toast = useToast();
 
   const [categories, setCategories] = useState([]);
-  const [monthFilter, setMonthFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState(sessionStorage.getItem("categoryReportMonth") || "");
+  const [yearFilter, setYearFilter] = useState(sessionStorage.getItem("categoryReportYear") || "");
+  const lastWarningTime = useRef(0);
+
+  useEffect(() => {
+    sessionStorage.setItem("categoryReportMonth", monthFilter);
+  }, [monthFilter]);
+
+  useEffect(() => {
+    sessionStorage.setItem("categoryReportYear", yearFilter);
+  }, [yearFilter]);
 
   const monthNames = [
     "January",
@@ -90,7 +99,11 @@ export default function CategoryReport() {
             key={cat._id}
             onClick={() => {
               if (isDisabled) {
-                toast.warning("Select Month & Year to continue");
+                const now = Date.now();
+                if (now - lastWarningTime.current > 3000) {
+                  toast.warning("Select Month & Year to continue");
+                  lastWarningTime.current = now;
+                }
                 return;
               }
 
