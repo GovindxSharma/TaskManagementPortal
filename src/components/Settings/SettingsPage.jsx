@@ -317,9 +317,177 @@ function CompanyTab({ userLS, toast }) {
 // Tab: Fees (categories)
 // ---------------------------------------------------------------------------
 
+// ── CategoryModal ──────────────────────────────────────────────────────────
+
+function CategoryModal({ category, categories, onConfirm, onCancel, loading }) {
+  const [name, setName] = useState(category ? category.name : "");
+  const [price, setPrice] = useState(category ? String(category.price) : "0");
+  const [isActive, setIsActive] = useState(category ? category.isActive : true);
+  const [error, setError] = useState("");
+
+  const isDuplicate =
+    name.trim() &&
+    categories.some(
+      (c) =>
+        normalize(c.name) === normalize(name) &&
+        (!category || c._id !== category._id)
+    );
+
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+
+    // Range format validation: e.g. "0-10", "11-20"
+    const rangeRegex = /^\d+-\d+$/;
+    if (!rangeRegex.test(name.trim())) {
+      setError("Name must be a valid numeric range in the format 'min-max' (e.g., 0-10)");
+      return;
+    }
+
+    const [minStr, maxStr] = name.trim().split("-");
+    const min = Number(minStr);
+    const max = Number(maxStr);
+
+    if (min > max) {
+      setError("Minimum limit cannot be greater than maximum limit (min-max)");
+      return;
+    }
+
+    // Overlap checks
+    const otherCategories = categories.filter((c) => !category || c._id !== category._id);
+    const overlaps = otherCategories.some((c) => {
+      const [oMinStr, oMaxStr] = c.name.split("-");
+      const oMin = Number(oMinStr);
+      const oMax = Number(oMaxStr);
+      if (isNaN(oMin) || isNaN(oMax)) return false;
+
+      // Two ranges [A, B] and [C, D] overlap if A <= D && C <= B
+      return min <= oMax && oMin <= max;
+    });
+
+    if (overlaps) {
+      setError("This range overlaps with an existing category range");
+      return;
+    }
+
+    if (isDuplicate) {
+      setError("Category name already exists");
+      return;
+    }
+
+    const numPrice = Number(price);
+    if (isNaN(numPrice) || numPrice < 0) {
+      setError("Price must be a non-negative number");
+      return;
+    }
+    onConfirm({ name: name.trim(), price: numPrice, isActive });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center">
+            <Tags size={18} className="text-teal-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">
+              {category ? "Edit category" : "Add category"}
+            </h2>
+            <p className="text-xs text-gray-500">
+              {category ? "Modify the category details" : "Create a new fee category"}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Category name
+            </label>
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError("");
+              }}
+              placeholder="e.g. Range A"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Fee (Price)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={price}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                setError("");
+              }}
+              placeholder="e.g. 500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm font-medium text-gray-750">Active status</span>
+            <button
+              type="button"
+              onClick={() => setIsActive(!isActive)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                isActive ? "bg-teal-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isActive ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <p className="mt-3 text-xs text-red-500 flex items-center gap-1">
+            <AlertTriangle size={12} /> {error}
+          </p>
+        )}
+
+        <div className="flex gap-3 mt-6 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!name.trim() || isDuplicate || loading}
+            className="px-5 py-2 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium transition disabled:opacity-40 flex items-center gap-2"
+          >
+            {loading && <Spinner size={14} />}
+            {category ? "Save changes" : "Create category"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── FeesTab ──────────────────────────────────────────────────────────────────
+
 function FeesTab({ toast }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -331,32 +499,44 @@ function FeesTab({ toast }) {
     } finally {
       setLoading(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [toast]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
-  const handlePriceChange = (index, value) =>
-    setCategories((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], price: value };
-      return updated;
-    });
+  const handleAddClick = () => {
+    setSelectedCategory(null);
+    setModalOpen(true);
+  };
 
-  const handleAdd = async () => {
+  const handleEditClick = (cat) => {
+    setSelectedCategory(cat);
+    setModalOpen(true);
+  };
+
+  const handleModalConfirm = async (formData) => {
     try {
-      const created = await createCategory({ name: "New range", price: 0 });
-      setCategories((prev) => [...prev, created]);
-      toast.success("Category added");
+      setModalLoading(true);
+      if (selectedCategory) {
+        await updateCategory(selectedCategory._id, formData);
+        toast.success("Category updated successfully");
+      } else {
+        await createCategory(formData);
+        toast.success("Category created successfully");
+      }
+      setModalOpen(false);
+      fetchCategories();
     } catch (err) {
-      toast.error(extractErrorMessage(err, "Failed to add category"));
+      toast.error(extractErrorMessage(err, "Failed to save category"));
+    } finally {
+      setModalLoading(false);
     }
   };
 
   const handleDelete = (id) => {
     toast.confirmDelete({
-      message: "Delete this fee category?",
+      message: "Are you sure you want to delete this fee category? Any associated data might be affected.",
       onConfirm: async () => {
         try {
           await deleteCategory(id);
@@ -369,84 +549,103 @@ function FeesTab({ toast }) {
     });
   };
 
-  const handleSave = async () => {
-    const invalid = categories.some(
-      (c) => c.price === "" || isNaN(Number(c.price)) || Number(c.price) < 0,
-    );
-    if (invalid) {
-      toast.error("All prices must be valid non-negative numbers");
-      return;
-    }
-    try {
-      setLoading(true);
-      await Promise.all(
-        categories.map((c) =>
-          updateCategory(c._id, { price: Number(c.price), name: c.name }),
-        ),
-      );
-      toast.success("Fees updated successfully");
-      fetchCategories();
-    } catch (err) {
-      toast.error(extractErrorMessage(err, "Failed to update fees"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading && categories.length === 0)
-    return <p className="text-gray-500 text-sm">Loading…</p>;
+    return (
+      <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
+        <Spinner size={16} /> Loading categories…
+      </div>
+    );
+
+  const existingNames = categories.map((c) => c.name);
 
   return (
     <div>
-      <SectionHeader
-        title="Fees"
-        description="Set price ranges for each category."
-      />
-      {categories.length === 0 ? (
-        <p className="text-sm text-gray-400 italic">No fee categories yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {categories.map((cat, i) => (
-            <div
-              key={cat._id}
-              className="flex items-center gap-4 bg-gray-50 border border-gray-200 p-3 rounded-lg"
-            >
-              <span className="flex-1 text-sm font-medium text-gray-700 truncate">
-                {cat.name}
-              </span>
-              <input
-                type="number"
-                min="0"
-                value={cat.price}
-                onChange={(e) => handlePriceChange(i, e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 w-28 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              />
-              <button
-                onClick={() => handleDelete(cat._id)}
-                className="text-gray-400 hover:text-red-600 transition"
-                aria-label={`Delete ${cat.name}`}
-              >
-                <Trash2 size={17} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-3 mt-5">
+      <div className="flex justify-between items-center mb-6">
+        <SectionHeader
+          title="Fee Categories"
+          description="Manage fee categories and set their base prices."
+        />
         <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 bg-teal-50 border border-teal-300 text-teal-700 text-sm px-4 py-2 rounded-lg hover:bg-teal-100 transition"
+          onClick={handleAddClick}
+          className="flex items-center gap-2 bg-teal-600 text-white text-sm px-4 py-2.5 rounded-xl hover:bg-teal-700 transition shadow-sm"
         >
-          <Plus size={16} /> Add category
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-teal-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-teal-700 transition disabled:opacity-50"
-        >
-          {loading ? "Saving…" : "Save fees"}
+          <Plus size={16} /> Add Category
         </button>
       </div>
+
+      {categories.length === 0 ? (
+        <div className="bg-gray-50 border border-gray-200 border-dashed rounded-xl p-8 text-center">
+          <Tags size={32} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500 font-medium">No fee categories yet.</p>
+          <p className="text-xs text-gray-400 mt-1">Click "Add Category" to get started.</p>
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4">Category Name</th>
+                  <th className="px-6 py-4">Fee (Base Price)</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {categories.map((cat) => (
+                  <tr key={cat._id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-semibold text-gray-800">
+                      {cat.name}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      ₹{cat.price.toLocaleString("en-IN")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
+                          cat.isActive
+                            ? "bg-green-50 text-green-700 border border-green-200"
+                            : "bg-red-50 text-red-700 border border-red-200"
+                        }`}
+                      >
+                        {cat.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEditClick(cat)}
+                          className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                          title="Edit Category"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(cat._id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Delete Category"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {modalOpen && (
+        <CategoryModal
+          category={selectedCategory}
+          categories={categories}
+          onConfirm={handleModalConfirm}
+          onCancel={() => setModalOpen(false)}
+          loading={modalLoading}
+        />
+      )}
     </div>
   );
 }
