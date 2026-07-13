@@ -13,6 +13,16 @@ export default function CategoryReport() {
   const [monthFilter, setMonthFilter] = useState(sessionStorage.getItem("categoryReportMonth") || "");
   const [yearFilter, setYearFilter] = useState(sessionStorage.getItem("categoryReportYear") || "");
   const lastWarningTime = useRef(0);
+  const isNavigatingToDetails = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (!isNavigatingToDetails.current) {
+        sessionStorage.removeItem("categoryReportMonth");
+        sessionStorage.removeItem("categoryReportYear");
+      }
+    };
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem("categoryReportMonth", monthFilter);
@@ -57,7 +67,11 @@ export default function CategoryReport() {
       {/* 🔥 Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/admin/reports")}
+          onClick={() => {
+            sessionStorage.removeItem("categoryReportMonth");
+            sessionStorage.removeItem("categoryReportYear");
+            navigate("/admin/reports");
+          }}
           className="flex items-center gap-2 bg-white shadow-sm border px-3 py-1.5 rounded-xl hover:bg-gray-100 text-gray-600 text-sm font-medium transition mb-2 cursor-pointer"
         >
           <ArrowLeft size={16} />
@@ -106,6 +120,8 @@ export default function CategoryReport() {
                 }
                 return;
               }
+
+              isNavigatingToDetails.current = true;
 
               navigate(`/admin/reports/category/${cat._id}`, {
                 state: {

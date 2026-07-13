@@ -119,12 +119,13 @@ export default function PendingBillReport() {
 
       if (monthsDifference < 1) return;
 
+      const trimmedSearch = searchText.trim().toLowerCase();
       const matchesSearch =
-        !searchText ||
-        r.clientName.toLowerCase().includes(searchText.toLowerCase()) ||
-        r.businessUnit.toLowerCase().includes(searchText.toLowerCase()) ||
-        r.site.toLowerCase().includes(searchText.toLowerCase()) ||
-        r.assignedEmployee.toLowerCase().includes(searchText.toLowerCase());
+        !trimmedSearch ||
+        r.clientName.toLowerCase().includes(trimmedSearch) ||
+        r.businessUnit.toLowerCase().includes(trimmedSearch) ||
+        r.site.toLowerCase().includes(trimmedSearch) ||
+        r.assignedEmployee.toLowerCase().includes(trimmedSearch);
 
       const matchesMonth = !monthFilter || getMonthName(r.month) === monthFilter;
       const matchesYear = !yearFilter || String(r.year) === yearFilter;
