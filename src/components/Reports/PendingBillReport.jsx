@@ -61,47 +61,53 @@ export default function PendingBillReport() {
     fetchReportData();
   }, [fetchReportData]);
 
-  // Unique Filter Options derived from current dataset
-  const monthOptions = useMemo(() => {
-    return [...new Set(records.map(r => getMonthName(r.month)))].sort(
-      (a, b) => monthNames.indexOf(a) - monthNames.indexOf(b)
-    );
-  }, [records]);
-
-  const yearOptions = useMemo(() => {
-    return [...new Set(records.map(r => String(r.year)))].sort();
-  }, [records]);
-
-  const employeeOptions = useMemo(() => {
-    return [...new Set(records.map(r => r.assignedEmployee).filter(Boolean))].sort();
-  }, [records]);
-
-  const categoryOptions = useMemo(() => {
-    return [...new Set(records.map(r => r.categoryName).filter(Boolean))].sort();
-  }, [records]);
-
-  
-  const groupedRecords = useMemo(() => {
+  // Filter out current and previous calendar months from records (only consider 2+ months ago)
+  const pastRecords = useMemo(() => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    // 1. Group all past records by client
-    const clientGroups = {};
-    records.forEach((r) => {
+    return records.filter((r) => {
       const recordYear = parseInt(r.year, 10);
       const recordMonth = parseInt(r.month, 10);
-      const monthsDifference = (currentYear - recordYear) * 12 + (currentMonth - recordMonth);
+      if (isNaN(recordYear) || isNaN(recordMonth)) return false;
 
-      if (monthsDifference >= 1) {
-        if (!clientGroups[r.clientId]) {
-          clientGroups[r.clientId] = [];
-        }
-        clientGroups[r.clientId].push(r);
+      // Exclude current month (diff = 0) and previous month (diff = 1)
+      const monthsDifference = (currentYear - recordYear) * 12 + (currentMonth - recordMonth);
+      return monthsDifference >= 2;
+    });
+  }, [records]);
+
+  // Unique Filter Options derived from past dataset
+  const monthOptions = useMemo(() => {
+    return [...new Set(pastRecords.map(r => getMonthName(r.month)))].sort(
+      (a, b) => monthNames.indexOf(a) - monthNames.indexOf(b)
+    );
+  }, [pastRecords]);
+
+  const yearOptions = useMemo(() => {
+    return [...new Set(pastRecords.map(r => String(r.year)))].sort();
+  }, [pastRecords]);
+
+  const employeeOptions = useMemo(() => {
+    return [...new Set(pastRecords.map(r => r.assignedEmployee).filter(Boolean))].sort();
+  }, [pastRecords]);
+
+  const categoryOptions = useMemo(() => {
+    return [...new Set(pastRecords.map(r => r.categoryName).filter(Boolean))].sort();
+  }, [pastRecords]);
+
+  const groupedRecords = useMemo(() => {
+    // 1. Group all past records by client
+    const clientGroups = {};
+    pastRecords.forEach((r) => {
+      if (!clientGroups[r.clientId]) {
+        clientGroups[r.clientId] = [];
       }
+      clientGroups[r.clientId].push(r);
     });
 
-    // 2. Filter clients with 2 or more "Not Received" months
+    // 2. Filter clients with 2 or more "Not Received" past months
     const eligibleClientIds = new Set(
       Object.keys(clientGroups).filter(
         (clientId) => clientGroups[clientId].length >= 2
@@ -110,14 +116,8 @@ export default function PendingBillReport() {
 
     // 3. Group and filter records for eligible clients
     const grouped = {};
-    records.forEach((r) => {
+    pastRecords.forEach((r) => {
       if (!eligibleClientIds.has(r.clientId)) return;
-
-      const recordYear = parseInt(r.year, 10);
-      const recordMonth = parseInt(r.month, 10);
-      const monthsDifference = (currentYear - recordYear) * 12 + (currentMonth - recordMonth);
-
-      if (monthsDifference < 1) return;
 
       const matchesSearch =
         !searchText ||
@@ -140,7 +140,7 @@ export default function PendingBillReport() {
     });
 
     return Object.values(grouped).filter((group) => group.length >= 2);
-  }, [records, searchText, monthFilter, yearFilter, employeeFilter, categoryFilter]);
+  }, [pastRecords, searchText, monthFilter, yearFilter, employeeFilter, categoryFilter]);
 
   const filteredRecords = useMemo(() => {
     return groupedRecords.flat();
@@ -191,8 +191,8 @@ export default function PendingBillReport() {
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Worst Bills");
-    XLSX.writeFile(workbook, "Worst_Bill_Report.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Pending Bills");
+    XLSX.writeFile(workbook, "Data_Pending_Report.xlsx");
   };
 
   // PDF Export
@@ -222,7 +222,7 @@ export default function PendingBillReport() {
       `${getMonthName(r.month)} ${r.year}`,
     ]);
 
-    doc.text("Worst Bill Report", 14, 15);
+    doc.text("Data Pending Report", 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 20);
 
@@ -234,7 +234,7 @@ export default function PendingBillReport() {
       headStyles: { fillColor: [79, 70, 229] }, // Premium Indigo color
     });
 
-    doc.save("Worst_Bill_Report.pdf");
+    doc.save("Data_Pending_Report.pdf");
   };
 
   // Helper styles for badges
@@ -285,10 +285,10 @@ export default function PendingBillReport() {
             Back to Reports
           </button>
           <h1 className="text-3xl font-extrabold tracking-tight text-gray-950">
-            Worst Bill Report
+            Data Pending Report
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Overview of client compliance records pending billing for the last two months.
+            Overview of client compliance records pending billing, excluding the current and previous calendar months.
           </p>
         </div>
 
